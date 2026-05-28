@@ -1,0 +1,330 @@
+# /specs/database.spec.md
+
+# Database Specification — CG6 Flights
+
+## Estado
+
+Aprobado operativo para implementación v1.0.
+
+## 1. Propósito
+
+La base de datos debe preservar la verdad operacional de CG6 Flights con trazabilidad, separación por unidad, RLS obligatorio, retención histórica de 5 años y soporte para reportes auditados.
+
+## 2. Motor
+
+- PostgreSQL administrado por Supabase.
+- Migraciones versionadas en `/supabase/migrations`.
+- RLS habilitado en todas las tablas sensibles.
+- No se permiten cambios manuales no reproducibles en producción.
+
+## 3. Convenciones
+
+- Claves primarias UUID con `gen_random_uuid()`.
+- Timestamps `created_at`, `updated_at`, `deleted_at` cuando aplique.
+- Soft delete mediante `deleted_at` o `active = false`.
+- Fechas operativas en UTC.
+- Campos de auditoría: `created_by`, `updated_by` cuando aplique.
+- Tablas en `public` salvo necesidad de schema separado aprobada por ADR.
+
+## 4. Enumeraciones
+
+- `app_role`: leader, general_admin, unit_command, unit_admin, ttaa.
+- `profile_status`: pending, active, inactive, rejected.
+- `crew_type`: pilot, copilot, mechanic, flight_engineer.
+- `aircraft_status`: operational, inoperative, maintenance.
+- `flight_order_status`: draft, submitted, observed, approved, closed, reopened.
+- `flight_status_code`: motor_start, taxi_start, takeoff, landing, engine_shutdown.
+- `closure_status`: requested, observed, approved, rejected, reopened.
+- `audit_result`: success, denied, failed.
+- `report_format`: pdf, excel.
+
+## 5. Tablas core
+
+### units
+
+- `id` UUID PK.
+- `code` text único.
+- `name` text.
+- `active` boolean.
+- `created_at`, `updated_at`, `deleted_at`.
+
+### profiles
+
+- `id` UUID PK vinculado a `auth.users.id`.
+- `email` text único.
+- `display_name` text.
+- `status` profile_status.
+- `role` app_role nullable.
+- `unit_id` UUID nullable FK units.
+- `phone` text nullable.
+- `avatar_path` text nullable.
+- `created_at`, `updated_at`.
+
+Reglas:
+
+- Un usuario pendiente no opera.
+- Roles de unidad requieren `unit_id`.
+- Solo puede existir un perfil con role leader activo.
+- Solo pueden existir cinco perfiles general_admin activos.
+
+### permissions
+
+- `id` UUID PK.
+- `key` text único.
+- `description` text.
+- `module` text.
+- `active` boolean.
+
+### role_permissions
+
+- `id` UUID PK.
+- `role` app_role.
+- `permission_id` UUID FK permissions.
+- `enabled` boolean.
+- Unique `(role, permission_id)`.
+
+### audit_logs
+
+- `id` UUID PK.
+- `actor_id` UUID nullable.
+- `actor_role` app_role nullable.
+- `actor_unit_id` UUID nullable.
+- `action` text.
+- `resource_type` text.
+- `resource_id` UUID nullable.
+- `result` audit_result.
+- `ip_address` text nullable.
+- `user_agent` text nullable.
+- `metadata` jsonb.
+- `created_at`.
+
+### aircraft
+
+- `id` UUID PK.
+- `unit_id` UUID FK units.
+- `tail_number` text único.
+- `model` text.
+- `manufacturer` text.
+- `serial_number` text nullable.
+- `year` integer nullable.
+- `status` aircraft_status.
+- `active` boolean.
+- `created_at`, `updated_at`, `deleted_at`.
+
+### crew_members
+
+- `id` UUID PK.
+- `unit_id` UUID FK units.
+- `full_name` text.
+- `document_id` text nullable.
+- `crew_type` crew_type.
+- `active` boolean.
+- `created_at`, `updated_at`, `deleted_at`.
+
+### routes
+
+- `id` UUID PK.
+- `unit_id` UUID nullable FK units.
+- `name` text.
+- `origin` text.
+- `destination` text.
+- `stops` jsonb.
+- `active` boolean.
+- `created_at`, `updated_at`, `deleted_at`.
+
+### flight_orders
+
+- `id` UUID PK.
+- `unit_id` UUID FK units.
+- `operation_date` date.
+- `order_number` varchar (generado: ACRONYM-XXX).
+- `status` flight_order_status.
+- `submitted_at`, `approved_at`, `closed_at` nullable.
+- `created_by`, `approved_by`, `closed_by` nullable.
+- `created_at`, `updated_at`.
+- Unique `(unit_id, operation_date)`.
+
+### flight_order_items
+
+- `id` UUID PK.
+- `flight_order_id` UUID FK flight_orders.
+- `aircraft_id` UUID FK aircraft.
+- `mission` text nullable.
+- `flight_level_min` integer nullable.
+- `flight_level_max` integer nullable.
+- `ete_minutes` integer nullable.
+- `fuel_type` varchar nullable (lbs/gal).
+- `fuel_amount` numeric nullable.
+- `scheduled_departure` timestamptz nullable.
+- `status` varchar (waiting, taxi, takeoff, landing, engine_off, cancelled).
+- `cancelled` boolean.
+- `cancelled_at` timestamptz nullable.
+- `cancelled_by` UUID nullable.
+- `cancel_reason` text nullable.
+- `created_at`, `updated_at`.
+
+### flight_order_routes
+
+- `id` UUID PK.
+- `flight_order_item_id` UUID FK flight_order_items.
+- `segment_order` integer.
+- `segment_type` varchar (outbound/return).
+- `origin_type` varchar (airport/zone/waypoint).
+- `origin_route_id` UUID FK routes nullable.
+- `origin_label` varchar nullable.
+- `origin_lat` double precision nullable.
+- `origin_lng` double precision nullable.
+- `destination_type` varchar (airport/zone/waypoint).
+- `destination_route_id` UUID FK routes nullable.
+- `destination_label` varchar nullable.
+- `destination_lat` double precision nullable.
+- `destination_lng` double precision nullable.
+- `created_at`.
+
+### flight_order_crew
+
+- `id` UUID PK.
+- `flight_order_item_id` UUID FK flight_order_items.
+- `crew_member_id` UUID FK crew_members.
+- `role_code` varchar (PC/CP/MA).
+- `function_code` varchar nullable (PS/IP/PM/CP/CO/PI/PR).
+
+### flight_order_state_events
+
+- `id` UUID PK.
+- `flight_order_item_id` UUID FK flight_order_items.
+- `status` varchar.
+- `occurred_at` timestamptz.
+- `recorded_by` UUID FK profiles.
+- `created_at`.
+
+### flight_order_profiles
+
+- `id` UUID PK.
+- `flight_order_id` UUID FK flight_orders.
+- `profile_number` integer (auto-numerado por orden).
+- `description` text.
+- `created_at`.
+
+### flight_order_item_profiles
+
+- `id` UUID PK.
+- `flight_order_item_id` UUID FK flight_order_items.
+- `profile_id` UUID FK flight_order_profiles.
+- Junction table: perfiles asignados a vuelos específicos.
+
+### closure_requests
+
+- `id` UUID PK.
+- `flight_order_id` UUID FK flight_orders.
+- `status` closure_status.
+- `requested_by`, `reviewed_by` UUID nullable.
+- `notes` text nullable.
+- `requested_at`, `reviewed_at` nullable.
+- `created_at`, `updated_at`.
+
+### notifications
+
+- `id` UUID PK.
+- `recipient_id` UUID FK profiles nullable.
+- `unit_id` UUID FK units nullable.
+- `title` text.
+- `body` text.
+- `read_at` timestamptz nullable.
+- `created_at`.
+
+### messages
+
+- `id` UUID PK.
+- `sender_id` UUID FK profiles.
+- `recipient_id` UUID FK profiles nullable.
+- `unit_id` UUID FK units nullable.
+- `subject` text.
+- `body` text.
+- `created_at`.
+
+### report_exports
+
+- `id` UUID PK.
+- `requested_by` UUID FK profiles.
+- `report_type` text.
+- `format` report_format.
+- `filters` jsonb.
+- `storage_path` text nullable.
+- `created_at`.
+
+## 6. Storage
+
+Buckets:
+
+- `profile-avatars`: privado, máximo 5 MB por archivo.
+- `reports`: privado, exportaciones temporales o controladas.
+
+Reglas:
+
+- No buckets públicos para datos confidenciales.
+- La URL firmada debe expirar.
+- Toda exportación se registra en `report_exports` y `audit_logs`.
+
+## 7. Índices mínimos
+
+- `profiles(role)`, `profiles(unit_id)`, `profiles(status)`.
+- `role_permissions(role)`.
+- `audit_logs(actor_id, created_at desc)`.
+- `audit_logs(resource_type, resource_id)`.
+- `aircraft(unit_id)`.
+- `crew_members(unit_id, crew_type)`.
+- `flight_orders(unit_id, operation_date desc)`.
+- `flight_order_items(flight_order_id, created_at)`.
+- `flight_order_routes(flight_order_item_id, segment_order)`.
+- `flight_order_crew(flight_order_item_id)`.
+- `flight_order_state_events(flight_order_item_id, occurred_at)`.
+- `flight_order_profiles(flight_order_id, profile_number)`.
+- `flight_order_item_profiles(flight_order_item_id, profile_id)`.
+- `notifications(recipient_id, read_at)`.
+
+## 8. RLS obligatorio
+
+Funciones auxiliares:
+
+- `current_profile_id()`.
+- `current_profile_role()`.
+- `current_profile_unit_id()`.
+- `current_profile_status()`.
+- `has_permission(permission_key text)`.
+- `is_global_role()`.
+- `same_unit(unit_id uuid)`.
+
+Políticas base:
+
+- Líder ve y administra alcance global según permisos.
+- Administrador General ve alcance global operativo según permisos.
+- Comando de Unidad ve y autoriza su unidad.
+- Administrador de Unidad opera su unidad.
+- TTAA solo lee vuelos asignados o autorizados.
+- Usuario pending, inactive o sin rol no accede a datos operativos.
+
+## 9. Integridad y reglas DB
+
+- Constraints para límites de Líder y Administrador General.
+- Trigger `updated_at`.
+- Trigger de validación de secuencia de estados.
+- Trigger o función para recalcular tiempos derivados.
+- Restricción para impedir modificación ordinaria de fichas cerradas.
+- Soft delete para registros operativos.
+
+## 10. Backups y retención
+
+- Retención histórica funcional: 5 años.
+- Backups según capacidades del plan Supabase contratado.
+- Exportaciones no sustituyen backup.
+- Datos reales no se usan en desarrollo.
+
+## 11. Criterios de aceptación
+
+- Todas las tablas sensibles tienen RLS habilitado.
+- Las migraciones son reproducibles.
+- Los índices cubren consultas principales.
+- Las políticas impiden lectura cruzada entre unidades.
+- Los límites de roles superiores se validan en DB y backend.
+- Las exportaciones quedan auditadas.

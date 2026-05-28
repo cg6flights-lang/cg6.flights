@@ -1,0 +1,27 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "CG6 Flights (web-server)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define-from-file=.env.json"
+      ],
+      "deviceId": "web-server",
+      "webPort": 8080
+    },
+    {
+      "name": "CG6 Flights (chrome)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define-from-file=.env.json"
+      ],
+      "deviceId": "chrome",
+      "webPort": 8080
+    }
+  ]
+}
