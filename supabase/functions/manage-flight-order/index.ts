@@ -6,9 +6,9 @@ const corsHeaders = {
 };
 
 const actions = new Set([
-  "create", "update", "add_item", "add_profile", "remove_profile",
+  "create", "update", "add_item", "update_item", "add_profile", "remove_profile",
   "submit", "approve", "observe",
-  "close", "reopen", "cancel_item", "advance_state", "delete",
+  "close", "reopen", "cancel_item", "advance_state", "delete", "list_items",
 ]);
 
 const globalRoles = new Set(["leader", "general_admin"]);
@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
 
   // ── Permission mapping ──
   const needsReview = new Set(["approve", "observe", "close", "reopen"]);
-  const needsCreate = new Set(["create", "update", "add_item", "add_profile", "remove_profile"]);
+  const needsCreate = new Set(["create", "update", "add_item", "update_item", "add_profile", "remove_profile"]);
   const needsCancel = new Set(["cancel_item"]);
   const needsDelete = new Set(["delete"]);
 
@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
       await auditLog("denied", "flight_order", null, { reason: "no_permission", required: "global_or_close" });
       return errorResponse(403, "AUTH_PERMISSION_DENIED", "Solo roles globales o Comando de Unidad pueden borrar ordenes.", "AUTHORIZATION");
     }
-  } else if (action === "advance_state") {
+  } else if (action === "advance_state" || action === "list_items") {
     if (!(await checkPermission("flight_orders.read"))) {
       return errorResponse(403, "AUTH_PERMISSION_DENIED", "Operacion no autorizada.", "AUTHORIZATION");
     }
@@ -274,7 +274,7 @@ Deno.serve(async (req) => {
     // Re-fetch full item with all joins
     const { data: fullItem, error: fetchError } = await adminClient
       .from("flight_order_items")
-      .select("*, aircraft:aircraft_id(registration), routes:flight_order_routes(*, origin_route:origin_route_id(airport_name), destination_route:destination_route_id(airport_name)), crew:flight_order_crew(*, crew_member:crew_member_id(grade,first_name,last_name,callsign)), profiles:flight_order_item_profiles(profile:profile_id(*))")
+      .select("*, aircraft:aircraft_id(tail_number, model), routes:flight_order_routes(*, origin_route:origin_route_id(airport_name), destination_route:destination_route_id(airport_name)), crew:flight_order_crew(*, crew_member:crew_member_id(grade,first_name,last_name,callsign)), profiles:flight_order_item_profiles(profile:profile_id(*))")
       .eq("id", itemId)
       .single();
 
@@ -284,7 +284,7 @@ Deno.serve(async (req) => {
     console.error("Re-fetch of flight_order_item failed, returning fallback:", fetchError);
     const { data: aircraft } = await adminClient
       .from("aircraft")
-      .select("registration")
+      .select("tail_number, model")
       .eq("id", aircraftId)
       .maybeSingle();
 
@@ -432,10 +432,9 @@ Deno.serve(async (req) => {
     const validTransitions: Record<string, string[]> = {
       draft: ["submit"],
       submitted: ["approve", "observe"],
-      observed: ["approve"],
       approved: ["close"],
       closed: ["reopen"],
-      reopened: ["submit"],
+      reopened: ["close"],
     };
 
     const allowed = validTransitions[order.status] ?? [];
@@ -461,7 +460,7 @@ Deno.serve(async (req) => {
       update.approved_at = new Date().toISOString();
       update.approved_by = userId;
     } else if (action === "observe") {
-      update.status = "observed";
+      update.status = "draft";
     } else if (action === "close") {
       update.status = "closed";
       update.closed_at = new Date().toISOString();
@@ -530,6 +529,139 @@ Deno.serve(async (req) => {
     await auditLog("success", "flight_order", flightOrderId, { order_number: order.order_number });
 
     return jsonResponse({ ok: true, data: null, meta: {} });
+  }
+
+  // ── ACTION: update_item ──
+  if (action === "update_item") {
+    if (!flightOrderId) {
+      return errorResponse(400, "VALIDATION_REQUIRED", "flight_order_id requerido.", "VALIDATION");
+    }
+    const itemId = String(payload.item_id ?? "").trim();
+    if (!itemId) {
+      return errorResponse(400, "VALIDATION_REQUIRED", "item_id requerido.", "VALIDATION");
+    }
+
+    const { data: order, error: orderError } = await adminClient
+      .from("flight_orders")
+      .select("id,unit_id,status")
+      .eq("id", flightOrderId)
+      .maybeSingle();
+
+    if (orderError || !order) {
+      return errorResponse(404, "DATA_NOT_FOUND", "Orden de Vuelo no encontrada.", "DATA");
+    }
+
+    if (order.status !== "draft") {
+      return errorResponse(400, "BUSINESS_ORDER_NOT_EDITABLE", "Solo se pueden editar vuelos en ordenes en borrador.", "BUSINESS_RULE");
+    }
+
+    if (!globalRoles.has(actorProfile.role)) {
+      if (actorProfile.unit_id !== order.unit_id) {
+        return errorResponse(403, "AUTH_UNIT_MISMATCH", "No puedes editar vuelos de otra unidad.", "AUTHORIZATION");
+      }
+    }
+
+    // Verify item belongs to this order
+    const { data: existingItem, error: itemCheckError } = await adminClient
+      .from("flight_order_items")
+      .select("id")
+      .eq("id", itemId)
+      .eq("flight_order_id", flightOrderId)
+      .maybeSingle();
+
+    if (itemCheckError || !existingItem) {
+      return errorResponse(404, "DATA_NOT_FOUND", "Vuelo no encontrado en esta orden.", "DATA");
+    }
+
+    const itemPayload = (payload.item as Record<string, unknown>) ?? {};
+    const aircraftId = String(itemPayload.aircraft_id ?? "").trim();
+    if (!aircraftId) {
+      return errorResponse(400, "VALIDATION_INVALID_INPUT", "Debe seleccionar una aeronave.", "VALIDATION", "medium");
+    }
+
+    // Delete existing routes, crew, and profiles for this item
+    await adminClient.from("flight_order_routes").delete().eq("flight_order_item_id", itemId);
+    await adminClient.from("flight_order_crew").delete().eq("flight_order_item_id", itemId);
+    await adminClient.from("flight_order_item_profiles").delete().eq("flight_order_item_id", itemId);
+
+    // Update the item record
+    const mission = itemPayload.mission ? String(itemPayload.mission).trim() : null;
+    const flightLevelMin = itemPayload.flight_level_min ? parseInt(String(itemPayload.flight_level_min), 10) || null : null;
+    const flightLevelMax = itemPayload.flight_level_max ? parseInt(String(itemPayload.flight_level_max), 10) || null : null;
+    const eteMinutes = itemPayload.ete_minutes ? parseInt(String(itemPayload.ete_minutes), 10) || null : null;
+    const fuelType = itemPayload.fuel_type ? String(itemPayload.fuel_type).trim() : null;
+    const fuelAmount = itemPayload.fuel_amount ? parseFloat(String(itemPayload.fuel_amount)) || null : null;
+    const scheduledDeparture = itemPayload.scheduled_departure ? String(itemPayload.scheduled_departure).trim() : null;
+
+    const { error: updateError } = await adminClient
+      .from("flight_order_items")
+      .update({
+        aircraft_id: aircraftId,
+        mission,
+        flight_level_min: flightLevelMin,
+        flight_level_max: flightLevelMax,
+        ete_minutes: eteMinutes,
+        fuel_type: fuelType,
+        fuel_amount: fuelAmount,
+        scheduled_departure: scheduledDeparture,
+      })
+      .eq("id", itemId);
+
+    if (updateError) {
+      await auditLog("failed", "flight_order_item", itemId, { reason: "update_failed", error_code: updateError.code });
+      return errorResponse(500, "SYSTEM_UNEXPECTED", "No se pudo actualizar el vuelo.", "SYSTEM");
+    }
+
+    // Recreate routes
+    const routes = Array.isArray(itemPayload.routes) ? (itemPayload.routes as Record<string, unknown>[]) : [];
+    for (const route of routes) {
+      await adminClient.from("flight_order_routes").insert({
+        flight_order_item_id: itemId,
+        segment_order: parseInt(String(route.segment_order ?? 1), 10) || 1,
+        segment_type: String(route.segment_type ?? "outbound"),
+        origin_type: String(route.origin_type ?? "airport"),
+        origin_route_id: route.origin_route_id ? String(route.origin_route_id) : null,
+        origin_label: route.origin_label ? String(route.origin_label) : null,
+        origin_lat: route.origin_lat ? parseFloat(String(route.origin_lat)) : null,
+        origin_lng: route.origin_lng ? parseFloat(String(route.origin_lng)) : null,
+        destination_type: String(route.destination_type ?? "airport"),
+        destination_route_id: route.destination_route_id ? String(route.destination_route_id) : null,
+        destination_label: route.destination_label ? String(route.destination_label) : null,
+        destination_lat: route.destination_lat ? parseFloat(String(route.destination_lat)) : null,
+        destination_lng: route.destination_lng ? parseFloat(String(route.destination_lng)) : null,
+      });
+    }
+
+    // Recreate crew
+    const crewList = Array.isArray(itemPayload.crew) ? (itemPayload.crew as Record<string, unknown>[]) : [];
+    for (const member of crewList) {
+      await adminClient.from("flight_order_crew").insert({
+        flight_order_item_id: itemId,
+        crew_member_id: String(member.crew_member_id ?? ""),
+        role_code: String(member.role_code ?? ""),
+        function_code: member.function_code ? String(member.function_code) : null,
+      });
+    }
+
+    // Recreate profile links
+    const profileIds = Array.isArray(itemPayload.profile_ids) ? (itemPayload.profile_ids as string[]) : [];
+    for (const profileId of profileIds) {
+      await adminClient.from("flight_order_item_profiles").insert({
+        flight_order_item_id: itemId,
+        profile_id: profileId,
+      });
+    }
+
+    // Re-fetch full item with all joins
+    const { data: updatedItem } = await adminClient
+      .from("flight_order_items")
+      .select("*, aircraft:aircraft_id(tail_number, model), routes:flight_order_routes(*, origin_route:origin_route_id(airport_name), destination_route:destination_route_id(airport_name)), crew:flight_order_crew(*, crew_member:crew_member_id(grade,first_name,last_name,callsign)), profiles:flight_order_item_profiles(profile:profile_id(*))")
+      .eq("id", itemId)
+      .single();
+
+    await auditLog("success", "flight_order_item", itemId, { action: "update_item" });
+
+    return jsonResponse({ ok: true, data: updatedItem, meta: {} });
   }
 
   // ── ACTION: cancel_item ──
@@ -766,6 +898,25 @@ Deno.serve(async (req) => {
     await auditLog("success", "flight_order_profile", profileId, { flight_order_id: profile.flight_order_id });
 
     return jsonResponse({ ok: true, data: null, meta: {} });
+  }
+
+  // ── ACTION: list_items ──
+  if (action === "list_items") {
+    if (!flightOrderId) {
+      return errorResponse(400, "VALIDATION_REQUIRED", "flight_order_id requerido.", "VALIDATION");
+    }
+
+    const { data: rows, error: queryError } = await adminClient
+      .from("flight_order_items")
+      .select("*, aircraft:aircraft_id(tail_number, model), routes:flight_order_routes(*, origin_route:origin_route_id(airport_name), destination_route:destination_route_id(airport_name)), crew:flight_order_crew(*, crew_member:crew_member_id(grade,first_name,last_name,callsign)), profiles:flight_order_item_profiles(profile:profile_id(*)), state_events:flight_order_state_events(*)")
+      .eq("flight_order_id", flightOrderId)
+      .order("created_at");
+
+    if (queryError) {
+      return errorResponse(500, "SYSTEM_UNEXPECTED", "No se pudieron cargar los items.", "SYSTEM");
+    }
+
+    return jsonResponse({ ok: true, data: rows, meta: {} });
   }
 
   return errorResponse(400, "VALIDATION_INVALID_ACTION", `Accion no implementada: ${action}`, "VALIDATION");

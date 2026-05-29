@@ -100,11 +100,17 @@ class FlightItemFormDialog extends ConsumerStatefulWidget {
     required this.flightOrderId,
     required this.unitId,
     required this.operationDate,
+    this.existingItem,
+    this.itemId,
   });
 
   final String flightOrderId;
   final String unitId;
   final DateTime operationDate;
+  final FlightOrderItem? existingItem;
+  final String? itemId;
+
+  bool get isEditing => existingItem != null;
 
   @override
   ConsumerState<FlightItemFormDialog> createState() =>
@@ -170,6 +176,66 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
   @override
   void initState() {
     super.initState();
+    final item = widget.existingItem;
+    if (item != null) {
+      _aircraftId = item.aircraftId;
+      _missionCtrl.text = item.mission ?? '';
+      if (item.scheduledDeparture != null) {
+        _departureTime = TimeOfDay(
+          hour: item.scheduledDeparture!.hour,
+          minute: item.scheduledDeparture!.minute,
+        );
+      }
+      _flMinCtrl.text = item.flightLevelMin?.toString() ?? '';
+      _flMaxCtrl.text = item.flightLevelMax?.toString() ?? '';
+      _eteMinutes = item.eteMinutes ?? 0;
+      _fuelType = item.fuelType ?? 'Jet A1';
+      _fuelLbsCtrl.text = item.fuelAmount?.toString() ?? '';
+      _recalcFuel(fromLbs: true);
+      _selectedProfileIds.addAll(item.profileIds);
+      // Pre-fill segments from routes
+      if (item.routes.isNotEmpty) {
+        _segments.clear();
+        for (final r in item.routes) {
+          final seg = _RouteSegmentData(order: r.segmentOrder);
+          seg.segmentType = r.segmentType;
+          if (r.originType == 'airport') {
+            seg.originIsAirport = true;
+            seg.originRouteIdCtrl.text = r.originRouteId ?? '';
+          } else {
+            seg.originIsAirport = false;
+            seg.originAltType = r.originType;
+            seg.originLabelCtrl.text = r.originLabel ?? '';
+            if (r.originLat != null) seg.originLatCtrl.text = r.originLat.toString();
+            if (r.originLng != null) seg.originLngCtrl.text = r.originLng.toString();
+          }
+          if (r.destinationType == 'airport') {
+            seg.destIsAirport = true;
+            seg.destRouteIdCtrl.text = r.destinationRouteId ?? '';
+          } else {
+            seg.destIsAirport = false;
+            seg.destAltType = r.destinationType;
+            seg.destLabelCtrl.text = r.destinationLabel ?? '';
+            if (r.destinationLat != null) seg.destLatCtrl.text = r.destinationLat.toString();
+            if (r.destinationLng != null) seg.destLngCtrl.text = r.destinationLng.toString();
+          }
+          _segments.add(seg);
+        }
+      }
+      // Pre-fill crew
+      for (final c in item.crew) {
+        if (c.roleCode == 'PC') {
+          _pcId = c.crewMemberId;
+          _pcFunctionCode = c.functionCode;
+        } else if (c.roleCode == 'CP') {
+          _cpId = c.crewMemberId;
+          _cpFunctionCode = c.functionCode;
+        } else if (c.roleCode == 'MA') {
+          _maId = c.crewMemberId;
+          _hasMechanic = true;
+        }
+      }
+    }
     _loadMissionOptions();
     _loadAircraft();
     _loadCrewMembers();
@@ -315,7 +381,9 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
     final l10n = AppLocalizations.of(context);
 
     return AlertDialog(
-      title: Text(l10n.t('flightOrders.addItem')),
+      title: Text(widget.isEditing
+          ? l10n.t('flightOrders.editItem')
+          : l10n.t('flightOrders.addItem')),
       content: SizedBox(
         width: 680,
         child: Form(
@@ -1313,9 +1381,14 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
       ],
     };
 
-    final result = await ref
-        .read(flightOrdersRepositoryProvider)
-        .addItem(flightOrderId: widget.flightOrderId, item: item);
+    final repo = ref.read(flightOrdersRepositoryProvider);
+    final result = widget.isEditing
+        ? await repo.updateItem(
+            flightOrderId: widget.flightOrderId,
+            itemId: widget.itemId!,
+            item: item,
+          )
+        : await repo.addItem(flightOrderId: widget.flightOrderId, item: item);
 
     if (!mounted) return;
     setState(() => _saving = false);

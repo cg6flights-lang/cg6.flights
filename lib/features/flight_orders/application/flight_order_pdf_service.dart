@@ -203,7 +203,7 @@ class FlightOrderPdfService {
         .join(', ');
 
     return [
-      item.aircraftRegistration ?? '--',
+      _aircraftLabel(item),
       _registrationNumber(item.aircraftRegistration),
       _callsign(item.crew),
       _crewSummary(item.crew),
@@ -241,7 +241,7 @@ class FlightOrderPdfService {
       ['AIRCRAFT', 'TAXI', 'TAKEOFF', 'LANDING', 'ENGINE OFF', 'TOTAL', 'AIR'],
       for (final item in items)
         [
-          item.aircraftRegistration ?? '--',
+          _aircraftLabel(item),
           _eventTime(item.stateEvents, 'taxi'),
           _eventTime(item.stateEvents, 'takeoff'),
           _eventTime(item.stateEvents, 'landing'),
@@ -307,6 +307,12 @@ class FlightOrderPdfService {
           ),
       ],
     );
+  }
+
+  String _aircraftLabel(FlightOrderItem item) {
+    final reg = item.aircraftRegistration ?? '--';
+    final model = item.aircraftModel;
+    return model != null && model.isNotEmpty ? '$reg — $model' : reg;
   }
 
   String _registrationNumber(String? registration) {

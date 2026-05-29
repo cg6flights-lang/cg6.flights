@@ -33,6 +33,10 @@ class FlightOrder {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  bool get hasObservations => status == 'draft' && submittedAt != null;
+
+  String get effectiveStatus => status == 'observed' ? 'draft' : status;
+
   factory FlightOrder.fromJson(Map<String, dynamic> json) {
     return FlightOrder(
       id: json['id'].toString(),
@@ -96,6 +100,7 @@ class FlightOrderItem {
     required this.createdAt,
     required this.updatedAt,
     this.aircraftRegistration,
+    this.aircraftModel,
     this.routes = const [],
     this.crew = const [],
     this.profiles = const [],
@@ -122,6 +127,7 @@ class FlightOrderItem {
   final DateTime updatedAt;
 
   final String? aircraftRegistration;
+  final String? aircraftModel;
   final List<FlightOrderRoute> routes;
   final List<FlightOrderCrew> crew;
   final List<FlightOrderProfile> profiles;
@@ -160,6 +166,7 @@ class FlightOrderItem {
     DateTime? createdAt,
     DateTime? updatedAt,
     String? aircraftRegistration,
+    String? aircraftModel,
     List<FlightOrderRoute>? routes,
     List<FlightOrderCrew>? crew,
     List<FlightOrderProfile>? profiles,
@@ -186,6 +193,7 @@ class FlightOrderItem {
       updatedAt: updatedAt ?? this.updatedAt,
       aircraftRegistration:
           aircraftRegistration ?? this.aircraftRegistration,
+      aircraftModel: aircraftModel ?? this.aircraftModel,
       routes: routes ?? this.routes,
       crew: crew ?? this.crew,
       profiles: profiles ?? this.profiles,
@@ -228,8 +236,12 @@ class FlightOrderItem {
       updatedAt: DateTime.tryParse(json['updated_at']?.toString() ?? '') ??
           DateTime.now(),
       aircraftRegistration: json['aircraft'] is Map
-          ? (json['aircraft'] as Map)['registration']?.toString()
+          ? ((json['aircraft'] as Map)['registration']?.toString() ??
+              (json['aircraft'] as Map)['tail_number']?.toString())
           : json['aircraft_registration']?.toString(),
+      aircraftModel: json['aircraft'] is Map
+          ? (json['aircraft'] as Map)['model']?.toString()
+          : null,
     );
   }
 

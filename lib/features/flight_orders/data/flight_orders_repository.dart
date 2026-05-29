@@ -27,6 +27,11 @@ abstract class FlightOrdersRepository {
     required String flightOrderId,
     required Map<String, dynamic> item,
   });
+  Future<AppResult<FlightOrderItem>> updateItem({
+    required String flightOrderId,
+    required String itemId,
+    required Map<String, dynamic> item,
+  });
   Future<AppResult<FlightOrderProfile>> addOrderProfile({
     required String flightOrderId,
     required String description,
@@ -86,15 +91,84 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
           .eq('flight_order_id', flightOrderId)
           .order('created_at');
 
-      final items = (rows as List<dynamic>)
+      final baseItems = (rows as List<dynamic>)
           .map((r) => FlightOrderItem.fromJson(r as Map<String, dynamic>))
           .toList();
+
+      if (baseItems.isEmpty) return AppSuccess(baseItems);
+
+      final itemIds = baseItems.map((i) => i.id).toList();
+
+      // Batch load related data
+      final results = await Future.wait([
+        _client
+            .from('aircraft')
+            .select('id, tail_number, model')
+            .inFilter('id', baseItems.map((i) => i.aircraftId).toList()),
+        _client
+            .from('flight_order_routes')
+            .select(
+                '*, origin_route:origin_route_id(airport_name), destination_route:destination_route_id(airport_name)')
+            .inFilter('flight_order_item_id', itemIds),
+        _client
+            .from('flight_order_crew')
+            .select('*, crew_member:crew_member_id(grade,first_name,last_name,callsign)')
+            .inFilter('flight_order_item_id', itemIds),
+        _client
+            .from('flight_order_state_events')
+            .select('*')
+            .inFilter('flight_order_item_id', itemIds),
+      ]);
+
+      final aircraftRows = results[0] as List<dynamic>;
+      final routeRows = results[1] as List<dynamic>;
+      final crewRows = results[2] as List<dynamic>;
+      final eventRows = results[3] as List<dynamic>;
+
+      final aircraftMap = <String, Map<String, dynamic>>{};
+      for (final a in aircraftRows) {
+        final m = a as Map<String, dynamic>;
+        aircraftMap[m['id'].toString()] = m;
+      }
+
+      final items = baseItems.map((item) {
+        final ac = aircraftMap[item.aircraftId];
+        final itemRoutes = routeRows
+            .where((r) =>
+                (r as Map<String, dynamic>)['flight_order_item_id'].toString() ==
+                item.id)
+            .map((r) =>
+                FlightOrderRoute.fromJson(r as Map<String, dynamic>))
+            .toList();
+        final itemCrew = crewRows
+            .where((c) =>
+                (c as Map<String, dynamic>)['flight_order_item_id'].toString() ==
+                item.id)
+            .map((c) =>
+                FlightOrderCrew.fromJson(c as Map<String, dynamic>))
+            .toList();
+        final itemEvents = eventRows
+            .where((e) =>
+                (e as Map<String, dynamic>)['flight_order_item_id'].toString() ==
+                item.id)
+            .map((e) => FlightOrderStateEvent.fromJson(
+                e as Map<String, dynamic>))
+            .toList();
+
+        return item.copyWith(
+          aircraftRegistration: ac?['tail_number']?.toString(),
+          aircraftModel: ac?['model']?.toString(),
+          routes: itemRoutes,
+          crew: itemCrew,
+          stateEvents: itemEvents,
+        );
+      }).toList();
 
       return AppSuccess(items);
     } on FunctionException catch (e) {
       return AppFailure(_errorFromBody(e.details));
     } catch (e) {
-      print('[DEBUG] listItems basic query failed for $flightOrderId: $e');
+      print('[DEBUG] listItems failed for $flightOrderId: $e');
       return const AppFailure(AppError(
         code: 'SYSTEM_UNEXPECTED',
         message: 'No se pudieron cargar los ítems de la orden.',
@@ -272,6 +346,42 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
       return const AppFailure(AppError(
         code: 'SYSTEM_UNEXPECTED',
         message: 'No se pudo agregar el vuelo.',
+        category: AppErrorCategory.system,
+        severity: AppErrorSeverity.high,
+      ));
+    }
+  }
+
+  @override
+  Future<AppResult<FlightOrderItem>> updateItem({
+    required String flightOrderId,
+    required String itemId,
+    required Map<String, dynamic> item,
+  }) async {
+    try {
+      final response = await _client.functions.invoke(
+        'manage-flight-order',
+        body: {
+          'action': 'update_item',
+          'flight_order_id': flightOrderId,
+          'item_id': itemId,
+          'item': item,
+        },
+      );
+
+      final body = response.data;
+      if (body is Map && body['ok'] == true) {
+        final data = body['data'] as Map<String, dynamic>;
+        return AppSuccess(_parseItem(data));
+      }
+
+      return AppFailure(_errorFromBody(body));
+    } on FunctionException catch (e) {
+      return AppFailure(_errorFromBody(e.details));
+    } catch (_) {
+      return const AppFailure(AppError(
+        code: 'SYSTEM_UNEXPECTED',
+        message: 'No se pudo actualizar el vuelo.',
         category: AppErrorCategory.system,
         severity: AppErrorSeverity.high,
       ));

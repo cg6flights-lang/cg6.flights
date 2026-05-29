@@ -12,11 +12,13 @@ class OrderStepper extends StatelessWidget {
     required this.steps,
     required this.current,
     required this.colorForStatus,
+    this.hasObservations = false,
   });
 
   final List<StepInfo> steps;
   final String current;
   final Color Function(String status) colorForStatus;
+  final bool hasObservations;
 
   static const _orderSteps = [
     StepInfo(key: 'draft', label: 'Borrador'),
@@ -25,11 +27,15 @@ class OrderStepper extends StatelessWidget {
     StepInfo(key: 'closed', label: 'Cerrado'),
   ];
 
-  factory OrderStepper.flightOrder({required String currentStatus}) {
+  factory OrderStepper.flightOrder({
+    required String currentStatus,
+    bool hasObservations = false,
+  }) {
     return OrderStepper(
       steps: _orderSteps,
       current: currentStatus,
       colorForStatus: (s) => _statusColor(s),
+      hasObservations: hasObservations,
     );
   }
 
@@ -47,7 +53,9 @@ class OrderStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentIdx = steps.indexWhere((s) => s.key == current);
+    final isReopened = current == 'reopened';
+    final lookup = isReopened ? 'closed' : current;
+    final currentIdx = steps.indexWhere((s) => s.key == lookup);
     final effectiveIdx = currentIdx >= 0 ? currentIdx : 0;
 
     return SizedBox(
@@ -64,12 +72,13 @@ class OrderStepper extends StatelessWidget {
   }
 
   Widget _connector(bool active) {
+    final connectorColor = colorForStatus(steps[0].key);
     return Expanded(
       child: Container(
         height: 2,
         margin: const EdgeInsets.symmetric(horizontal: 4),
         color: active
-            ? colorForStatus(steps[0].key).withValues(alpha: 0.4)
+            ? connectorColor.withValues(alpha: 0.4)
             : Colors.grey.withValues(alpha: 0.2),
       ),
     );
@@ -78,10 +87,10 @@ class OrderStepper extends StatelessWidget {
   Widget _stepDot(StepInfo step, int index, int currentIdx) {
     final completed = index < currentIdx;
     final active = index == currentIdx;
+    final isDraftAlert = hasObservations && active && step.key == 'draft';
+    final effectiveStatus = isDraftAlert ? 'observed' : step.key;
     final color = active || completed
-        ? colorForStatus(currentIdx < steps.length
-            ? steps[currentIdx].key
-            : steps.last.key)
+        ? colorForStatus(effectiveStatus)
         : Colors.grey;
 
     return Column(
@@ -105,16 +114,18 @@ class OrderStepper extends StatelessWidget {
           child: Center(
             child: completed
                 ? Icon(Icons.check, size: 14, color: color)
-                : active
-                    ? Container(
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: color,
-                        ),
-                      )
-                    : null,
+                : active && isDraftAlert
+                    ? Icon(Icons.warning_amber_rounded, size: 16, color: color)
+                    : active
+                        ? Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: color,
+                            ),
+                          )
+                        : null,
           ),
         ),
         const SizedBox(height: 4),

@@ -103,10 +103,6 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
     final session = ref.watch(sessionControllerProvider);
     final ordersAsync = ref.watch(_ordersListProvider);
     final canCreate = session.can(AppPermission.flightOrdersCreate);
-    final canReview = session.can(AppPermission.flightOrdersReview);
-    final canClose = session.can(AppPermission.flightOrdersClose);
-    final canExport = session.can(AppPermission.reportsExport);
-    final canDelete = canClose || session.user?.role?.isGlobal == true;
 
     return ordersAsync.when(
       loading: () =>
@@ -188,10 +184,6 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
                                     child: _buildTable(
                                       context,
                                       filtered,
-                                      canCreate,
-                                      canReview,
-                                      canDelete,
-                                      canExport,
                                       l10n,
                                     ),
                                   ),
@@ -201,21 +193,25 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
                             const VerticalDivider(width: 32, thickness: 1),
                             Expanded(
                               flex: 2,
-                              child: _selectedOrder != null
-                                  ? FlightOrderDetailPanel(
-                                      key: ValueKey(_selectedOrder!.id),
-                                      order: _selectedOrder!,
-                                      items: _items,
-                                      canCreate: canCreate,
-                                      canReview: canReview,
-                                      onStateChanged: _onItemStateChanged,
-                                      onOrderChanged: () {
-                                        ref.invalidate(_ordersListProvider);
-                                        setState(() => _items = []);
-                                        _loadItems(_selectedOrder!.id);
-                                      },
-                                    )
-                                  : _buildEmptyDetail(l10n),
+                              child: SizedBox(
+                                height: 550,
+                                child: _selectedOrder != null
+                                    ? FlightOrderDetailPanel(
+                                        key: ValueKey(_selectedOrder!.id),
+                                        order: _selectedOrder!,
+                                        items: _items,
+                                        onExportPdf: () => _exportPdf(_selectedOrder!, l10n),
+                                        onDeleteOrder: () => _confirmDeleteOrder(_selectedOrder!, l10n),
+                                        onStateChanged: _onItemStateChanged,
+                                        onOrderChanged: (updatedOrder) {
+                                          setState(() => _selectedOrder = updatedOrder);
+                                          ref.invalidate(_ordersListProvider);
+                                          setState(() => _items = []);
+                                          _loadItems(updatedOrder.id);
+                                        },
+                                      )
+                                    : _buildEmptyDetail(l10n),
+                              ),
                             ),
                           ],
                         );
@@ -228,29 +224,29 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
                               child: _buildTable(
                                 context,
                                 filtered,
-                                canCreate,
-                                canReview,
-                                canDelete,
-                                canExport,
                                 l10n,
                               ),
                             ),
                           ),
                           if (_selectedOrder != null) ...[
                             const Divider(height: 32, thickness: 1),
-                            FlightOrderDetailPanel(
-                              key: ValueKey(_selectedOrder!.id),
-                              order: _selectedOrder!,
-                              items: _items,
-                              canCreate: canCreate,
-                              canReview: canReview,
-                              onStateChanged: _onItemStateChanged,
-                              onOrderChanged: () {
-                                ref.invalidate(_ordersListProvider);
-                                setState(() => _items = []);
-                                _loadItems(_selectedOrder!.id);
-                              },
-                            ),
+                            SizedBox(
+                              height: 400,
+                              child: FlightOrderDetailPanel(
+                                key: ValueKey(_selectedOrder!.id),
+                                order: _selectedOrder!,
+                                items: _items,
+                                onExportPdf: () => _exportPdf(_selectedOrder!, l10n),
+                                onDeleteOrder: () => _confirmDeleteOrder(_selectedOrder!, l10n),
+                                onStateChanged: _onItemStateChanged,
+                                onOrderChanged: (updatedOrder) {
+                                  setState(() => _selectedOrder = updatedOrder);
+                                  ref.invalidate(_ordersListProvider);
+                                  setState(() => _items = []);
+                                  _loadItems(updatedOrder.id);
+                                },
+                              ),
+                              ),
                           ],
                         ],
                       );
@@ -409,17 +405,14 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
   Widget _buildTable(
     BuildContext context,
     List<FlightOrder> orders,
-    bool canCreate,
-    bool canReview,
-    bool canDelete,
-    bool canExport,
     AppLocalizations l10n,
   ) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: 580),
+        constraints: const BoxConstraints(minWidth: 420),
         child: DataTable(
+          showCheckboxColumn: false,
           headingTextStyle: Theme.of(context).textTheme.titleSmall,
           dataRowMinHeight: 48,
           dataRowMaxHeight: 56,
@@ -429,12 +422,14 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
             DataColumn(label: Text(l10n.t('flightOrders.operationDate'))),
             DataColumn(label: Text(l10n.t('flightOrders.status'))),
             DataColumn(label: Text(l10n.t('flightOrders.items'))),
-            const DataColumn(label: Text('')),
           ],
           rows: [
             for (final o in orders)
               DataRow(
-                selected: _selectedOrder?.id == o.id,
+                color: _selectedOrder?.id == o.id
+                    ? WidgetStateProperty.all(
+                        Theme.of(context).colorScheme.primary.withValues(alpha: 0.08))
+                    : null,
                 onSelectChanged: (_) => _selectOrder(o),
                 cells: [
                   DataCell(Text(o.orderNumber ?? '--',
@@ -445,11 +440,6 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
                       style: const TextStyle(fontSize: 13))),
                   DataCell(StatusChip.fromStatus(o.status)),
                   DataCell(_itemCountBadge(o)),
-                  DataCell(Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: _buildActions(
-                        o, canCreate, canReview, canDelete, canExport, l10n),
-                  )),
                 ],
               ),
           ],
@@ -479,75 +469,6 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
     );
   }
 
-  List<Widget> _buildActions(
-    FlightOrder order,
-    bool canCreate,
-    bool canReview,
-    bool canDelete,
-    bool canExport,
-    AppLocalizations l10n,
-  ) {
-    final actions = <Widget>[];
-
-    if (canExport) {
-      actions.add(_actionButton(
-        Icons.picture_as_pdf_outlined,
-        l10n.t('flightOrders.exportPdf'),
-        () => _exportPdf(order, l10n),
-      ));
-    }
-
-    if (order.status == 'draft' && canCreate) {
-      actions.add(_actionButton(
-          Icons.send_outlined, l10n.t('flightOrders.submit'), () {
-        _confirmStatusChange(order, 'submit', l10n);
-      }));
-    }
-
-    if (order.status == 'draft' && canDelete) {
-      actions.add(_actionButton(
-          Icons.delete_outline, l10n.t('flightOrders.delete'), () {
-        _confirmDeleteOrder(order, l10n);
-      }));
-    }
-
-    if ((order.status == 'submitted' || order.status == 'observed') &&
-        canReview) {
-      actions.add(_actionButton(
-          Icons.check_circle_outline, l10n.t('flightOrders.approve'), () {
-        _confirmStatusChange(order, 'approve', l10n);
-      }));
-      actions.add(_actionButton(
-          Icons.visibility_outlined, l10n.t('flightOrders.observe'), () {
-        _confirmStatusChange(order, 'observe', l10n);
-      }));
-    }
-
-    if (order.status == 'approved' && canReview) {
-      actions.add(_actionButton(
-          Icons.lock_outlined, l10n.t('flightOrders.close'), () {
-        _confirmStatusChange(order, 'close', l10n);
-      }));
-    }
-
-    if (order.status == 'closed' && canReview) {
-      actions.add(_actionButton(
-          Icons.lock_open_outlined, l10n.t('flightOrders.reopen'), () {
-        _confirmStatusChange(order, 'reopen', l10n);
-      }));
-    }
-
-    return actions;
-  }
-
-  Widget _actionButton(IconData icon, String tooltip, VoidCallback onPressed) {
-    return IconButton(
-      icon: Icon(icon, size: 18),
-      tooltip: tooltip,
-      visualDensity: VisualDensity.compact,
-      onPressed: onPressed,
-    );
-  }
 
   String _formatDate(DateTime date) {
     final months = [
