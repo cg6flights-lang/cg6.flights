@@ -22,18 +22,48 @@ class NavigationItem {
   final String? permission;
 }
 
-class AppShell extends ConsumerWidget {
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.child, required this.items});
 
   final Widget child;
   final List<NavigationItem> items;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends ConsumerState<AppShell> {
+  bool _overlayVisible = false;
+  double _overlayOpacity = 1.0;
+
+  @override
+  void didUpdateWidget(covariant AppShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.child != oldWidget.child) {
+      _startNavigationTransition();
+    }
+  }
+
+  void _startNavigationTransition() {
+    if (_overlayVisible) return;
+    setState(() {
+      _overlayVisible = true;
+      _overlayOpacity = 1.0;
+    });
+    Future<void>.delayed(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      setState(() => _overlayOpacity = 0.0);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final session = ref.watch(sessionControllerProvider);
     final user = session.user;
+    final langCode = ref.watch(localeControllerProvider).languageCode;
+    final localeNotifier = ref.read(localeControllerProvider.notifier);
     final location = GoRouterState.of(context).uri.path;
-    final visibleItems = items
+    final visibleItems = widget.items
         .where(
           (item) => item.permission == null || session.can(item.permission!),
         )
@@ -53,16 +83,13 @@ class AppShell extends ConsumerWidget {
             actions: [
               _NotificationBell(),
               Tooltip(
-                message: ref.watch(localeControllerProvider).languageCode == 'es'
+                message: langCode == 'es'
                     ? 'Switch to English'
                     : 'Cambiar a Espanol',
                 child: IconButton(
-                  onPressed: () =>
-                      ref.read(localeControllerProvider.notifier).toggle(),
+                  onPressed: () => localeNotifier.toggle(),
                   icon: Text(
-                    ref.watch(localeControllerProvider).languageCode == 'es'
-                        ? 'EN'
-                        : 'ES',
+                    langCode == 'es' ? 'EN' : 'ES',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -109,11 +136,135 @@ class AppShell extends ConsumerWidget {
                     ),
                   ),
                 ),
-              Expanded(child: child),
+              Expanded(
+                child: Stack(
+                  children: [
+                    // Page always mounted — loads data in background
+                    widget.child,
+                    // Dots overlay — covers page during 3s then fades out
+                    if (_overlayVisible)
+                      Positioned.fill(
+                        child: AnimatedOpacity(
+                          opacity: _overlayOpacity,
+                          duration: const Duration(milliseconds: 350),
+                          onEnd: () {
+                            if (_overlayOpacity == 0.0 && mounted) {
+                              setState(() => _overlayVisible = false);
+                            }
+                          },
+                          child: const _AppLoadingOverlay(),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+// ── Loading overlay for section navigation ──────────────────────────
+
+class _AppLoadingOverlay extends StatefulWidget {
+  const _AppLoadingOverlay({super.key});
+
+  @override
+  State<_AppLoadingOverlay> createState() => _AppLoadingOverlayState();
+}
+
+class _AppLoadingOverlayState extends State<_AppLoadingOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _dotsController;
+
+  @override
+  void initState() {
+    super.initState();
+    _dotsController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _dotsController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Theme.of(context).colorScheme.surface,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (int i = 0; i < 3; i++)
+                  _OverlayDot(controller: _dotsController, index: i),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Cargando...',
+              style: TextStyle(
+                fontSize: 13,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OverlayDot extends StatelessWidget {
+  const _OverlayDot({required this.controller, required this.index});
+  final AnimationController controller;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    const size = 10.0;
+    final delay = index * 0.25;
+    final alpha = Tween<double>(begin: 0.3, end: 1.0).animate(
+      CurvedAnimation(
+        parent: controller,
+        curve: Interval(delay, delay + 0.4, curve: Curves.easeInOut),
+      ),
+    );
+    final scale = Tween<double>(begin: 0.7, end: 1.1).animate(
+      CurvedAnimation(
+        parent: controller,
+        curve: Interval(delay, delay + 0.4, curve: Curves.easeInOut),
+      ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: AnimatedBuilder(
+        animation: controller,
+        builder: (context, child) => Transform.scale(
+          scale: scale.value,
+          child: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Theme.of(context)
+                  .colorScheme
+                  .primary
+                  .withValues(alpha: alpha.value),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

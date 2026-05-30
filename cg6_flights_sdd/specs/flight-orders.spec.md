@@ -67,6 +67,10 @@ Restricción: `UNIQUE(unit_id, operation_date)` — una orden por unidad y fecha
 | `cancelled_by` | UUID | Responsable |
 | `cancel_reason` | text | Motivo obligatorio |
 
+Campos poblados en frontend (no persisten en DB, obtenidos via joins):
+- `aircraftRegistration` — `tail_number` de la tabla `aircraft`
+- `aircraftModel` — `model` de la tabla `aircraft`
+
 Relaciones anidadas (cargadas en el modelo via copyWith):
 - `routes[]` → FlightOrderRoute
 - `crew[]` → FlightOrderCrew
@@ -193,7 +197,7 @@ Cada transición registra un `FlightOrderStateEvent` con timestamp. El estado `c
 ### UC-FO04: Listar items de una orden
 - **Actor**: Usuarios con `flight_orders.read`
 - **Permiso**: `flight_orders.read`
-- **Reglas**: Debe cargar relaciones anidadas (routes, crew, profiles, state_events). RLS por unidad.
+- **Reglas**: Carga datos base de `flight_order_items` vía `select('*')` y luego 4 consultas paralelas batch con `inFilter` para: `aircraft` (tail_number, model), `flight_order_routes` (con airport_name), `flight_order_crew` (con datos del tripulante), `flight_order_state_events`. Los datos se mergean via `copyWith`. RLS por unidad.
 - **Resultado**: Lista de items con todos sus datos relacionales.
 
 ### UC-FO05: Enviar a revisión (submit)
@@ -235,7 +239,7 @@ Cada transición registra un `FlightOrderStateEvent` con timestamp. El estado `c
 - **Actor**: UnitCommand, Leader, GeneralAdmin
 - **Permiso**: Rol global o `flight_orders.close`
 - **Input**: `item_id`, `cancel_reason` obligatorio
-- **Reglas**: No se puede cancelar un vuelo ya cancelado. El estado cambia a `cancelled`.
+- **Reglas**: No se puede cancelar un vuelo ya cancelado. Solo disponible cuando el item está en `waiting` o `taxi`. El botón de cancelar no se muestra cuando la orden padre está en estado `closed`. El estado cambia a `cancelled`.
 
 ### UC-FO12: Gestionar perfiles de orden
 - **Actor**: UnitAdmin, Leader
@@ -278,7 +282,8 @@ Validado en tres capas:
 - Una orden por unidad y fecha (`UNIQUE unit_id, operation_date`).
 - Solo órdenes `draft` aceptan agregar/eliminar items y perfiles.
 - Secuencia de estados de vuelo estricta: no se puede saltar de waiting a landing sin pasar por taxi y takeoff.
-- Cancelación de vuelo requiere `cancel_reason` no vacío.
+- Cancelación de vuelo requiere `cancel_reason` no vacío. Solo disponible en estados `waiting` y `taxi`.
+- Botón de cancelar es un icono sutil (`cancel_outlined`) en el header de la card, sin texto. No se muestra cuando la orden padre está `closed`.
 - Vuelo cancelado no puede avanzar estado.
 - Número de orden: `ACRONYM-XXX` usando `acronym` de la unidad (fallback a `code`). Secuencia auto-incremental por unidad.
 - Tripulación: PC obligatorio, CP opcional, MA opcional (checkbox "¿Mecánico a bordo?").
@@ -336,7 +341,8 @@ Las denegaciones de autorización también se auditan con `result: denied`.
     flight_orders_page.dart              # Página principal (tabla + panel)
     flight_order_detail_panel.dart       # Panel de detalle de orden
     flight_order_form_dialog.dart        # Diálogo crear orden
-    flight_item_form_dialog.dart         # Diálogo agregar item (8 secciones)
+    flight_item_form_dialog.dart         # Diálogo agregar/editar item (8 secciones)
+    flight_item_detail_dialog.dart       # Diálogo detalle de vuelo (stepper, timeline, avance, cancelación)
 ```
 
 ## 12. UI/UX — Especificación de componentes
@@ -373,23 +379,16 @@ Las denegaciones de autorización también se auditan con `result: denied`.
 
 ### 12.2 FlightOrderDetailPanel
 
-**Encabezado**: Número de orden, unidad, fecha de operación, estado (chip).
+**Encabezado**: Número de orden, unidad, fecha de operación, estado (chip). Incluye `OrderStepper` con soporte para sub-estado `observed` (círculo draft con badge de advertencia cuando `hasObservations` es true).
 
-**Sección de items**: Lista de Cards, una por item. Cada card muestra:
-- Matrícula de aeronave + badge de estado de vuelo
-- Misión
-- Nivel de vuelo (min/max) + ETE
-- Combustible: tipo + cantidad
-- Salida programada
-- Rutas: segmentos con origen → destino + tipo
-- Tripulación: PC, CP, MA con nombre, callsign y function code
-- Perfiles asignados
-- Timeline de eventos: lista de estados con timestamp (taxi, takeoff, landing, engine_off)
-- Tiempos calculados: total y aire
+**Sección de items**: Lista de Cards (`_FlightItemCard`), una por item. Cada card muestra:
+- **Header row**: Icono de aeronave + matrícula y modelo (`registration — model`), StatusChip de estado, icono `open_in_new`, botón de cancelar (icono sutil `cancel_outlined`, solo si status es `waiting`/`taxi` y orden padre no está `closed`)
+- **Misión** (si no está vacía)
+- **Info chips**: ETE, nivel de vuelo, combustible
+- **Rutas**: segmentos con icono `alt_route`, unidos por `|`
+- **Tripulación**: roleCode: nombre [functionCode], uno por línea
 
-**Acciones por item**:
-- Avanzar estado: botones según estado actual (siguiente en secuencia)
-- Cancelar: botón con diálogo de motivo
+**Nota**: El mini stepper y el botón de avance de estado fueron removidos de las cards. Esas funcionalidades residen en `FlightItemDetailDialog`.
 
 **Sección de perfiles** (solo en draft):
 - Lista de perfiles de la orden
@@ -398,6 +397,21 @@ Las denegaciones de autorización también se auditan con `result: denied`.
 
 **Acciones de orden**:
 - Botón "+" para agregar item (solo draft, si canCreate) → abre FlightItemFormDialog
+
+### 12.2.1 FlightItemDetailDialog
+
+Diálogo modal (`AlertDialog`) que muestra el detalle completo de un item de vuelo:
+
+- **Título**: Matrícula + modelo de aeronave, StatusChip, botón editar (si `canEdit`)
+- **Misión**: Texto completo
+- **Datos de vuelo**: ETE, nivel de vuelo, combustible, salida programada (Wrap de info chips)
+- **Tripulación**: Lista vertical con roleCode, nombre, function code
+- **Rutas**: Lista con íconos de dirección (↪ outbound, ↩ return) y display label
+- **Perfiles**: Chips con número y descripción
+- **Mini Stepper**: 5 pasos (waiting, taxi, takeoff, landing, engine_off) con dots de colores. Estados completados o con evento registrado muestran check. Estado actual muestra círculo relleno.
+- **Timeline de eventos**: Lista de StatusChip + hora de cada evento registrado
+- **Tiempos calculados**: Total (taxi → engine_off) y Aire (takeoff → landing) en chips de color
+- **Acciones**: Botón avanzar estado (siguiente en secuencia, con icono) + Botón cancelar (solo si `flight_orders.close` o rol global, abre diálogo de motivo)
 
 ### 12.3 FlightOrderFormDialog
 
@@ -477,3 +491,5 @@ Genera PDF A4 landscape con package `pdf`:
 | Fecha | Cambio |
 |---|---|
 | 2026-05-27 | Spec inicial redactada post-implementación v1.0 |
+| 2026-05-29 | Rediseño de cards: removido mini stepper, cancelar como icono sutil en header, oculto en orden cerrada. Agregado `aircraftModel` al modelo. `listItems` reescrito con 5 consultas batch + `inFilter`. Creado `FlightItemDetailDialog`. `OrderStepper` soporta sub-estado `observed`. |
+| 2026-05-30 | **Separación de responsabilidades**: removido mini stepper y botón de avance de estado del `FlightItemDetailDialog` (pasan a sección Vuelos). Cancelar vuelo permanece como exclusivo de Flight Orders. **Filtros**: reemplazados `FilterChip`s por dropdowns `PopupMenuButton` (Unidad, Fecha, Estado) con chips activos. **Carga**: dots pulsantes + fade en detalle de items (3s). **Colorización**: extraídos colores a `status_colors.dart`, unificados `StatusChip` y `OrderStepper`. Cards con barra de acento izquierda por estado. **Navegación global**: `AppShell` con overlay de dots pulsantes + fade entre secciones. |

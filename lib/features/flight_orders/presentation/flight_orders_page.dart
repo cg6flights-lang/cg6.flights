@@ -8,6 +8,8 @@ import 'package:cg6_flights/features/flight_orders/data/flight_orders_repository
 import 'package:cg6_flights/features/flight_orders/domain/flight_order.dart';
 import 'package:cg6_flights/features/flight_orders/presentation/flight_order_detail_panel.dart';
 import 'package:cg6_flights/features/flight_orders/presentation/flight_order_form_dialog.dart';
+import 'package:cg6_flights/features/units/data/units_repository.dart';
+import 'package:cg6_flights/features/units/domain/unit_option.dart';
 import 'package:cg6_flights/shared/widgets/data_state_view.dart';
 import 'package:cg6_flights/shared/widgets/status_chip.dart';
 import 'package:flutter/material.dart';
@@ -17,8 +19,6 @@ final _ordersListProvider = FutureProvider<AppResult<List<FlightOrder>>>((ref) {
   final repo = ref.read(flightOrdersRepositoryProvider);
   return repo.listFlightOrders();
 });
-
-enum _DateFilter { all, today, yesterday, thisWeek }
 
 class FlightOrdersPage extends ConsumerStatefulWidget {
   const FlightOrdersPage({super.key});
@@ -30,24 +30,47 @@ class FlightOrdersPage extends ConsumerStatefulWidget {
 class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
   FlightOrder? _selectedOrder;
   List<FlightOrderItem> _items = [];
-  _DateFilter _dateFilter = _DateFilter.all;
+  bool _isLoadingItems = false;
+  String? _selectedUnitId; // null = Todas
+  String _dateFilter = 'today'; // 'all' | 'today' | 'yesterday' | 'week'
   final _statusFilters = <String>{};
   bool _initialSelectDone = false;
+  List<UnitOption> _units = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUnits();
+  }
+
+  Future<void> _loadUnits() async {
+    final result = await ref.read(unitsRepositoryProvider).listUnits();
+    if (!mounted) return;
+    switch (result) {
+      case AppSuccess<List<UnitOption>>(data: final units):
+        setState(() => _units = units);
+      case AppFailure<List<UnitOption>>():
+        setState(() => _units = []);
+    }
+  }
 
   List<FlightOrder> _applyFilters(List<FlightOrder> orders) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
     return orders.where((o) {
-      if (_dateFilter == _DateFilter.today) {
+      if (_selectedUnitId != null && o.unitId != _selectedUnitId) {
+        return false;
+      }
+      if (_dateFilter == 'today') {
         final od = o.operationDate;
         final orderDate = DateTime(od.year, od.month, od.day);
         if (orderDate != today) return false;
-      } else if (_dateFilter == _DateFilter.yesterday) {
+      } else if (_dateFilter == 'yesterday') {
         final od = o.operationDate;
         final orderDate = DateTime(od.year, od.month, od.day);
         if (orderDate != today.subtract(const Duration(days: 1))) return false;
-      } else if (_dateFilter == _DateFilter.thisWeek) {
+      } else if (_dateFilter == 'week') {
         final od = o.operationDate;
         final orderDate = DateTime(od.year, od.month, od.day);
         final weekStart = today.subtract(Duration(days: today.weekday - 1));
@@ -68,21 +91,31 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
     setState(() {
       _selectedOrder = order;
       _items = [];
+      _isLoadingItems = true;
     });
     _loadItems(order.id);
   }
 
   Future<void> _loadItems(String orderId) async {
-    final result = await ref
-        .read(flightOrdersRepositoryProvider)
-        .listItems(orderId);
+    // Elegant 3-second loading transition
+    final futures = await Future.wait([
+      ref.read(flightOrdersRepositoryProvider).listItems(orderId),
+      Future<void>.delayed(const Duration(seconds: 3)),
+    ]);
+    final result = futures[0] as AppResult<List<FlightOrderItem>>;
     if (!mounted) return;
     if (_selectedOrder?.id != orderId) return;
     switch (result) {
       case AppSuccess<List<FlightOrderItem>>(data: final items):
-        setState(() => _items = items);
+        setState(() {
+          _items = items;
+          _isLoadingItems = false;
+        });
       case AppFailure<List<FlightOrderItem>>(error: final error):
-        setState(() => _items = []);
+        setState(() {
+          _items = [];
+          _isLoadingItems = false;
+        });
         ScaffoldMessenger.of(context)
           ..clearSnackBars()
           ..showSnackBar(SnackBar(content: Text(error.message)));
@@ -195,22 +228,34 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
                               flex: 2,
                               child: SizedBox(
                                 height: 550,
-                                child: _selectedOrder != null
-                                    ? FlightOrderDetailPanel(
-                                        key: ValueKey(_selectedOrder!.id),
-                                        order: _selectedOrder!,
-                                        items: _items,
-                                        onExportPdf: () => _exportPdf(_selectedOrder!, l10n),
-                                        onDeleteOrder: () => _confirmDeleteOrder(_selectedOrder!, l10n),
-                                        onStateChanged: _onItemStateChanged,
-                                        onOrderChanged: (updatedOrder) {
-                                          setState(() => _selectedOrder = updatedOrder);
-                                          ref.invalidate(_ordersListProvider);
-                                          setState(() => _items = []);
-                                          _loadItems(updatedOrder.id);
-                                        },
-                                      )
-                                    : _buildEmptyDetail(l10n),
+                                child: AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 350),
+                                  switchInCurve: Curves.easeOut,
+                                  switchOutCurve: Curves.easeIn,
+                                  transitionBuilder: (child, animation) =>
+                                      FadeTransition(opacity: animation, child: child),
+                                  child: _isLoadingItems
+                                      ? const _LoadingDotsOverlay(key: ValueKey('loading'))
+                                      : _selectedOrder != null
+                                          ? FlightOrderDetailPanel(
+                                              key: ValueKey(_selectedOrder!.id),
+                                              order: _selectedOrder!,
+                                              items: _items,
+                                              onExportPdf: () => _exportPdf(_selectedOrder!, l10n),
+                                              onDeleteOrder: () => _confirmDeleteOrder(_selectedOrder!, l10n),
+                                              onStateChanged: _onItemStateChanged,
+                                              onOrderChanged: (updatedOrder) {
+                                                setState(() => _selectedOrder = updatedOrder);
+                                                ref.invalidate(_ordersListProvider);
+                                                setState(() {
+                                                  _items = [];
+                                                  _isLoadingItems = true;
+                                                });
+                                                _loadItems(updatedOrder.id);
+                                              },
+                                            )
+                                          : _buildEmptyDetail(l10n),
+                                ),
                               ),
                             ),
                           ],
@@ -232,19 +277,31 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
                             const Divider(height: 32, thickness: 1),
                             SizedBox(
                               height: 400,
-                              child: FlightOrderDetailPanel(
-                                key: ValueKey(_selectedOrder!.id),
-                                order: _selectedOrder!,
-                                items: _items,
-                                onExportPdf: () => _exportPdf(_selectedOrder!, l10n),
-                                onDeleteOrder: () => _confirmDeleteOrder(_selectedOrder!, l10n),
-                                onStateChanged: _onItemStateChanged,
-                                onOrderChanged: (updatedOrder) {
-                                  setState(() => _selectedOrder = updatedOrder);
-                                  ref.invalidate(_ordersListProvider);
-                                  setState(() => _items = []);
-                                  _loadItems(updatedOrder.id);
-                                },
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 350),
+                                switchInCurve: Curves.easeOut,
+                                switchOutCurve: Curves.easeIn,
+                                transitionBuilder: (child, animation) =>
+                                    FadeTransition(opacity: animation, child: child),
+                                child: _isLoadingItems
+                                    ? const _LoadingDotsOverlay(key: ValueKey('loading'))
+                                    : FlightOrderDetailPanel(
+                                        key: ValueKey(_selectedOrder!.id),
+                                        order: _selectedOrder!,
+                                        items: _items,
+                                        onExportPdf: () => _exportPdf(_selectedOrder!, l10n),
+                                        onDeleteOrder: () => _confirmDeleteOrder(_selectedOrder!, l10n),
+                                        onStateChanged: _onItemStateChanged,
+                                        onOrderChanged: (updatedOrder) {
+                                          setState(() => _selectedOrder = updatedOrder);
+                                          ref.invalidate(_ordersListProvider);
+                                          setState(() {
+                                            _items = [];
+                                            _isLoadingItems = true;
+                                          });
+                                          _loadItems(updatedOrder.id);
+                                        },
+                                      ),
                               ),
                               ),
                           ],
@@ -258,99 +315,210 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
     );
   }
 
-  Widget _buildFilterBar(AppLocalizations l10n) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          _filterChip(
-            l10n.t('flightOrders.filterAll'),
-            _dateFilter == _DateFilter.all,
-            () => setState(() => _dateFilter = _DateFilter.all),
-          ),
-          const SizedBox(width: 8),
-          _filterChip(
-            l10n.t('flightOrders.filterToday'),
-            _dateFilter == _DateFilter.today,
-            () => setState(() => _dateFilter = _DateFilter.today),
-          ),
-          const SizedBox(width: 8),
-          _filterChip(
-            l10n.t('flightOrders.filterYesterday'),
-            _dateFilter == _DateFilter.yesterday,
-            () => setState(() => _dateFilter = _DateFilter.yesterday),
-          ),
-          const SizedBox(width: 8),
-          _filterChip(
-            l10n.t('flightOrders.filterThisWeek'),
-            _dateFilter == _DateFilter.thisWeek,
-            () => setState(() => _dateFilter = _DateFilter.thisWeek),
-          ),
-          const SizedBox(width: 16),
-          _statusFilterChip(
-            'draft',
-            _statusFilters.contains('draft'),
-            Colors.grey,
-            () => _toggleStatusFilter('draft'),
-          ),
-          const SizedBox(width: 6),
-          _statusFilterChip(
-            'submitted',
-            _statusFilters.contains('submitted'),
-            Colors.blue,
-            () => _toggleStatusFilter('submitted'),
-          ),
-          const SizedBox(width: 6),
-          _statusFilterChip(
-            'approved',
-            _statusFilters.contains('approved'),
-            Colors.green,
-            () => _toggleStatusFilter('approved'),
-          ),
-          const SizedBox(width: 6),
-          _statusFilterChip(
-            'closed',
-            _statusFilters.contains('closed'),
-            Colors.red,
-            () => _toggleStatusFilter('closed'),
-          ),
-        ],
-      ),
-    );
+  // ── Filter bar ───────────────────────────────────────────────────
+
+  static const _dateOptions = [
+    ('all', 'Todo'),
+    ('today', 'Hoy'),
+    ('yesterday', 'Ayer'),
+    ('week', 'Esta semana'),
+  ];
+  static const _allStatuses = [
+    'draft', 'submitted', 'observed', 'approved', 'closed', 'reopened',
+  ];
+
+  String get _unitLabel {
+    if (_selectedUnitId == null) return 'Todas';
+    final u = _units.where((e) => e.id == _selectedUnitId).firstOrNull;
+    return u?.name ?? u?.code ?? '--';
   }
 
-  void _toggleStatusFilter(String status) {
+  String get _dateLabel {
+    return switch (_dateFilter) {
+      'today' => 'Hoy',
+      'yesterday' => 'Ayer',
+      'week' => 'Esta semana',
+      _ => 'Todo',
+    };
+  }
+
+  String get _statusLabel {
+    if (_statusFilters.isEmpty) return 'Todos';
+    return _statusFilters.join(', ');
+  }
+
+  bool get _hasActiveFilters =>
+      _selectedUnitId != null ||
+      _dateFilter != 'all' ||
+      _statusFilters.isNotEmpty;
+
+  void _clearAllFilters() {
     setState(() {
-      if (_statusFilters.contains(status)) {
-        _statusFilters.remove(status);
-      } else {
-        _statusFilters.add(status);
-      }
+      _selectedUnitId = null;
+      _dateFilter = 'all';
+      _statusFilters.clear();
     });
   }
 
-  Widget _filterChip(String label, bool selected, VoidCallback onTap) {
-    return FilterChip(
-      label: Text(label, style: const TextStyle(fontSize: 12)),
-      selected: selected,
-      onSelected: (_) => onTap(),
+  Widget _buildFilterBar(AppLocalizations l10n) {
+    final theme = Theme.of(context);
+    final outlineColor = theme.colorScheme.outline.withValues(alpha: 0.3);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // ── Dropdown row ──────────────────────────────────────────
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _FilterDropdown(
+              label: l10n.t('flightOrders.unit'),
+              icon: Icons.business_outlined,
+              selectedLabel: _unitLabel,
+              outlineColor: outlineColor,
+              menuChildren: [
+                _unitMenuItem(null, 'Todas'),
+                for (final u in _units.where((e) => e.active))
+                  _unitMenuItem(u.id, u.name.isNotEmpty ? u.name : u.code),
+              ],
+            ),
+            _FilterDropdown(
+              label: l10n.t('flightOrders.date'),
+              icon: Icons.calendar_month_outlined,
+              selectedLabel: _dateLabel,
+              outlineColor: outlineColor,
+              menuChildren: [
+                for (final (value, label) in _dateOptions)
+                  _dateMenuItem(value, label),
+              ],
+            ),
+            _FilterDropdown(
+              label: l10n.t('flightOrders.status'),
+              icon: Icons.label_outlined,
+              selectedLabel: _statusLabel,
+              outlineColor: outlineColor,
+              menuChildren: [
+                for (final s in _allStatuses) _statusMenuItem(s),
+              ],
+            ),
+            if (_hasActiveFilters)
+              IconButton(
+                icon: const Icon(Icons.clear_all, size: 18),
+                tooltip: l10n.t('flightOrders.clearFilters'),
+                visualDensity: VisualDensity.compact,
+                onPressed: _clearAllFilters,
+              ),
+          ],
+        ),
+
+        // ── Active filter chips ───────────────────────────────────
+        if (_hasActiveFilters) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              if (_selectedUnitId != null)
+                _activeChip(
+                  '${l10n.t("flightOrders.unit")}: $_unitLabel',
+                  () => setState(() => _selectedUnitId = null),
+                ),
+              if (_dateFilter != 'all')
+                _activeChip(
+                  _dateLabel,
+                  () => setState(() => _dateFilter = 'all'),
+                ),
+              for (final s in _statusFilters)
+                _activeChip(
+                  s,
+                  () => setState(() => _statusFilters.remove(s)),
+                ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _activeChip(String label, VoidCallback onDeleted) {
+    return InputChip(
+      label: Text(label, style: const TextStyle(fontSize: 11)),
+      onDeleted: onDeleted,
+      deleteIcon: const Icon(Icons.close, size: 14),
       visualDensity: VisualDensity.compact,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
       padding: const EdgeInsets.symmetric(horizontal: 4),
     );
   }
 
-  Widget _statusFilterChip(
-      String status, bool selected, Color color, VoidCallback onTap) {
-    return FilterChip(
-      label: Text(status, style: const TextStyle(fontSize: 12)),
-      selected: selected,
-      onSelected: (_) => onTap(),
-      visualDensity: VisualDensity.compact,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      selectedColor: color.withValues(alpha: 0.18),
-      checkmarkColor: color,
+  // ── PopupMenu items ──────────────────────────────────────────────
+
+  PopupMenuItem<void> _unitMenuItem(String? unitId, String label) {
+    return PopupMenuItem<void>(
+      onTap: () => setState(() => _selectedUnitId = unitId),
+      child: _popupRadio(label, _selectedUnitId == unitId),
+    );
+  }
+
+  PopupMenuItem<void> _dateMenuItem(String value, String label) {
+    return PopupMenuItem<void>(
+      onTap: () => setState(() => _dateFilter = value),
+      child: _popupRadio(label, _dateFilter == value),
+    );
+  }
+
+  PopupMenuItem<void> _statusMenuItem(String status) {
+    final checked = _statusFilters.contains(status);
+    return PopupMenuItem<void>(
+      onTap: () {
+        setState(() {
+          if (checked) {
+            _statusFilters.remove(status);
+          } else {
+            _statusFilters.add(status);
+          }
+        });
+      },
+      child: _popupCheck(status, checked),
+    );
+  }
+
+  Widget _popupRadio(String label, bool selected) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          selected ? Icons.radio_button_checked : Icons.radio_button_off,
+          size: 18,
+          color: selected
+              ? Theme.of(context).colorScheme.primary
+              : Colors.grey,
+        ),
+        const SizedBox(width: 8),
+        Text(label, style: const TextStyle(fontSize: 13)),
+      ],
+    );
+  }
+
+  Widget _popupCheck(String label, bool selected) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 18,
+          height: 18,
+          child: Checkbox(
+            value: selected,
+            onChanged: (_) {},
+            visualDensity: VisualDensity.compact,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(label, style: const TextStyle(fontSize: 13)),
+      ],
     );
   }
 
@@ -629,6 +797,179 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
     if (result != null && mounted) {
       ref.invalidate(_ordersListProvider);
     }
+  }
+}
+
+// ── Filter dropdown widget ─────────────────────────────────────────
+
+class _FilterDropdown extends StatelessWidget {
+  const _FilterDropdown({
+    required this.label,
+    required this.icon,
+    required this.selectedLabel,
+    required this.outlineColor,
+    required this.menuChildren,
+  });
+
+  final String label;
+  final IconData icon;
+  final String selectedLabel;
+  final Color outlineColor;
+  final List<Widget> menuChildren;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<void>(
+      offset: const Offset(0, 4),
+      padding: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      itemBuilder: (_) => menuChildren.cast<PopupMenuEntry<void>>(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          border: Border.all(color: outlineColor),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 6),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                Text(
+                  selectedLabel,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.arrow_drop_down,
+              size: 18,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Loading dots overlay ───────────────────────────────────────────
+
+class _LoadingDotsOverlay extends StatefulWidget {
+  const _LoadingDotsOverlay({super.key});
+
+  @override
+  State<_LoadingDotsOverlay> createState() => _LoadingDotsOverlayState();
+}
+
+class _LoadingDotsOverlayState extends State<_LoadingDotsOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 64),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (int i = 0; i < 3; i++)
+                  _Dot(controller: _controller, index: i),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Cargando vuelos...',
+              style: TextStyle(
+                fontSize: 13,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Dot extends StatelessWidget {
+  const _Dot({required this.controller, required this.index});
+  final AnimationController controller;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    const size = 10.0;
+    final delay = index * 0.25;
+    final alpha = Tween<double>(begin: 0.3, end: 1.0).animate(
+      CurvedAnimation(
+        parent: controller,
+        curve: Interval(delay, delay + 0.4, curve: Curves.easeInOut),
+      ),
+    );
+    final scale = Tween<double>(begin: 0.7, end: 1.1).animate(
+      CurvedAnimation(
+        parent: controller,
+        curve: Interval(delay, delay + 0.4, curve: Curves.easeInOut),
+      ),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: AnimatedBuilder(
+        animation: controller,
+        builder: (context, child) => Transform.scale(
+          scale: scale.value,
+          child: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Theme.of(context)
+                  .colorScheme
+                  .primary
+                  .withValues(alpha: alpha.value),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

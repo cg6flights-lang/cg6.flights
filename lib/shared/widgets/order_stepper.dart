@@ -1,3 +1,4 @@
+import 'package:cg6_flights/app/theme/status_colors.dart';
 import 'package:flutter/material.dart';
 
 class StepInfo {
@@ -34,21 +35,9 @@ class OrderStepper extends StatelessWidget {
     return OrderStepper(
       steps: _orderSteps,
       current: currentStatus,
-      colorForStatus: (s) => _statusColor(s),
+      colorForStatus: (s) => StatusColors.of(s),
       hasObservations: hasObservations,
     );
-  }
-
-  static Color _statusColor(String status) {
-    return switch (status) {
-      'draft' => Colors.grey,
-      'submitted' => Colors.blue,
-      'observed' => Colors.orange,
-      'approved' => Colors.green,
-      'closed' => Colors.red,
-      'reopened' => Colors.purple,
-      _ => Colors.grey,
-    };
   }
 
   @override

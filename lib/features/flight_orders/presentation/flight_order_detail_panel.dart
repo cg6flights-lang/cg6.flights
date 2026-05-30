@@ -1,4 +1,5 @@
 import 'package:cg6_flights/app/i18n/app_localizations.dart';
+import 'package:cg6_flights/app/theme/status_colors.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/core/security/app_permission.dart';
 import 'package:cg6_flights/features/auth/application/session_controller.dart';
@@ -174,6 +175,7 @@ class FlightOrderDetailPanel extends ConsumerWidget {
                       item: item,
                       l10n: l10n,
                       onTap: () => _openItemDetailDialog(context, ref, item, l10n),
+                      isParentClosed: order.status == 'closed',
                     )),
                   ],
                 ],
@@ -330,11 +332,13 @@ class _FlightItemCard extends StatelessWidget {
     required this.item,
     required this.l10n,
     required this.onTap,
+    required this.isParentClosed,
   });
 
   final FlightOrderItem item;
   final AppLocalizations l10n;
   final VoidCallback onTap;
+  final bool isParentClosed;
 
   String get _aircraftLabel {
     final reg = item.aircraftRegistration ?? l10n.t('flightOrders.aircraft');
@@ -345,118 +349,161 @@ class _FlightItemCard extends StatelessWidget {
   bool get _canCancelStatus =>
       item.status == 'waiting' || item.status == 'taxi';
 
+  /// The semantic color for this item's current state.
+  Color _statusColor() {
+    if (item.cancelled) return StatusColors.flightItem['cancelled']!;
+    return StatusColors.of(item.status);
+  }
+
+  /// The left-accent-bar color — amber overrides when delayed, otherwise
+  /// the status color.
+  Color _accentColor() {
+    if (item.cancelled) return StatusColors.flightItem['cancelled']!;
+    if (item.isDelayed) return StatusColors.delayed;
+    return _statusColor();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isCancelled = item.cancelled;
     final isDelayed = item.isDelayed;
+    final accent = _accentColor();
+    final statusColor = _statusColor();
+    final theme = Theme.of(context);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        border: Border.all(
-          color: isCancelled
-              ? Colors.red.shade200
-              : isDelayed
-                  ? Colors.amber.shade300
-                  : Colors.grey.shade300,
-        ),
         borderRadius: BorderRadius.circular(8),
-        color: isCancelled
-            ? Colors.red.shade50
-            : isDelayed
-                ? Colors.amber.shade50
-                : null,
+        color: statusColor.withValues(alpha: 0.04),
+        border: Border.all(color: statusColor.withValues(alpha: 0.18)),
       ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.flight,
-                      size: 18,
-                      color: Theme.of(context).colorScheme.primary),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _aircraftLabel,
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                  ),
-                  StatusChip.fromStatus(
-                      isCancelled ? 'cancelled' : item.status),
-                  const SizedBox(width: 4),
-                  Icon(Icons.open_in_new, size: 16, color: Colors.grey),
-                ],
-              ),
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── Left accent bar ────────────────────────────────────
+            Container(
+              width: 4,
+              color: accent.withValues(alpha: 0.85),
+            ),
 
-              if (item.mission != null && item.mission!.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  item.mission!,
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant),
-                ),
-              ],
-
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 16,
-                runSpacing: 4,
-                children: [
-                  if (item.eteMinutes != null)
-                    _infoChip(Icons.timer_outlined,
-                        '${l10n.t("flightOrders.ete")}: ${item.eteMinutes} min'),
-                  if (item.flightLevelMin != null)
-                    _infoChip(Icons.height, item.flightLevelDisplay),
-                  if (item.fuelAmount != null)
-                    _infoChip(Icons.local_gas_station_outlined,
-                        '${item.fuelAmount} lbs${item.fuelType != null ? " (${item.fuelType})" : ""}'),
-                ],
-              ),
-
-              if (item.routes.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Row(
+            // ── Card content ───────────────────────────────────────
+            Expanded(
+              child: InkWell(
+                onTap: onTap,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                  child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Icon(Icons.alt_route, size: 14, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        item.routes.map((r) => r.displayLabel).join('  |  '),
-                        style: const TextStyle(fontSize: 12),
-                      ),
+                    // Header row
+                    Row(
+                      children: [
+                        Icon(Icons.flight, size: 18, color: statusColor),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _aircraftLabel,
+                            style: theme.textTheme.titleSmall,
+                          ),
+                        ),
+                        if (isDelayed && !isCancelled) ...[
+                          Icon(Icons.schedule,
+                              size: 14, color: StatusColors.delayed),
+                          const SizedBox(width: 4),
+                        ],
+                        StatusChip.fromStatus(
+                            isCancelled ? 'cancelled' : item.status),
+                        const SizedBox(width: 4),
+                        Icon(Icons.open_in_new,
+                            size: 16,
+                            color: theme.colorScheme.onSurfaceVariant
+                                .withValues(alpha: 0.5)),
+                        if (!isCancelled &&
+                            _canCancelStatus &&
+                            !isParentClosed)
+                          _buildCancelButton(context),
+                      ],
                     ),
+
+                    // Mission
+                    if (item.mission != null &&
+                        item.mission!.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        item.mission!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+
+                    // Info chips
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 4,
+                      children: [
+                        if (item.eteMinutes != null)
+                          _infoChip(
+                              Icons.timer_outlined,
+                              '${l10n.t("flightOrders.ete")}: ${item.eteMinutes} min'),
+                        if (item.flightLevelMin != null)
+                          _infoChip(
+                              Icons.height, item.flightLevelDisplay),
+                        if (item.fuelAmount != null)
+                          _infoChip(
+                              Icons.local_gas_station_outlined,
+                              '${item.fuelAmount} lbs${item.fuelType != null ? " (${item.fuelType})" : ""}'),
+                      ],
+                    ),
+
+                    // Routes
+                    if (item.routes.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.alt_route,
+                              size: 14,
+                              color: theme.colorScheme.onSurfaceVariant
+                                  .withValues(alpha: 0.5)),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              item.routes
+                                  .map((r) => r.displayLabel)
+                                  .join('  |  '),
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+
+                    // Crew
+                    if (item.crew.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      ...item.crew.map((c) => Padding(
+                            padding: const EdgeInsets.only(bottom: 2),
+                            child: Text(
+                              '${c.roleCode}: ${c.crewMemberName ?? "--"}${c.functionCode != null ? " [${c.functionCode}]" : ""}',
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                          )),
+                    ],
                   ],
                 ),
-              ],
-
-              if (item.crew.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                ...item.crew.map((c) => Padding(
-                      padding: const EdgeInsets.only(bottom: 2),
-                      child: Text(
-                        '${c.roleCode}: ${c.crewMemberName ?? "--"}${c.functionCode != null ? " [${c.functionCode}]" : ""}',
-                        style: const TextStyle(fontSize: 11),
-                      ),
-                    )),
-              ],
-
-              if (!isCancelled && _canCancelStatus) ...[
-                const SizedBox(height: 10),
-                _buildCancelButton(context),
-              ],
-            ],
+              ),
+            ),
           ),
-        ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _infoChip(IconData icon, String text) {
     return Row(
@@ -477,14 +524,11 @@ class _FlightItemCard extends StatelessWidget {
 
       if (!canReview) return const SizedBox.shrink();
 
-      return Align(
-        alignment: Alignment.centerRight,
-        child: OutlinedButton.icon(
-          onPressed: () => _confirmCancel(context, ref, item),
-          icon: const Icon(Icons.cancel, size: 16, color: Colors.red),
-          label: Text(l10n.t('flightOrders.cancelFlight'),
-              style: const TextStyle(fontSize: 12, color: Colors.red)),
-        ),
+      return IconButton(
+        icon: const Icon(Icons.cancel_outlined, size: 18, color: Colors.red),
+        tooltip: l10n.t('flightOrders.cancelFlight'),
+        visualDensity: VisualDensity.compact,
+        onPressed: () => _confirmCancel(context, ref, item),
       );
     });
   }

@@ -1,3 +1,4 @@
+import 'package:cg6_flights/app/theme/status_colors.dart';
 import 'package:flutter/material.dart';
 
 enum StatusChipSize { small, medium }
@@ -16,26 +17,8 @@ class StatusChip extends StatelessWidget {
   final StatusChipSize size;
   final IconData? icon;
 
-  static const _statusColors = <String, Color>{
-    'draft': Colors.grey,
-    'submitted': Colors.blue,
-    'observed': Colors.orange,
-    'approved': Colors.green,
-    'closed': Colors.red,
-    'reopened': Colors.purple,
-    'waiting': Colors.grey,
-    'taxi': Colors.blue,
-    'takeoff': Colors.orange,
-    'landing': Colors.teal,
-    'engine_off': Colors.green,
-    'cancelled': Colors.red,
-    'operational': Colors.green,
-    'inoperative': Colors.red,
-    'maintenance': Colors.orange,
-  };
-
   factory StatusChip.fromStatus(String status, {StatusChipSize size = StatusChipSize.small}) {
-    final color = _statusColors[status] ?? Colors.grey;
+    final color = StatusColors.of(status);
     return StatusChip(label: _labelFor(status), color: color, size: size);
   }
 

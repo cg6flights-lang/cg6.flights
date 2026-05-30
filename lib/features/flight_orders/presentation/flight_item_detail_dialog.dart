@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/core/security/app_permission.dart';
@@ -33,27 +31,12 @@ class FlightItemDetailDialog extends ConsumerStatefulWidget {
 
 class _FlightItemDetailDialogState
     extends ConsumerState<FlightItemDetailDialog> {
-  static const _states = ['waiting', 'taxi', 'takeoff', 'landing', 'engine_off'];
-  static const _nextState = {
-    'waiting': 'taxi',
-    'taxi': 'takeoff',
-    'takeoff': 'landing',
-    'landing': 'engine_off',
-  };
-  static const _stateIcons = {
-    'waiting': Icons.schedule,
-    'taxi': Icons.directions_car,
-    'takeoff': Icons.flight_takeoff,
-    'landing': Icons.flight_land,
-    'engine_off': Icons.power_settings_new,
-  };
 
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
     final l10n = AppLocalizations.of(context);
     final isCancelled = item.cancelled;
-    final nextState = _nextState[item.status];
 
     return AlertDialog(
       title: Row(
@@ -165,12 +148,6 @@ class _FlightItemDetailDialogState
                 const SizedBox(height: 12),
               ],
 
-              // Mini stepper
-              _sectionLabel(context, l10n.t('flightOrders.status')),
-              const SizedBox(height: 4),
-              _miniStepper(item),
-              const SizedBox(height: 12),
-
               // State events timeline
               if (item.stateEvents.isNotEmpty) ...[
                 _sectionLabel(context, l10n.t('flightOrders.stateEvents')),
@@ -203,13 +180,6 @@ class _FlightItemDetailDialogState
         ),
       ),
       actions: [
-        if (!isCancelled && nextState != null)
-          FilledButton.icon(
-            onPressed: () => _advanceState(item.id, nextState),
-            icon: Icon(_stateIcons[nextState] ?? Icons.arrow_forward, size: 16),
-            label: Text(_stateLabel(nextState, l10n),
-                style: const TextStyle(fontSize: 12)),
-          ),
         if (!isCancelled && item.status != 'engine_off')
           _canCancel()
               ? OutlinedButton.icon(
@@ -261,84 +231,6 @@ class _FlightItemDetailDialogState
         Text(text, style: const TextStyle(fontSize: 12)),
       ],
     );
-  }
-
-  Widget _miniStepper(FlightOrderItem item) {
-    final currentIdx = _states.indexOf(item.status);
-    final isCancelled = item.cancelled;
-
-    return Row(
-      children: [
-        for (int i = 0; i < _states.length; i++) ...[
-          if (i > 0)
-            Expanded(
-              child: Container(
-                height: 2,
-                color: i <= currentIdx && !isCancelled
-                    ? _stepperColor(_states[i])
-                    : Colors.grey.shade200,
-              ),
-            ),
-          _miniDot(_states[i], i < currentIdx, i == currentIdx, item),
-        ],
-      ],
-    );
-  }
-
-  Color _stepperColor(String status) {
-    return switch (status) {
-      'waiting' => Colors.grey,
-      'taxi' => Colors.blue,
-      'takeoff' => Colors.orange,
-      'landing' => Colors.teal,
-      'engine_off' => Colors.green,
-      _ => Colors.grey,
-    };
-  }
-
-  Widget _miniDot(
-      String status, bool completed, bool active, FlightOrderItem item) {
-    final color =
-        item.cancelled ? Colors.red : _stepperColor(status);
-    final hasEvent = item.stateEvents.any((e) => e.status == status);
-
-    return Tooltip(
-      message: _stepperLabel(status),
-      child: Container(
-        width: active ? 16 : 12,
-        height: active ? 16 : 12,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: completed || hasEvent
-              ? color
-              : active
-                  ? color.withValues(alpha: 0.2)
-                  : Colors.grey.shade100,
-          border: Border.all(
-            color: active || completed || hasEvent
-                ? color
-                : Colors.grey.shade300,
-            width: active ? 2 : 1,
-          ),
-        ),
-        child: completed || hasEvent
-            ? const Icon(Icons.check, size: 8, color: Colors.white)
-            : active
-                ? Icon(Icons.circle, size: 6, color: color)
-                : null,
-      ),
-    );
-  }
-
-  String _stepperLabel(String status) {
-    return switch (status) {
-      'waiting' => 'Espera',
-      'taxi' => 'Taxeo',
-      'takeoff' => 'Despegue',
-      'landing' => 'Aterrizaje',
-      'engine_off' => 'Motor Apagado',
-      _ => status,
-    };
   }
 
   Widget _stateTimeline(List<FlightOrderStateEvent> events) {
@@ -414,33 +306,6 @@ class _FlightItemDetailDialogState
 
   String _formatTime(DateTime dt) {
     return '${dt.hour.toString().padLeft(2, "0")}:${dt.minute.toString().padLeft(2, "0")}';
-  }
-
-  String _stateLabel(String state, AppLocalizations l10n) {
-    return switch (state) {
-      'taxi' => l10n.t('flightOrders.taxi'),
-      'takeoff' => l10n.t('flightOrders.takeoff'),
-      'landing' => l10n.t('flightOrders.landing'),
-      'engine_off' => l10n.t('flightOrders.engineOff'),
-      _ => state,
-    };
-  }
-
-  Future<void> _advanceState(String itemId, String nextStatus) async {
-    final result = await ref
-        .read(flightOrdersRepositoryProvider)
-        .advanceItemState(itemId, nextStatus);
-
-    if (!mounted) return;
-
-    switch (result) {
-      case AppSuccess<void>():
-        widget.onChanged();
-      case AppFailure<void>(error: final error):
-        ScaffoldMessenger.of(context)
-          ..clearSnackBars()
-          ..showSnackBar(SnackBar(content: Text(error.message)));
-    }
   }
 
   Future<void> _confirmCancel(
