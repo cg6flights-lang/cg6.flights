@@ -46,6 +46,16 @@ class DataStateView extends StatelessWidget {
       DataStateKind.success => Icons.check_circle_outline,
     };
 
+    final scheme = Theme.of(context).colorScheme;
+    final iconColor = switch (kind) {
+      DataStateKind.loading => scheme.primary,
+      DataStateKind.permissionDenied => scheme.error,
+      DataStateKind.systemError => scheme.error,
+      DataStateKind.networkError => scheme.error,
+      DataStateKind.success => scheme.primary,
+      _ => scheme.onSurfaceVariant,
+    };
+
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 460),
@@ -55,24 +65,31 @@ class DataStateView extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (kind == DataStateKind.loading)
-                const SizedBox.square(
+                SizedBox.square(
                   dimension: 34,
-                  child: CircularProgressIndicator(strokeWidth: 3),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: scheme.primary,
+                  ),
                 )
               else
-                Icon(icon, size: 42),
+                Icon(icon, size: 42, color: iconColor),
               const SizedBox(height: 16),
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleLarge,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: scheme.onSurface,
+                    ),
               ),
               if (message != null) ...[
                 const SizedBox(height: 8),
                 Text(
                   message!,
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
                 ),
               ],
               if (onRetry != null) ...[

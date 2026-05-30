@@ -46,41 +46,41 @@ class OrderStepper extends StatelessWidget {
     final lookup = isReopened ? 'closed' : current;
     final currentIdx = steps.indexWhere((s) => s.key == lookup);
     final effectiveIdx = currentIdx >= 0 ? currentIdx : 0;
+    final scheme = Theme.of(context).colorScheme;
 
     return SizedBox(
       height: 48,
       child: Row(
         children: [
           for (int i = 0; i < steps.length; i++) ...[
-            if (i > 0) _connector(i <= effectiveIdx),
-            _stepDot(steps[i], i, effectiveIdx),
+            if (i > 0) _connector(i <= effectiveIdx, scheme),
+            _stepDot(steps[i], i, effectiveIdx, scheme),
           ],
         ],
       ),
     );
   }
 
-  Widget _connector(bool active) {
+  Widget _connector(bool active, ColorScheme scheme) {
     final connectorColor = colorForStatus(steps[0].key);
+    final muted = scheme.onSurfaceVariant.withValues(alpha: 0.2);
     return Expanded(
       child: Container(
         height: 2,
         margin: const EdgeInsets.symmetric(horizontal: 4),
-        color: active
-            ? connectorColor.withValues(alpha: 0.4)
-            : Colors.grey.withValues(alpha: 0.2),
+        color: active ? connectorColor.withValues(alpha: 0.4) : muted,
       ),
     );
   }
 
-  Widget _stepDot(StepInfo step, int index, int currentIdx) {
+  Widget _stepDot(StepInfo step, int index, int currentIdx, ColorScheme scheme) {
     final completed = index < currentIdx;
     final active = index == currentIdx;
     final isDraftAlert = hasObservations && active && step.key == 'draft';
     final effectiveStatus = isDraftAlert ? 'observed' : step.key;
     final color = active || completed
         ? colorForStatus(effectiveStatus)
-        : Colors.grey;
+        : scheme.onSurfaceVariant;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -94,9 +94,9 @@ class OrderStepper extends StatelessWidget {
                 ? color.withValues(alpha: 0.15)
                 : completed
                     ? color.withValues(alpha: 0.1)
-                    : Colors.grey.withValues(alpha: 0.08),
+                    : scheme.onSurfaceVariant.withValues(alpha: 0.08),
             border: Border.all(
-              color: active || completed ? color : Colors.grey.withValues(alpha: 0.3),
+              color: active || completed ? color : scheme.outlineVariant,
               width: active ? 2 : 1.5,
             ),
           ),
@@ -122,9 +122,7 @@ class OrderStepper extends StatelessWidget {
           step.label,
           style: TextStyle(
             fontSize: 11,
-            color: active || completed
-                ? color
-                : Colors.grey,
+            color: active || completed ? color : scheme.onSurfaceVariant,
             fontWeight: active ? FontWeight.w600 : FontWeight.normal,
           ),
         ),

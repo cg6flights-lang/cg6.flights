@@ -1,4 +1,5 @@
 import 'package:cg6_flights/app/i18n/app_localizations.dart';
+import 'package:cg6_flights/app/theme/status_colors.dart';
 import 'package:cg6_flights/core/errors/app_error.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/core/security/app_permission.dart';
@@ -449,21 +450,21 @@ class _UnitAircraftSectionState extends ConsumerState<_UnitAircraftSection> {
           title: l10n.t('aircraft.operativeSection'),
           aircraft: _operativas,
           icon: Icons.check_circle_outline,
-          color: Colors.green,
+          color: StatusColors.aircraft['operational']!,
         ),
         const SizedBox(height: 16),
         _buildSubsection(
           title: l10n.t('aircraft.inoperativeSection'),
           aircraft: _inoperativas,
           icon: Icons.error_outline,
-          color: Colors.red,
+          color: StatusColors.aircraft['inoperative']!,
         ),
         const SizedBox(height: 16),
         _buildSubsection(
           title: l10n.t('aircraft.maintenanceSection'),
           aircraft: _mantenimiento,
           icon: Icons.build_outlined,
-          color: Colors.orange.shade700,
+          color: StatusColors.aircraft['maintenance']!,
         ),
       ],
     );
@@ -551,7 +552,7 @@ class _UnitAircraftSectionState extends ConsumerState<_UnitAircraftSection> {
                     l10n.t('aircraft.operational'),
                     op,
                     total > 0 ? (op * 100 ~/ total) : 0,
-                    Colors.green,
+                    StatusColors.aircraft['operational']!,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -560,7 +561,7 @@ class _UnitAircraftSectionState extends ConsumerState<_UnitAircraftSection> {
                     l10n.t('aircraft.inoperative'),
                     inop,
                     total > 0 ? (inop * 100 ~/ total) : 0,
-                    Colors.red,
+                    StatusColors.aircraft['inoperative']!,
                   ),
                 ),
               ],
@@ -573,7 +574,7 @@ class _UnitAircraftSectionState extends ConsumerState<_UnitAircraftSection> {
                     l10n.t('aircraft.maintenance'),
                     maint,
                     total > 0 ? (maint * 100 ~/ total) : 0,
-                    Colors.orange.shade700,
+                    StatusColors.aircraft['maintenance']!,
                   ),
                 ),
                 const SizedBox(width: 8),

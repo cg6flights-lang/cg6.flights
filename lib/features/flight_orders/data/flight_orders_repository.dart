@@ -40,6 +40,10 @@ abstract class FlightOrdersRepository {
   Future<AppResult<List<FlightOrderProfile>>> listOrderProfiles(
       String flightOrderId);
   Future<AppResult<void>> deleteFlightOrder(String flightOrderId);
+  Future<AppResult<List<FlightOrderItem>>> listFlightsByDate({
+    required DateTime date,
+    String? unitId,
+  });
 }
 
 class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
@@ -172,6 +176,131 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
       return const AppFailure(AppError(
         code: 'SYSTEM_UNEXPECTED',
         message: 'No se pudieron cargar los ítems de la orden.',
+        category: AppErrorCategory.system,
+        severity: AppErrorSeverity.high,
+      ));
+    }
+  }
+
+  @override
+  Future<AppResult<List<FlightOrderItem>>> listFlightsByDate({
+    required DateTime date,
+    String? unitId,
+  }) async {
+    try {
+      final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+      // 1. Get flight orders for the date
+      var query = _client
+          .from('flight_orders')
+          .select('id, order_number, unit_id, units(name)')
+          .eq('operation_date', dateStr);
+
+      if (unitId != null) {
+        query = query.eq('unit_id', unitId);
+      }
+
+      final orderRows = await query;
+      if ((orderRows as List).isEmpty) return const AppSuccess([]);
+
+      final orders = <String, Map<String, dynamic>>{};
+      for (final o in orderRows) {
+        final m = o as Map<String, dynamic>;
+        orders[m['id'].toString()] = m;
+      }
+
+      // 2. Get all items for these orders
+      final orderIds = orders.keys.toList();
+      final itemRows = await _client
+          .from('flight_order_items')
+          .select('*')
+          .inFilter('flight_order_id', orderIds)
+          .order('created_at');
+
+      final baseItems = (itemRows as List)
+          .map((r) => FlightOrderItem.fromJson(r as Map<String, dynamic>))
+          .toList();
+
+      if (baseItems.isEmpty) return const AppSuccess([]);
+
+      final itemIds = baseItems.map((i) => i.id).toList();
+
+      // 3. Batch load related data (same pattern as listItems)
+      final results = await Future.wait([
+        _client
+            .from('aircraft')
+            .select('id, tail_number, model')
+            .inFilter('id', baseItems.map((i) => i.aircraftId).toList()),
+        _client
+            .from('flight_order_routes')
+            .select('*')
+            .inFilter('flight_order_item_id', itemIds),
+        _client
+            .from('flight_order_crew')
+            .select('*, crew_member:crew_member_id(grade,first_name,last_name,callsign)')
+            .inFilter('flight_order_item_id', itemIds),
+        _client
+            .from('flight_order_state_events')
+            .select('*')
+            .inFilter('flight_order_item_id', itemIds),
+      ]);
+
+      final aircraftRows = results[0] as List<dynamic>;
+      final routeRows = results[1] as List<dynamic>;
+      final crewRows = results[2] as List<dynamic>;
+      final eventRows = results[3] as List<dynamic>;
+
+      final aircraftMap = <String, Map<String, dynamic>>{};
+      for (final a in aircraftRows) {
+        final m = a as Map<String, dynamic>;
+        aircraftMap[m['id'].toString()] = m;
+      }
+
+      final items = baseItems.map((item) {
+        final ac = aircraftMap[item.aircraftId];
+        final order = orders[item.flightOrderId];
+        final itemRoutes = routeRows
+            .where((r) =>
+                (r as Map<String, dynamic>)['flight_order_item_id'].toString() ==
+                item.id)
+            .map((r) =>
+                FlightOrderRoute.fromJson(r as Map<String, dynamic>))
+            .toList();
+        final itemCrew = crewRows
+            .where((c) =>
+                (c as Map<String, dynamic>)['flight_order_item_id'].toString() ==
+                item.id)
+            .map((c) =>
+                FlightOrderCrew.fromJson(c as Map<String, dynamic>))
+            .toList();
+        final itemEvents = eventRows
+            .where((e) =>
+                (e as Map<String, dynamic>)['flight_order_item_id'].toString() ==
+                item.id)
+            .map((e) => FlightOrderStateEvent.fromJson(
+                e as Map<String, dynamic>))
+            .toList();
+
+        return item.copyWith(
+          aircraftRegistration: ac?['tail_number']?.toString(),
+          aircraftModel: ac?['model']?.toString(),
+          orderNumber: order?['order_number']?.toString(),
+          unitName: (order?['units'] is Map)
+              ? (order!['units'] as Map)['name']?.toString()
+              : null,
+          routes: itemRoutes,
+          crew: itemCrew,
+          stateEvents: itemEvents,
+        );
+      }).toList();
+
+      return AppSuccess(items);
+    } on FunctionException catch (e) {
+      return AppFailure(_errorFromBody(e.details));
+    } catch (_) {
+      return const AppFailure(AppError(
+        code: 'SYSTEM_UNEXPECTED',
+        message: 'No se pudieron cargar los vuelos.',
         category: AppErrorCategory.system,
         severity: AppErrorSeverity.high,
       ));

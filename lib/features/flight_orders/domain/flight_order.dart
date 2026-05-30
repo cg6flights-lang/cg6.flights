@@ -101,6 +101,9 @@ class FlightOrderItem {
     required this.updatedAt,
     this.aircraftRegistration,
     this.aircraftModel,
+    this.orderNumber,
+    this.unitName,
+    this.unitId,
     this.routes = const [],
     this.crew = const [],
     this.profiles = const [],
@@ -128,6 +131,9 @@ class FlightOrderItem {
 
   final String? aircraftRegistration;
   final String? aircraftModel;
+  final String? orderNumber;
+  final String? unitName;
+  final String? unitId;
   final List<FlightOrderRoute> routes;
   final List<FlightOrderCrew> crew;
   final List<FlightOrderProfile> profiles;
@@ -167,6 +173,9 @@ class FlightOrderItem {
     DateTime? updatedAt,
     String? aircraftRegistration,
     String? aircraftModel,
+    String? orderNumber,
+    String? unitName,
+    String? unitId,
     List<FlightOrderRoute>? routes,
     List<FlightOrderCrew>? crew,
     List<FlightOrderProfile>? profiles,
@@ -194,6 +203,9 @@ class FlightOrderItem {
       aircraftRegistration:
           aircraftRegistration ?? this.aircraftRegistration,
       aircraftModel: aircraftModel ?? this.aircraftModel,
+      orderNumber: orderNumber ?? this.orderNumber,
+      unitName: unitName ?? this.unitName,
+      unitId: unitId ?? this.unitId,
       routes: routes ?? this.routes,
       crew: crew ?? this.crew,
       profiles: profiles ?? this.profiles,
@@ -242,6 +254,9 @@ class FlightOrderItem {
       aircraftModel: json['aircraft'] is Map
           ? (json['aircraft'] as Map)['model']?.toString()
           : null,
+      orderNumber: json['order_number']?.toString(),
+      unitName: json['unit_name']?.toString(),
+      unitId: json['unit_id']?.toString(),
     );
   }
 

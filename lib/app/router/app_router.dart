@@ -12,14 +12,10 @@ import 'package:cg6_flights/features/closures/presentation/closures_page.dart';
 import 'package:cg6_flights/features/crew/presentation/crew_page.dart';
 import 'package:cg6_flights/features/dashboard/presentation/dashboard_page.dart';
 import 'package:cg6_flights/features/flight_orders/presentation/flight_orders_page.dart';
-import 'package:cg6_flights/features/flight_status/presentation/flight_status_page.dart';
 import 'package:cg6_flights/features/flights/presentation/flights_page.dart';
-import 'package:cg6_flights/features/history/presentation/history_page.dart';
-import 'package:cg6_flights/features/maps/presentation/maps_page.dart';
 import 'package:cg6_flights/features/messages/presentation/messages_page.dart';
 import 'package:cg6_flights/features/notifications/presentation/notifications_page.dart';
 import 'package:cg6_flights/features/profile/presentation/profile_page.dart';
-import 'package:cg6_flights/features/reports/presentation/reports_page.dart';
 import 'package:cg6_flights/features/routes/presentation/routes_page.dart';
 import 'package:cg6_flights/features/settings/presentation/settings_page.dart';
 import 'package:cg6_flights/features/units/presentation/units_page.dart';
@@ -81,20 +77,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const FlightsPage(),
           ),
           GoRoute(
-            path: '/flight-status',
-            builder: (context, state) => const FlightStatusPage(),
-          ),
-          GoRoute(
             path: '/routes',
             builder: (context, state) => const RoutesPage(),
           ),
           GoRoute(
             path: '/closures',
             builder: (context, state) => const ClosuresPage(),
-          ),
-          GoRoute(
-            path: '/history',
-            builder: (context, state) => const HistoryPage(),
           ),
           GoRoute(
             path: '/audit',
@@ -109,14 +97,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const MessagesPage(),
           ),
           GoRoute(
-            path: '/reports',
-            builder: (context, state) => const ReportsPage(),
-          ),
-          GoRoute(
             path: '/calendar',
             builder: (context, state) => const CalendarPage(),
           ),
-          GoRoute(path: '/maps', builder: (context, state) => const MapsPage()),
           GoRoute(
             path: '/profile',
             builder: (context, state) => const ProfilePage(),
@@ -186,15 +169,11 @@ const _routePermissions = <String, String>{
   '/crew': AppPermission.crewRead,
   '/flight-orders': AppPermission.flightOrdersRead,
   '/flights': AppPermission.flightsRead,
-  '/flight-status': AppPermission.flightStatusCreate,
   '/routes': AppPermission.routesRead,
   '/closures': AppPermission.closuresRequest,
-  '/history': AppPermission.historyRead,
   '/audit': AppPermission.auditRead,
   '/messages': AppPermission.messagesRead,
-  '/reports': AppPermission.reportsRead,
   '/calendar': AppPermission.calendarRead,
-  '/maps': AppPermission.mapsRead,
   '/settings': AppPermission.settingsManage,
 };
 
@@ -241,12 +220,6 @@ const _navigationItems = [
     permission: AppPermission.flightsRead,
   ),
   NavigationItem(
-    path: '/flight-status',
-    labelKey: 'nav.flightStatus',
-    icon: Icons.timeline_outlined,
-    permission: AppPermission.flightStatusCreate,
-  ),
-  NavigationItem(
     path: '/routes',
     labelKey: 'nav.routes',
     icon: Icons.route_outlined,
@@ -259,12 +232,6 @@ const _navigationItems = [
     permission: AppPermission.closuresRequest,
   ),
   NavigationItem(
-    path: '/history',
-    labelKey: 'nav.history',
-    icon: Icons.history,
-    permission: AppPermission.historyRead,
-  ),
-  NavigationItem(
     path: '/audit',
     labelKey: 'nav.audit',
     icon: Icons.fact_check_outlined,
@@ -275,29 +242,5 @@ const _navigationItems = [
     labelKey: 'nav.messages',
     icon: Icons.mark_unread_chat_alt_outlined,
     permission: AppPermission.messagesRead,
-  ),
-  NavigationItem(
-    path: '/reports',
-    labelKey: 'nav.reports',
-    icon: Icons.picture_as_pdf_outlined,
-    permission: AppPermission.reportsRead,
-  ),
-  NavigationItem(
-    path: '/calendar',
-    labelKey: 'nav.calendar',
-    icon: Icons.calendar_month_outlined,
-    permission: AppPermission.calendarRead,
-  ),
-  NavigationItem(
-    path: '/maps',
-    labelKey: 'nav.maps',
-    icon: Icons.map_outlined,
-    permission: AppPermission.mapsRead,
-  ),
-  NavigationItem(
-    path: '/settings',
-    labelKey: 'nav.settings',
-    icon: Icons.tune,
-    permission: AppPermission.settingsManage,
   ),
 ];

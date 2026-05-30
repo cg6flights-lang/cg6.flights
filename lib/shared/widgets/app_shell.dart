@@ -1,5 +1,6 @@
 import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/core/state/locale_controller.dart';
+import 'package:cg6_flights/core/state/theme_mode_controller.dart';
 import 'package:cg6_flights/features/auth/application/session_controller.dart';
 import 'package:cg6_flights/features/auth/domain/app_user.dart';
 import 'package:cg6_flights/shared/widgets/app_badges.dart';
@@ -61,6 +62,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     final session = ref.watch(sessionControllerProvider);
     final user = session.user;
     final langCode = ref.watch(localeControllerProvider).languageCode;
+    final themeMode = ref.watch(themeModeProvider);
     final localeNotifier = ref.read(localeControllerProvider.notifier);
     final location = GoRouterState.of(context).uri.path;
     final visibleItems = widget.items
@@ -81,7 +83,23 @@ class _AppShellState extends ConsumerState<AppShell> {
             titleSpacing: 12,
             title: const Text('CG6 Flights'),
             actions: [
+              _CalendarIcon(),
+              const SizedBox(width: 4),
               _NotificationBell(),
+              Tooltip(
+                message: themeMode == ThemeMode.dark
+                    ? 'Modo claro'
+                    : 'Modo oscuro',
+                child: IconButton(
+                  onPressed: () =>
+                      ref.read(themeModeProvider.notifier).toggle(),
+                  icon: Icon(
+                    themeMode == ThemeMode.dark
+                        ? Icons.light_mode_outlined
+                        : Icons.dark_mode_outlined,
+                  ),
+                ),
+              ),
               Tooltip(
                 message: langCode == 'es'
                     ? 'Switch to English'
@@ -269,6 +287,27 @@ class _OverlayDot extends StatelessWidget {
   }
 }
 
+class _CalendarIcon extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final day = now.day.toString();
+    return Tooltip(
+      message: 'Calendario',
+      child: IconButton(
+        onPressed: () => context.go('/calendar'),
+        icon: Badge(
+          smallSize: 14,
+          largeSize: 18,
+          padding: const EdgeInsets.all(1),
+          label: Text(day, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700)),
+          child: const Icon(Icons.calendar_month_outlined),
+        ),
+      ),
+    );
+  }
+}
+
 class _NotificationBell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -335,6 +374,8 @@ class _UserAvatarMenu extends ConsumerWidget {
         switch (value) {
           case 'profile':
             showProfileModal(context, user);
+          case 'settings':
+            context.go('/settings');
           case 'logout':
             ref.read(sessionControllerProvider.notifier).signOut();
         }
@@ -352,6 +393,16 @@ class _UserAvatarMenu extends ConsumerWidget {
               Icon(Icons.edit_outlined, size: 20),
               SizedBox(width: 8),
               Text('Editar perfil'),
+            ],
+          ),
+        ),
+        const PopupMenuItem<String>(
+          value: 'settings',
+          child: Row(
+            children: [
+              Icon(Icons.tune, size: 20),
+              SizedBox(width: 8),
+              Text('Configuración'),
             ],
           ),
         ),

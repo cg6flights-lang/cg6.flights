@@ -494,7 +494,7 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
           size: 18,
           color: selected
               ? Theme.of(context).colorScheme.primary
-              : Colors.grey,
+              : Theme.of(context).colorScheme.onSurfaceVariant,
         ),
         const SizedBox(width: 8),
         Text(label, style: const TextStyle(fontSize: 13)),
@@ -581,9 +581,6 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
         constraints: const BoxConstraints(minWidth: 420),
         child: DataTable(
           showCheckboxColumn: false,
-          headingTextStyle: Theme.of(context).textTheme.titleSmall,
-          dataRowMinHeight: 48,
-          dataRowMaxHeight: 56,
           columns: [
             DataColumn(label: Text(l10n.t('flightOrders.orderNumber'))),
             DataColumn(label: Text(l10n.t('flightOrders.unit'))),

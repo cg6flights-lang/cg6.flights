@@ -448,14 +448,14 @@ class _FlightItemCard extends StatelessWidget {
                       runSpacing: 4,
                       children: [
                         if (item.eteMinutes != null)
-                          _infoChip(
+                          _infoChip(context,
                               Icons.timer_outlined,
                               '${l10n.t("flightOrders.ete")}: ${item.eteMinutes} min'),
                         if (item.flightLevelMin != null)
-                          _infoChip(
+                          _infoChip(context,
                               Icons.height, item.flightLevelDisplay),
                         if (item.fuelAmount != null)
-                          _infoChip(
+                          _infoChip(context,
                               Icons.local_gas_station_outlined,
                               '${item.fuelAmount} lbs${item.fuelType != null ? " (${item.fuelType})" : ""}'),
                       ],
@@ -505,11 +505,12 @@ class _FlightItemCard extends StatelessWidget {
   );
 }
 
-  Widget _infoChip(IconData icon, String text) {
+  Widget _infoChip(BuildContext context, IconData icon, String text) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 13, color: Colors.grey),
+        Icon(icon, size: 13,
+            color: Theme.of(context).colorScheme.onSurfaceVariant),
         const SizedBox(width: 3),
         Text(text, style: const TextStyle(fontSize: 11)),
       ],
