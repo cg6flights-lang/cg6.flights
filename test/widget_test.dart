@@ -8,7 +8,20 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: CG6App()));
     await tester.pumpAndSettle();
 
-    expect(find.text('CG6 Flights'), findsWidgets);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Image &&
+            widget.image is AssetImage &&
+            (widget.image as AssetImage).assetName == 'cg6_logo/logo_cg6.png',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('CG6 Flights'), findsNothing);
+    expect(
+      find.text('Centro de Gestion y Control de Vuelos Diarios'),
+      findsNothing,
+    );
     expect(find.byIcon(Icons.login), findsOneWidget);
   });
 

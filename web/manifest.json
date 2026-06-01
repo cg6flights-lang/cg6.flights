@@ -1,11 +1,11 @@
 {
-    "name": "cg6_flights",
-    "short_name": "cg6_flights",
+    "name": "CG6 Flights",
+    "short_name": "CG6 Flights",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0B1112",
+    "theme_color": "#0B1112",
+    "description": "Centro de Gestion y Control de Vuelos Diarios",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -1,5 +1,6 @@
 import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
+import 'package:cg6_flights/core/state/timezone_provider.dart';
 import 'package:cg6_flights/core/security/app_permission.dart';
 import 'package:cg6_flights/features/auth/application/session_controller.dart';
 import 'package:cg6_flights/features/flight_orders/data/flight_orders_repository.dart';
@@ -36,6 +37,7 @@ class _FlightItemDetailDialogState
   Widget build(BuildContext context) {
     final item = widget.item;
     final l10n = AppLocalizations.of(context);
+    final tz = ref.watch(timezoneProvider);
     final isCancelled = item.cancelled;
 
     return AlertDialog(
@@ -95,7 +97,7 @@ class _FlightItemDetailDialogState
                   if (item.scheduledDeparture != null)
                     _infoRow(
                         Icons.schedule_outlined,
-                        '${l10n.t("flightOrders.departure")}: ${_formatTime(item.scheduledDeparture!)}'),
+                        '${l10n.t("flightOrders.departure")}: ${_formatTime(item.scheduledDeparture!, tz)}'),
                 ],
               ),
               const SizedBox(height: 12),
@@ -152,7 +154,7 @@ class _FlightItemDetailDialogState
               if (item.stateEvents.isNotEmpty) ...[
                 _sectionLabel(context, l10n.t('flightOrders.stateEvents')),
                 const SizedBox(height: 4),
-                _stateTimeline(item.stateEvents),
+                _stateTimeline(item.stateEvents, tz),
                 if (_eventTime(item.stateEvents, 'taxi') != null &&
                     _eventTime(item.stateEvents, 'engine_off') != null) ...[
                   const SizedBox(height: 8),
@@ -233,7 +235,7 @@ class _FlightItemDetailDialogState
     );
   }
 
-  Widget _stateTimeline(List<FlightOrderStateEvent> events) {
+  Widget _stateTimeline(List<FlightOrderStateEvent> events, int tzOffset) {
     final sorted = [...events]
       ..sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
 
@@ -246,7 +248,7 @@ class _FlightItemDetailDialogState
               StatusChip.fromStatus(e.status, size: StatusChipSize.small),
               const SizedBox(width: 8),
               Text(
-                _formatTime(e.occurredAt),
+                _formatTime(e.occurredAt, tzOffset),
                 style: TextStyle(
                   fontSize: 11,
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -304,9 +306,8 @@ class _FlightItemDetailDialogState
     return '${m}m';
   }
 
-  String _formatTime(DateTime dt) {
-    return '${dt.hour.toString().padLeft(2, "0")}:${dt.minute.toString().padLeft(2, "0")}';
-  }
+  String _formatTime(DateTime utc, int tzOffset) =>
+      formatTimeWithOffset(utc, tzOffset);
 
   Future<void> _confirmCancel(
       FlightOrderItem item, AppLocalizations l10n) async {

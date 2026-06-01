@@ -214,11 +214,7 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
                                   margin: EdgeInsets.zero,
                                   child: SingleChildScrollView(
                                     padding: const EdgeInsets.all(12),
-                                    child: _buildTable(
-                                      context,
-                                      filtered,
-                                      l10n,
-                                    ),
+                                    child: _buildTable(context, filtered, l10n),
                                   ),
                                 ),
                               ),
@@ -233,28 +229,41 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
                                   switchInCurve: Curves.easeOut,
                                   switchOutCurve: Curves.easeIn,
                                   transitionBuilder: (child, animation) =>
-                                      FadeTransition(opacity: animation, child: child),
+                                      FadeTransition(
+                                        opacity: animation,
+                                        child: child,
+                                      ),
                                   child: _isLoadingItems
-                                      ? const _LoadingDotsOverlay(key: ValueKey('loading'))
+                                      ? const _LoadingDotsOverlay(
+                                          key: ValueKey('loading'),
+                                        )
                                       : _selectedOrder != null
-                                          ? FlightOrderDetailPanel(
-                                              key: ValueKey(_selectedOrder!.id),
-                                              order: _selectedOrder!,
-                                              items: _items,
-                                              onExportPdf: () => _exportPdf(_selectedOrder!, l10n),
-                                              onDeleteOrder: () => _confirmDeleteOrder(_selectedOrder!, l10n),
-                                              onStateChanged: _onItemStateChanged,
-                                              onOrderChanged: (updatedOrder) {
-                                                setState(() => _selectedOrder = updatedOrder);
-                                                ref.invalidate(_ordersListProvider);
-                                                setState(() {
-                                                  _items = [];
-                                                  _isLoadingItems = true;
-                                                });
-                                                _loadItems(updatedOrder.id);
-                                              },
-                                            )
-                                          : _buildEmptyDetail(l10n),
+                                      ? FlightOrderDetailPanel(
+                                          key: ValueKey(_selectedOrder!.id),
+                                          order: _selectedOrder!,
+                                          items: _items,
+                                          onExportPdf: () =>
+                                              _exportPdf(_selectedOrder!, l10n),
+                                          onDeleteOrder: () =>
+                                              _confirmDeleteOrder(
+                                                _selectedOrder!,
+                                                l10n,
+                                              ),
+                                          onStateChanged: _onItemStateChanged,
+                                          onOrderChanged: (updatedOrder) {
+                                            setState(
+                                              () =>
+                                                  _selectedOrder = updatedOrder,
+                                            );
+                                            ref.invalidate(_ordersListProvider);
+                                            setState(() {
+                                              _items = [];
+                                              _isLoadingItems = true;
+                                            });
+                                            _loadItems(updatedOrder.id);
+                                          },
+                                        )
+                                      : _buildEmptyDetail(l10n),
                                 ),
                               ),
                             ),
@@ -266,11 +275,7 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
                           SizedBox(
                             height: 300,
                             child: SingleChildScrollView(
-                              child: _buildTable(
-                                context,
-                                filtered,
-                                l10n,
-                              ),
+                              child: _buildTable(context, filtered, l10n),
                             ),
                           ),
                           if (_selectedOrder != null) ...[
@@ -282,18 +287,30 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
                                 switchInCurve: Curves.easeOut,
                                 switchOutCurve: Curves.easeIn,
                                 transitionBuilder: (child, animation) =>
-                                    FadeTransition(opacity: animation, child: child),
+                                    FadeTransition(
+                                      opacity: animation,
+                                      child: child,
+                                    ),
                                 child: _isLoadingItems
-                                    ? const _LoadingDotsOverlay(key: ValueKey('loading'))
+                                    ? const _LoadingDotsOverlay(
+                                        key: ValueKey('loading'),
+                                      )
                                     : FlightOrderDetailPanel(
                                         key: ValueKey(_selectedOrder!.id),
                                         order: _selectedOrder!,
                                         items: _items,
-                                        onExportPdf: () => _exportPdf(_selectedOrder!, l10n),
-                                        onDeleteOrder: () => _confirmDeleteOrder(_selectedOrder!, l10n),
+                                        onExportPdf: () =>
+                                            _exportPdf(_selectedOrder!, l10n),
+                                        onDeleteOrder: () =>
+                                            _confirmDeleteOrder(
+                                              _selectedOrder!,
+                                              l10n,
+                                            ),
                                         onStateChanged: _onItemStateChanged,
                                         onOrderChanged: (updatedOrder) {
-                                          setState(() => _selectedOrder = updatedOrder);
+                                          setState(
+                                            () => _selectedOrder = updatedOrder,
+                                          );
                                           ref.invalidate(_ordersListProvider);
                                           setState(() {
                                             _items = [];
@@ -303,7 +320,7 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
                                         },
                                       ),
                               ),
-                              ),
+                            ),
                           ],
                         ],
                       );
@@ -324,7 +341,12 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
     ('week', 'Esta semana'),
   ];
   static const _allStatuses = [
-    'draft', 'submitted', 'observed', 'approved', 'closed', 'reopened',
+    'draft',
+    'submitted',
+    'observed',
+    'approved',
+    'closed',
+    'reopened',
   ];
 
   String get _unitLabel {
@@ -399,9 +421,7 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
               icon: Icons.label_outlined,
               selectedLabel: _statusLabel,
               outlineColor: outlineColor,
-              menuChildren: [
-                for (final s in _allStatuses) _statusMenuItem(s),
-              ],
+              menuChildren: [for (final s in _allStatuses) _statusMenuItem(s)],
             ),
             if (_hasActiveFilters)
               IconButton(
@@ -431,10 +451,7 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
                   () => setState(() => _dateFilter = 'all'),
                 ),
               for (final s in _statusFilters)
-                _activeChip(
-                  s,
-                  () => setState(() => _statusFilters.remove(s)),
-                ),
+                _activeChip(s, () => setState(() => _statusFilters.remove(s))),
             ],
           ),
         ],
@@ -529,12 +546,16 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.filter_list_off,
-                size: 36,
-                color: Theme.of(context).colorScheme.onSurfaceVariant),
+            Icon(
+              Icons.filter_list_off,
+              size: 36,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
             const SizedBox(height: 12),
-            Text(l10n.t('flightOrders.filterEmpty'),
-                style: Theme.of(context).textTheme.bodyLarge),
+            Text(
+              l10n.t('flightOrders.filterEmpty'),
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
           ],
         ),
       ),
@@ -560,8 +581,8 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
               Text(
                 l10n.t('flightOrders.empty'),
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -593,16 +614,31 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
               DataRow(
                 color: _selectedOrder?.id == o.id
                     ? WidgetStateProperty.all(
-                        Theme.of(context).colorScheme.primary.withValues(alpha: 0.08))
+                        Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.08),
+                      )
                     : null,
                 onSelectChanged: (_) => _selectOrder(o),
                 cells: [
-                  DataCell(Text(o.orderNumber ?? '--',
-                      style: const TextStyle(fontSize: 13))),
-                  DataCell(Text(o.unitName ?? '--',
-                      style: const TextStyle(fontSize: 13))),
-                  DataCell(Text(_formatDate(o.operationDate),
-                      style: const TextStyle(fontSize: 13))),
+                  DataCell(
+                    Text(
+                      o.orderNumber ?? '--',
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                  DataCell(
+                    Text(
+                      o.unitName ?? '--',
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                  DataCell(
+                    Text(
+                      _formatDate(o.operationDate),
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
                   DataCell(StatusChip.fromStatus(o.status)),
                   DataCell(_itemCountBadge(o)),
                 ],
@@ -617,10 +653,7 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: Theme.of(context)
-            .colorScheme
-            .primary
-            .withValues(alpha: 0.1),
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -634,65 +667,28 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
     );
   }
 
-
   String _formatDate(DateTime date) {
     final months = [
-      'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
-      'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC',
+      'ENE',
+      'FEB',
+      'MAR',
+      'ABR',
+      'MAY',
+      'JUN',
+      'JUL',
+      'AGO',
+      'SEP',
+      'OCT',
+      'NOV',
+      'DIC',
     ];
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
-  Future<void> _confirmStatusChange(
-      FlightOrder order, String action, AppLocalizations l10n) async {
-    final confirmKey = 'flightOrders.${action}Confirm';
-    final message = l10n.t(confirmKey);
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.t('flightOrders.$action')),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l10n.t('common.cancel')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(l10n.t('flightOrders.$action')),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && mounted) {
-      await _changeStatus(order.id, action);
-    }
-  }
-
-  Future<void> _changeStatus(String orderId, String action) async {
-    final result = await ref
-        .read(flightOrdersRepositoryProvider)
-        .manageFlightOrder(flightOrderId: orderId, action: action);
-
-    if (!mounted) return;
-
-    switch (result) {
-      case AppSuccess<FlightOrder>(data: final updated):
-        ref.invalidate(_ordersListProvider);
-        if (_selectedOrder?.id == updated.id) {
-          setState(() => _selectedOrder = updated);
-        }
-      case AppFailure<FlightOrder>(error: final error):
-        ScaffoldMessenger.of(context)
-          ..clearSnackBars()
-          ..showSnackBar(SnackBar(content: Text(error.message)));
-    }
-  }
-
   Future<void> _confirmDeleteOrder(
-      FlightOrder order, AppLocalizations l10n) async {
+    FlightOrder order,
+    AppLocalizations l10n,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -739,7 +735,8 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
   Future<void> _exportPdf(FlightOrder order, AppLocalizations l10n) async {
     final messenger = ScaffoldMessenger.of(context)..clearSnackBars();
     messenger.showSnackBar(
-        SnackBar(content: Text(l10n.t('flightOrders.exportingPdf'))));
+      SnackBar(content: Text(l10n.t('flightOrders.exportingPdf'))),
+    );
 
     final repo = ref.read(flightOrdersRepositoryProvider);
     final itemsResult = await repo.listItems(order.id);
@@ -778,7 +775,8 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
         messenger
           ..clearSnackBars()
           ..showSnackBar(
-              SnackBar(content: Text(l10n.t('flightOrders.pdfExported'))));
+            SnackBar(content: Text(l10n.t('flightOrders.pdfExported'))),
+          );
       case AppFailure(error: final error):
         messenger
           ..clearSnackBars()
@@ -958,10 +956,9 @@ class _Dot extends StatelessWidget {
             height: size,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Theme.of(context)
-                  .colorScheme
-                  .primary
-                  .withValues(alpha: alpha.value),
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: alpha.value),
             ),
           ),
         ),
@@ -985,13 +982,17 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.assignment_outlined,
-                size: 42,
-                color: Theme.of(context).colorScheme.onSurfaceVariant),
+            Icon(
+              Icons.assignment_outlined,
+              size: 42,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
             const SizedBox(height: 16),
-            Text(l10n.t('flightOrders.empty'),
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              l10n.t('flightOrders.empty'),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             if (canCreate) ...[
               const SizedBox(height: 16),
               FilledButton.icon(

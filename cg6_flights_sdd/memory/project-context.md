@@ -28,7 +28,7 @@ Plataforma web para Base Aérea Las Palmas, orientada a control diario de vuelos
 - Supabase.
 - Vercel.
 
-## Estado actual de implementación (2026-05-27)
+## Estado actual de implementación (2026-05-30)
 
 ### Completado
 - **Auth** — Login, registro, sesión, RBAC, permisos derivados de rol vía rolePermissionMatrix
@@ -51,6 +51,10 @@ Plataforma web para Base Aérea Las Palmas, orientada a control diario de vuelos
   - Borrado de órdenes (solo draft, solo roles globales o flight_orders.close)
   - Checkbox "¿Mecánico a bordo?" para hacer opcional el campo MA
   - Validación de aeropuerto en rutas (validator required)
+- **Flights** — Vista diaria de vuelos con tablero operacional y Pantalla LED full-screen.
+  - Pantalla LED en sección Vuelos con estética aeroportuaria militar: fondo oscuro, texto monoespaciado amarillo/verde/ámbar/rojo con glow, marco físico, matriz LED, scanlines, ON/OFF y auto-refresh cada 60s.
+  - Columnas operativas: HORA, UNIDAD·COLA, DESTINO, ETA, OBSERVACIÓN.
+  - Transformación de datos encapsulada en presenter (`FlightLedBoardPresenter`) y lectura mediante `FlightOrdersRepository.listFlightsByDate`.
 - **SDD de Flight Orders** — [`specs/flight-orders.spec.md`](specs/flight-orders.spec.md) creado post-implementación con module spec completo, UI/UX spec y tests requeridos. Product spec actualizado con RFs 050-059 detallados. Frontend spec ampliado con sección 11.4 (UI/UX Flight Orders).
 
 ### Bugs conocidos (2026-05-27)
@@ -58,7 +62,7 @@ Plataforma web para Base Aérea Las Palmas, orientada a control diario de vuelos
 - **Transiciones de estado sin confirmación**: Submit, approve, observe, close, reopen se ejecutan sin diálogo de confirmación previa.
 
 ### Pendiente
-Flights, Flight Status, Closures, History, Audit, Notifications, Messages, Reports, Calendar, Maps, Settings
+Flight Status, Closures, History, Audit, Notifications, Messages, Reports, Calendar, Maps, Settings
 
 ### SDD (2026-05-27)
 - **`specs/flight-orders.spec.md`** creado — module spec completo con 7 entidades, 14 casos de uso, máquinas de estado, UI/UX spec, y tests requeridos.
@@ -74,6 +78,7 @@ Flights, Flight Status, Closures, History, Audit, Notifications, Messages, Repor
 - `InputDecorator` + `DropdownButton` (no-FormField) para evitar bugs de sincronización de `DropdownButtonFormField.value` deprecado en Flutter 3.41.6
 - `listItems` con queries separadas + `inFilter` en lugar de select anidado complejo (en diagnóstico)
 - PDF generation con package `pdf` + `dart:html` para descarga en web (conditional exports)
+- Pantalla LED de Vuelos implementada sin nuevas dependencias, usando Flutter puro (`CustomPainter`, sombras, gradientes y timers) y presenter para mantener la lógica fuera de widgets.
 
 ## Principios
 

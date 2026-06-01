@@ -81,7 +81,16 @@ class _AppShellState extends ConsumerState<AppShell> {
         return Scaffold(
           appBar: AppBar(
             titleSpacing: 12,
-            title: const Text('CG6 Flights'),
+            title: SizedBox(
+              width: 150,
+              height: 38,
+              child: Image.asset(
+                'cg6_logo/logo_cg6.png',
+                fit: BoxFit.contain,
+                alignment: Alignment.centerLeft,
+                semanticLabel: 'CG6 Flights',
+              ),
+            ),
             actions: [
               _CalendarIcon(),
               const SizedBox(width: 4),
@@ -141,8 +150,9 @@ class _AppShellState extends ConsumerState<AppShell> {
                         const SizedBox(height: 8),
                         for (var i = 0; i < visibleItems.length; i++)
                           Tooltip(
-                            message: AppLocalizations.of(context)
-                                .t(visibleItems[i].labelKey),
+                            message: AppLocalizations.of(
+                              context,
+                            ).t(visibleItems[i].labelKey),
                             child: _NavRailTile(
                               icon: visibleItems[i].icon,
                               selected: i == safeIndex,
@@ -187,7 +197,7 @@ class _AppShellState extends ConsumerState<AppShell> {
 // ── Loading overlay for section navigation ──────────────────────────
 
 class _AppLoadingOverlay extends StatefulWidget {
-  const _AppLoadingOverlay({super.key});
+  const _AppLoadingOverlay();
 
   @override
   State<_AppLoadingOverlay> createState() => _AppLoadingOverlayState();
@@ -275,10 +285,9 @@ class _OverlayDot extends StatelessWidget {
             height: size,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Theme.of(context)
-                  .colorScheme
-                  .primary
-                  .withValues(alpha: alpha.value),
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: alpha.value),
             ),
           ),
         ),
@@ -300,7 +309,10 @@ class _CalendarIcon extends StatelessWidget {
           smallSize: 14,
           largeSize: 18,
           padding: const EdgeInsets.all(1),
-          label: Text(day, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700)),
+          label: Text(
+            day,
+            style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700),
+          ),
           child: const Icon(Icons.calendar_month_outlined),
         ),
       ),
@@ -410,9 +422,16 @@ class _UserAvatarMenu extends ConsumerWidget {
           value: 'logout',
           child: Row(
             children: [
-              Icon(Icons.logout, size: 20, color: Theme.of(context).colorScheme.error),
+              Icon(
+                Icons.logout,
+                size: 20,
+                color: Theme.of(context).colorScheme.error,
+              ),
               SizedBox(width: 8),
-              Text('Cerrar sesion', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              Text(
+                'Cerrar sesion',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
             ],
           ),
         ),

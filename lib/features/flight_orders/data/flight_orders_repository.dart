@@ -38,7 +38,8 @@ abstract class FlightOrdersRepository {
   });
   Future<AppResult<void>> removeOrderProfile(String profileId);
   Future<AppResult<List<FlightOrderProfile>>> listOrderProfiles(
-      String flightOrderId);
+    String flightOrderId,
+  );
   Future<AppResult<void>> deleteFlightOrder(String flightOrderId);
   Future<AppResult<List<FlightOrderItem>>> listFlightsByDate({
     required DateTime date,
@@ -76,18 +77,21 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
     } on FunctionException catch (e) {
       return AppFailure(_errorFromBody(e.details));
     } catch (_) {
-      return const AppFailure(AppError(
-        code: 'SYSTEM_UNEXPECTED',
-        message: 'No se pudieron cargar las órdenes de vuelo.',
-        category: AppErrorCategory.system,
-        severity: AppErrorSeverity.high,
-      ));
+      return const AppFailure(
+        AppError(
+          code: 'SYSTEM_UNEXPECTED',
+          message: 'No se pudieron cargar las órdenes de vuelo.',
+          category: AppErrorCategory.system,
+          severity: AppErrorSeverity.high,
+        ),
+      );
     }
   }
 
   @override
   Future<AppResult<List<FlightOrderItem>>> listItems(
-      String flightOrderId) async {
+    String flightOrderId,
+  ) async {
     try {
       final rows = await _client
           .from('flight_order_items')
@@ -112,11 +116,14 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
         _client
             .from('flight_order_routes')
             .select(
-                '*, origin_route:origin_route_id(airport_name), destination_route:destination_route_id(airport_name)')
+              '*, origin_route:origin_route_id(airport_name, icao_code, latitude, longitude), destination_route:destination_route_id(airport_name, icao_code, latitude, longitude)',
+            )
             .inFilter('flight_order_item_id', itemIds),
         _client
             .from('flight_order_crew')
-            .select('*, crew_member:crew_member_id(grade,first_name,last_name,callsign)')
+            .select(
+              '*, crew_member:crew_member_id(grade,first_name,last_name,callsign)',
+            )
             .inFilter('flight_order_item_id', itemIds),
         _client
             .from('flight_order_state_events')
@@ -138,25 +145,33 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
       final items = baseItems.map((item) {
         final ac = aircraftMap[item.aircraftId];
         final itemRoutes = routeRows
-            .where((r) =>
-                (r as Map<String, dynamic>)['flight_order_item_id'].toString() ==
-                item.id)
-            .map((r) =>
-                FlightOrderRoute.fromJson(r as Map<String, dynamic>))
+            .where(
+              (r) =>
+                  (r as Map<String, dynamic>)['flight_order_item_id']
+                      .toString() ==
+                  item.id,
+            )
+            .map((r) => FlightOrderRoute.fromJson(r as Map<String, dynamic>))
             .toList();
         final itemCrew = crewRows
-            .where((c) =>
-                (c as Map<String, dynamic>)['flight_order_item_id'].toString() ==
-                item.id)
-            .map((c) =>
-                FlightOrderCrew.fromJson(c as Map<String, dynamic>))
+            .where(
+              (c) =>
+                  (c as Map<String, dynamic>)['flight_order_item_id']
+                      .toString() ==
+                  item.id,
+            )
+            .map((c) => FlightOrderCrew.fromJson(c as Map<String, dynamic>))
             .toList();
         final itemEvents = eventRows
-            .where((e) =>
-                (e as Map<String, dynamic>)['flight_order_item_id'].toString() ==
-                item.id)
-            .map((e) => FlightOrderStateEvent.fromJson(
-                e as Map<String, dynamic>))
+            .where(
+              (e) =>
+                  (e as Map<String, dynamic>)['flight_order_item_id']
+                      .toString() ==
+                  item.id,
+            )
+            .map(
+              (e) => FlightOrderStateEvent.fromJson(e as Map<String, dynamic>),
+            )
             .toList();
 
         return item.copyWith(
@@ -171,14 +186,15 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
       return AppSuccess(items);
     } on FunctionException catch (e) {
       return AppFailure(_errorFromBody(e.details));
-    } catch (e) {
-      print('[DEBUG] listItems failed for $flightOrderId: $e');
-      return const AppFailure(AppError(
-        code: 'SYSTEM_UNEXPECTED',
-        message: 'No se pudieron cargar los ítems de la orden.',
-        category: AppErrorCategory.system,
-        severity: AppErrorSeverity.high,
-      ));
+    } catch (_) {
+      return const AppFailure(
+        AppError(
+          code: 'SYSTEM_UNEXPECTED',
+          message: 'No se pudieron cargar los ítems de la orden.',
+          category: AppErrorCategory.system,
+          severity: AppErrorSeverity.high,
+        ),
+      );
     }
   }
 
@@ -188,24 +204,26 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
     String? unitId,
   }) async {
     try {
-      final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      final dateStr =
+          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
-      // 1. Get flight orders for the date
+      // 1. Get flight orders for the date (only approved/closed/reopened)
       var query = _client
           .from('flight_orders')
-          .select('id, order_number, unit_id, units(name)')
-          .eq('operation_date', dateStr);
+          .select('id, order_number, unit_id, status, units(name, code, acronym)')
+          .eq('operation_date', dateStr)
+          .inFilter('status', ['approved', 'closed', 'reopened']);
 
       if (unitId != null) {
         query = query.eq('unit_id', unitId);
       }
 
       final orderRows = await query;
-      if ((orderRows as List).isEmpty) return const AppSuccess([]);
+      if (orderRows.isEmpty) return const AppSuccess([]);
 
       final orders = <String, Map<String, dynamic>>{};
       for (final o in orderRows) {
-        final m = o as Map<String, dynamic>;
+        final m = Map<String, dynamic>.from(o);
         orders[m['id'].toString()] = m;
       }
 
@@ -233,11 +251,15 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
             .inFilter('id', baseItems.map((i) => i.aircraftId).toList()),
         _client
             .from('flight_order_routes')
-            .select('*')
+            .select(
+              '*, origin_route:origin_route_id(airport_name, icao_code, latitude, longitude), destination_route:destination_route_id(airport_name, icao_code, latitude, longitude)',
+            )
             .inFilter('flight_order_item_id', itemIds),
         _client
             .from('flight_order_crew')
-            .select('*, crew_member:crew_member_id(grade,first_name,last_name,callsign)')
+            .select(
+              '*, crew_member:crew_member_id(grade,first_name,last_name,callsign)',
+            )
             .inFilter('flight_order_item_id', itemIds),
         _client
             .from('flight_order_state_events')
@@ -260,34 +282,46 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
         final ac = aircraftMap[item.aircraftId];
         final order = orders[item.flightOrderId];
         final itemRoutes = routeRows
-            .where((r) =>
-                (r as Map<String, dynamic>)['flight_order_item_id'].toString() ==
-                item.id)
-            .map((r) =>
-                FlightOrderRoute.fromJson(r as Map<String, dynamic>))
+            .where(
+              (r) =>
+                  (r as Map<String, dynamic>)['flight_order_item_id']
+                      .toString() ==
+                  item.id,
+            )
+            .map((r) => FlightOrderRoute.fromJson(r as Map<String, dynamic>))
             .toList();
         final itemCrew = crewRows
-            .where((c) =>
-                (c as Map<String, dynamic>)['flight_order_item_id'].toString() ==
-                item.id)
-            .map((c) =>
-                FlightOrderCrew.fromJson(c as Map<String, dynamic>))
+            .where(
+              (c) =>
+                  (c as Map<String, dynamic>)['flight_order_item_id']
+                      .toString() ==
+                  item.id,
+            )
+            .map((c) => FlightOrderCrew.fromJson(c as Map<String, dynamic>))
             .toList();
         final itemEvents = eventRows
-            .where((e) =>
-                (e as Map<String, dynamic>)['flight_order_item_id'].toString() ==
-                item.id)
-            .map((e) => FlightOrderStateEvent.fromJson(
-                e as Map<String, dynamic>))
+            .where(
+              (e) =>
+                  (e as Map<String, dynamic>)['flight_order_item_id']
+                      .toString() ==
+                  item.id,
+            )
+            .map(
+              (e) => FlightOrderStateEvent.fromJson(e as Map<String, dynamic>),
+            )
             .toList();
 
         return item.copyWith(
           aircraftRegistration: ac?['tail_number']?.toString(),
           aircraftModel: ac?['model']?.toString(),
           orderNumber: order?['order_number']?.toString(),
+          unitId: order?['unit_id']?.toString(),
           unitName: (order?['units'] is Map)
-              ? (order!['units'] as Map)['name']?.toString()
+              ? ((order!['units'] as Map)['acronym']?.toString() ??
+                    (order['units'] as Map)['code']?.toString() ??
+                    (order['units'] as Map)['name']?.toString())
               : null,
+          orderStatus: order?['status']?.toString(),
           routes: itemRoutes,
           crew: itemCrew,
           stateEvents: itemEvents,
@@ -298,23 +332,27 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
     } on FunctionException catch (e) {
       return AppFailure(_errorFromBody(e.details));
     } catch (_) {
-      return const AppFailure(AppError(
-        code: 'SYSTEM_UNEXPECTED',
-        message: 'No se pudieron cargar los vuelos.',
-        category: AppErrorCategory.system,
-        severity: AppErrorSeverity.high,
-      ));
+      return const AppFailure(
+        AppError(
+          code: 'SYSTEM_UNEXPECTED',
+          message: 'No se pudieron cargar los vuelos.',
+          category: AppErrorCategory.system,
+          severity: AppErrorSeverity.high,
+        ),
+      );
     }
   }
 
   FlightOrderItem _parseItem(Map<String, dynamic> json) {
     final item = FlightOrderItem.fromJson(json);
 
-    final routes = (json['routes'] as List<dynamic>?)
+    final routes =
+        (json['routes'] as List<dynamic>?)
             ?.map((r) => FlightOrderRoute.fromJson(r as Map<String, dynamic>))
             .toList() ??
         [];
-    final crew = (json['crew'] as List<dynamic>?)
+    final crew =
+        (json['crew'] as List<dynamic>?)
             ?.map((c) => FlightOrderCrew.fromJson(c as Map<String, dynamic>))
             .toList() ??
         [];
@@ -332,9 +370,11 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
       }
     }
 
-    final stateEvents = (json['state_events'] as List<dynamic>?)
-            ?.map((e) =>
-                FlightOrderStateEvent.fromJson(e as Map<String, dynamic>))
+    final stateEvents =
+        (json['state_events'] as List<dynamic>?)
+            ?.map(
+              (e) => FlightOrderStateEvent.fromJson(e as Map<String, dynamic>),
+            )
             .toList() ??
         [];
 
@@ -364,8 +404,10 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
         'items': ?items,
       };
 
-      final response =
-          await _client.functions.invoke('manage-flight-order', body: body);
+      final response = await _client.functions.invoke(
+        'manage-flight-order',
+        body: body,
+      );
 
       if (response.data is Map && (response.data as Map)['ok'] == true) {
         final data = (response.data as Map)['data'] as Map<String, dynamic>;
@@ -376,18 +418,22 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
     } on FunctionException catch (e) {
       return AppFailure(_errorFromBody(e.details));
     } catch (_) {
-      return const AppFailure(AppError(
-        code: 'SYSTEM_UNEXPECTED',
-        message: 'No se pudo procesar la orden de vuelo.',
-        category: AppErrorCategory.system,
-        severity: AppErrorSeverity.high,
-      ));
+      return const AppFailure(
+        AppError(
+          code: 'SYSTEM_UNEXPECTED',
+          message: 'No se pudo procesar la orden de vuelo.',
+          category: AppErrorCategory.system,
+          severity: AppErrorSeverity.high,
+        ),
+      );
     }
   }
 
   @override
   Future<AppResult<void>> advanceItemState(
-      String itemId, String nextStatus) async {
+    String itemId,
+    String nextStatus,
+  ) async {
     try {
       final response = await _client.functions.invoke(
         'manage-flight-order',
@@ -406,12 +452,14 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
     } on FunctionException catch (e) {
       return AppFailure(_errorFromBody(e.details));
     } catch (_) {
-      return const AppFailure(AppError(
-        code: 'SYSTEM_UNEXPECTED',
-        message: 'No se pudo actualizar el estado.',
-        category: AppErrorCategory.system,
-        severity: AppErrorSeverity.high,
-      ));
+      return const AppFailure(
+        AppError(
+          code: 'SYSTEM_UNEXPECTED',
+          message: 'No se pudo actualizar el estado.',
+          category: AppErrorCategory.system,
+          severity: AppErrorSeverity.high,
+        ),
+      );
     }
   }
 
@@ -438,12 +486,14 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
     } on FunctionException catch (e) {
       return AppFailure(_errorFromBody(e.details));
     } catch (_) {
-      return const AppFailure(AppError(
-        code: 'SYSTEM_UNEXPECTED',
-        message: 'No se pudo cancelar el vuelo.',
-        category: AppErrorCategory.system,
-        severity: AppErrorSeverity.high,
-      ));
+      return const AppFailure(
+        AppError(
+          code: 'SYSTEM_UNEXPECTED',
+          message: 'No se pudo cancelar el vuelo.',
+          category: AppErrorCategory.system,
+          severity: AppErrorSeverity.high,
+        ),
+      );
     }
   }
 
@@ -472,12 +522,14 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
     } on FunctionException catch (e) {
       return AppFailure(_errorFromBody(e.details));
     } catch (_) {
-      return const AppFailure(AppError(
-        code: 'SYSTEM_UNEXPECTED',
-        message: 'No se pudo agregar el vuelo.',
-        category: AppErrorCategory.system,
-        severity: AppErrorSeverity.high,
-      ));
+      return const AppFailure(
+        AppError(
+          code: 'SYSTEM_UNEXPECTED',
+          message: 'No se pudo agregar el vuelo.',
+          category: AppErrorCategory.system,
+          severity: AppErrorSeverity.high,
+        ),
+      );
     }
   }
 
@@ -508,12 +560,14 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
     } on FunctionException catch (e) {
       return AppFailure(_errorFromBody(e.details));
     } catch (_) {
-      return const AppFailure(AppError(
-        code: 'SYSTEM_UNEXPECTED',
-        message: 'No se pudo actualizar el vuelo.',
-        category: AppErrorCategory.system,
-        severity: AppErrorSeverity.high,
-      ));
+      return const AppFailure(
+        AppError(
+          code: 'SYSTEM_UNEXPECTED',
+          message: 'No se pudo actualizar el vuelo.',
+          category: AppErrorCategory.system,
+          severity: AppErrorSeverity.high,
+        ),
+      );
     }
   }
 
@@ -542,12 +596,14 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
     } on FunctionException catch (e) {
       return AppFailure(_errorFromBody(e.details));
     } catch (_) {
-      return const AppFailure(AppError(
-        code: 'SYSTEM_UNEXPECTED',
-        message: 'No se pudo agregar el perfil.',
-        category: AppErrorCategory.system,
-        severity: AppErrorSeverity.high,
-      ));
+      return const AppFailure(
+        AppError(
+          code: 'SYSTEM_UNEXPECTED',
+          message: 'No se pudo agregar el perfil.',
+          category: AppErrorCategory.system,
+          severity: AppErrorSeverity.high,
+        ),
+      );
     }
   }
 
@@ -556,10 +612,7 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
     try {
       final response = await _client.functions.invoke(
         'manage-flight-order',
-        body: {
-          'action': 'remove_profile',
-          'profile_id': profileId,
-        },
+        body: {'action': 'remove_profile', 'profile_id': profileId},
       );
 
       if (response.data is Map && (response.data as Map)['ok'] == true) {
@@ -570,18 +623,21 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
     } on FunctionException catch (e) {
       return AppFailure(_errorFromBody(e.details));
     } catch (_) {
-      return const AppFailure(AppError(
-        code: 'SYSTEM_UNEXPECTED',
-        message: 'No se pudo eliminar el perfil.',
-        category: AppErrorCategory.system,
-        severity: AppErrorSeverity.high,
-      ));
+      return const AppFailure(
+        AppError(
+          code: 'SYSTEM_UNEXPECTED',
+          message: 'No se pudo eliminar el perfil.',
+          category: AppErrorCategory.system,
+          severity: AppErrorSeverity.high,
+        ),
+      );
     }
   }
 
   @override
   Future<AppResult<List<FlightOrderProfile>>> listOrderProfiles(
-      String flightOrderId) async {
+    String flightOrderId,
+  ) async {
     try {
       final rows = await _client
           .from('flight_order_profiles')
@@ -597,12 +653,14 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
     } on FunctionException catch (e) {
       return AppFailure(_errorFromBody(e.details));
     } catch (_) {
-      return const AppFailure(AppError(
-        code: 'SYSTEM_UNEXPECTED',
-        message: 'No se pudieron cargar los perfiles.',
-        category: AppErrorCategory.system,
-        severity: AppErrorSeverity.high,
-      ));
+      return const AppFailure(
+        AppError(
+          code: 'SYSTEM_UNEXPECTED',
+          message: 'No se pudieron cargar los perfiles.',
+          category: AppErrorCategory.system,
+          severity: AppErrorSeverity.high,
+        ),
+      );
     }
   }
 
@@ -611,10 +669,7 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
     try {
       final response = await _client.functions.invoke(
         'manage-flight-order',
-        body: {
-          'action': 'delete',
-          'flight_order_id': flightOrderId,
-        },
+        body: {'action': 'delete', 'flight_order_id': flightOrderId},
       );
 
       if (response.data is Map && (response.data as Map)['ok'] == true) {
@@ -625,12 +680,14 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
     } on FunctionException catch (e) {
       return AppFailure(_errorFromBody(e.details));
     } catch (_) {
-      return const AppFailure(AppError(
-        code: 'SYSTEM_UNEXPECTED',
-        message: 'No se pudo borrar la orden de vuelo.',
-        category: AppErrorCategory.system,
-        severity: AppErrorSeverity.high,
-      ));
+      return const AppFailure(
+        AppError(
+          code: 'SYSTEM_UNEXPECTED',
+          message: 'No se pudo borrar la orden de vuelo.',
+          category: AppErrorCategory.system,
+          severity: AppErrorSeverity.high,
+        ),
+      );
     }
   }
 

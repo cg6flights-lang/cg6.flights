@@ -35,14 +35,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'CG6 Flights',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Centro de Gestion y Control de Vuelos Diarios',
-              style: Theme.of(context).textTheme.bodyMedium,
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 280),
+                child: Image.asset(
+                  'cg6_logo/logo_cg6.png',
+                  height: 132,
+                  fit: BoxFit.contain,
+                  semanticLabel: 'CG6 Flights',
+                ),
+              ),
             ),
             const SizedBox(height: 24),
             TextFormField(

@@ -104,6 +104,7 @@ class FlightOrderItem {
     this.orderNumber,
     this.unitName,
     this.unitId,
+    this.orderStatus,
     this.routes = const [],
     this.crew = const [],
     this.profiles = const [],
@@ -134,6 +135,7 @@ class FlightOrderItem {
   final String? orderNumber;
   final String? unitName;
   final String? unitId;
+  final String? orderStatus;
   final List<FlightOrderRoute> routes;
   final List<FlightOrderCrew> crew;
   final List<FlightOrderProfile> profiles;
@@ -176,6 +178,7 @@ class FlightOrderItem {
     String? orderNumber,
     String? unitName,
     String? unitId,
+    String? orderStatus,
     List<FlightOrderRoute>? routes,
     List<FlightOrderCrew>? crew,
     List<FlightOrderProfile>? profiles,
@@ -206,6 +209,7 @@ class FlightOrderItem {
       orderNumber: orderNumber ?? this.orderNumber,
       unitName: unitName ?? this.unitName,
       unitId: unitId ?? this.unitId,
+      orderStatus: orderStatus ?? this.orderStatus,
       routes: routes ?? this.routes,
       crew: crew ?? this.crew,
       profiles: profiles ?? this.profiles,
@@ -257,6 +261,7 @@ class FlightOrderItem {
       orderNumber: json['order_number']?.toString(),
       unitName: json['unit_name']?.toString(),
       unitId: json['unit_id']?.toString(),
+      orderStatus: json['order_status']?.toString(),
     );
   }
 
@@ -298,6 +303,12 @@ class FlightOrderRoute {
     this.destinationLng,
     this.originRouteName,
     this.destinationRouteName,
+    this.originIcao,
+    this.destinationIcao,
+    this.originRouteLat,
+    this.originRouteLng,
+    this.destinationRouteLat,
+    this.destinationRouteLng,
   });
 
   final String id;
@@ -316,6 +327,12 @@ class FlightOrderRoute {
   final double? destinationLng;
   final String? originRouteName;
   final String? destinationRouteName;
+  final String? originIcao;
+  final String? destinationIcao;
+  final double? originRouteLat;
+  final double? originRouteLng;
+  final double? destinationRouteLat;
+  final double? destinationRouteLng;
 
   String get originDisplay {
     if (originType == 'airport' && originRouteName != null) return originRouteName!;
@@ -332,6 +349,24 @@ class FlightOrderRoute {
   String get displayLabel => '$originDisplay → $destinationDisplay';
 
   factory FlightOrderRoute.fromJson(Map<String, dynamic> json) {
+    // Coordinates from linked master route (fallback)
+    final orLat = json['origin_route'] is Map
+        ? double.tryParse(
+            (json['origin_route'] as Map)['latitude']?.toString() ?? '')
+        : null;
+    final orLng = json['origin_route'] is Map
+        ? double.tryParse(
+            (json['origin_route'] as Map)['longitude']?.toString() ?? '')
+        : null;
+    final destLat = json['destination_route'] is Map
+        ? double.tryParse(
+            (json['destination_route'] as Map)['latitude']?.toString() ?? '')
+        : null;
+    final destLng = json['destination_route'] is Map
+        ? double.tryParse(
+            (json['destination_route'] as Map)['longitude']?.toString() ?? '')
+        : null;
+
     return FlightOrderRoute(
       id: json['id'].toString(),
       flightOrderItemId: json['flight_order_item_id'].toString(),
@@ -344,25 +379,35 @@ class FlightOrderRoute {
       originLabel: json['origin_label']?.toString(),
       originLat: json['origin_lat'] != null
           ? double.tryParse(json['origin_lat'].toString())
-          : null,
+          : orLat,
       originLng: json['origin_lng'] != null
           ? double.tryParse(json['origin_lng'].toString())
-          : null,
+          : orLng,
       destinationType: json['destination_type']?.toString() ?? 'airport',
       destinationRouteId: json['destination_route_id']?.toString(),
       destinationLabel: json['destination_label']?.toString(),
       destinationLat: json['destination_lat'] != null
           ? double.tryParse(json['destination_lat'].toString())
-          : null,
+          : destLat,
       destinationLng: json['destination_lng'] != null
           ? double.tryParse(json['destination_lng'].toString())
-          : null,
+          : destLng,
       originRouteName: json['origin_route'] is Map
           ? (json['origin_route'] as Map)['airport_name']?.toString()
           : null,
       destinationRouteName: json['destination_route'] is Map
           ? (json['destination_route'] as Map)['airport_name']?.toString()
           : null,
+      originIcao: json['origin_route'] is Map
+          ? (json['origin_route'] as Map)['icao_code']?.toString()
+          : null,
+      destinationIcao: json['destination_route'] is Map
+          ? (json['destination_route'] as Map)['icao_code']?.toString()
+          : null,
+      originRouteLat: orLat,
+      originRouteLng: orLng,
+      destinationRouteLat: destLat,
+      destinationRouteLng: destLng,
     );
   }
 
