@@ -96,6 +96,7 @@ where key in (
   'flight_orders.close',
   'flights.read',
   'closures.review',
+  'audit.read',
   'history.read',
   'notifications.read',
   'messages.read',

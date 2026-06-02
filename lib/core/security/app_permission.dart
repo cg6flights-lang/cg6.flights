@@ -119,6 +119,7 @@ const rolePermissionMatrix = <AppRole, Set<String>>{
     AppPermission.flightOrdersClose,
     AppPermission.flightsRead,
     AppPermission.closuresReview,
+    AppPermission.auditRead,
     AppPermission.historyRead,
     AppPermission.notificationsRead,
     AppPermission.messagesRead,

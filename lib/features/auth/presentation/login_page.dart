@@ -1,4 +1,5 @@
 import 'package:cg6_flights/app/i18n/app_localizations.dart';
+import 'package:cg6_flights/core/state/theme_mode_controller.dart';
 import 'package:cg6_flights/features/auth/application/session_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -114,25 +115,47 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 }
 
-class _AuthScaffold extends StatelessWidget {
+class _AuthScaffold extends ConsumerWidget {
   const _AuthScaffold({required this.child});
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeProvider);
     return Scaffold(
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Card(
-                child: Padding(padding: const EdgeInsets.all(24), child: child),
+        child: Stack(
+          children: [
+            Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: Card(
+                    child:
+                        Padding(padding: const EdgeInsets.all(24), child: child),
+                  ),
+                ),
               ),
             ),
-          ),
+            Positioned(
+              top: 4,
+              right: 4,
+              child: IconButton(
+                tooltip: themeMode == ThemeMode.dark
+                    ? 'Modo claro'
+                    : 'Modo oscuro',
+                onPressed: () =>
+                    ref.read(themeModeProvider.notifier).toggle(),
+                icon: Icon(
+                  themeMode == ThemeMode.dark
+                      ? Icons.light_mode_outlined
+                      : Icons.dark_mode_outlined,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

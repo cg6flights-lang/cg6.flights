@@ -5,6 +5,7 @@ import 'package:cg6_flights/features/auth/application/session_controller.dart';
 import 'package:cg6_flights/features/auth/domain/app_user.dart';
 import 'package:cg6_flights/shared/widgets/app_badges.dart';
 import 'package:cg6_flights/shared/widgets/profile_modal.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -81,16 +82,7 @@ class _AppShellState extends ConsumerState<AppShell> {
         return Scaffold(
           appBar: AppBar(
             titleSpacing: 12,
-            title: SizedBox(
-              width: 150,
-              height: 38,
-              child: Image.asset(
-                'cg6_logo/logo_cg6.png',
-                fit: BoxFit.contain,
-                alignment: Alignment.centerLeft,
-                semanticLabel: 'CG6 Flights',
-              ),
-            ),
+            title: _HeaderBrand(compact: compact),
             actions: [
               _CalendarIcon(),
               const SizedBox(width: 4),
@@ -115,13 +107,19 @@ class _AppShellState extends ConsumerState<AppShell> {
                     : 'Cambiar a Espanol',
                 child: IconButton(
                   onPressed: () => localeNotifier.toggle(),
-                  icon: Text(
-                    langCode == 'es' ? 'EN' : 'ES',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
+                  icon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.language, size: 18),
+                      const SizedBox(width: 4),
+                      Text(
+                        langCode == 'es' ? 'EN' : 'ES',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -499,7 +497,7 @@ class _UserInfoHeader extends StatelessWidget {
   }
 }
 
-class _NavRailTile extends StatelessWidget {
+class _NavRailTile extends StatefulWidget {
   const _NavRailTile({
     required this.icon,
     required this.selected,
@@ -511,26 +509,47 @@ class _NavRailTile extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_NavRailTile> createState() => _NavRailTileState();
+}
+
+class _NavRailTileState extends State<_NavRailTile> {
+  bool _hovered = false;
+  int _exitToken = 0;
+
+  void _handleEnter(PointerEnterEvent event) {
+    _exitToken++;
+    if (!_hovered) setState(() => _hovered = true);
+  }
+
+  void _handleExit(PointerExitEvent event) {
+    final token = ++_exitToken;
+    Future<void>.delayed(const Duration(milliseconds: 80), () {
+      if (!mounted || token != _exitToken) return;
+      if (_hovered) setState(() => _hovered = false);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final color = selected
+    final color = widget.selected
         ? Theme.of(context).colorScheme.primary
         : Theme.of(context).colorScheme.onSurfaceVariant;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Material(
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(16)),
-        ),
-        color: selected
-            ? Theme.of(context).colorScheme.primaryContainer
-            : Colors.transparent,
-        child: InkWell(
-          borderRadius: const BorderRadius.all(Radius.circular(16)),
-          onTap: onTap,
-          child: SizedBox(
-            width: 72,
-            height: 52,
-            child: Icon(icon, color: color, size: 24),
+      child: MouseRegion(
+        onEnter: _handleEnter,
+        onExit: _handleExit,
+        child: AnimatedScale(
+          scale: _hovered ? 1.35 : 1,
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeOutCubic,
+          child: GestureDetector(
+            onTap: widget.onTap,
+            child: SizedBox(
+              width: 72,
+              height: 52,
+              child: Icon(widget.icon, color: color, size: 24),
+            ),
           ),
         ),
       ),
@@ -561,6 +580,78 @@ class _ShellDrawer extends StatelessWidget {
             icon: Icon(item.icon),
             label: Text(AppLocalizations.of(context).t(item.labelKey)),
           ),
+      ],
+    );
+  }
+}
+
+class _HeaderBrand extends StatelessWidget {
+  const _HeaderBrand({required this.compact});
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Image.asset(
+          'cg6_logo/favicon_cg6.png',
+          height: compact ? 28 : 34,
+          width: compact ? 48 : 58,
+          fit: BoxFit.contain,
+          semanticLabel: 'CG6 Flights',
+        ),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text.rich(
+            TextSpan(
+              children: [
+                const TextSpan(
+                  text: 'CG6',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    fontStyle: FontStyle.italic,
+                    color: Color(0xFF005AD2),
+                    shadows: [
+                      Shadow(
+                        color: Color(0x660846B4),
+                        offset: Offset(1.2, 1.2),
+                        blurRadius: 0.8,
+                      ),
+                      Shadow(
+                        color: Color(0x380846B4),
+                        offset: Offset(0.5, 0.5),
+                        blurRadius: 2.0,
+                      ),
+                    ],
+                  ),
+                ),
+                if (!compact)
+                  const TextSpan(
+                    text: ' Flights',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      fontStyle: FontStyle.italic,
+                      color: Color(0xFF596F97),
+                    ),
+                  ),
+                const TextSpan(
+                  text: ' v1.0',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    fontStyle: FontStyle.italic,
+                    color: Color(0xFF4E6082),
+                  ),
+                ),
+              ],
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+        ),
       ],
     );
   }

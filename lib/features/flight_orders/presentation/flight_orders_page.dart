@@ -223,7 +223,7 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
                             Expanded(
                               flex: 2,
                               child: SizedBox(
-                                height: 550,
+                                height: MediaQuery.of(context).size.height - 280,
                                 child: AnimatedSwitcher(
                                   duration: const Duration(milliseconds: 350),
                                   switchInCurve: Curves.easeOut,

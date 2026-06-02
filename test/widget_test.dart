@@ -5,8 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('shows login as the initial public route', (tester) async {
-    await tester.pumpWidget(const ProviderScope(child: CG6App()));
-    await tester.pumpAndSettle();
+    await _pumpApp(tester);
 
     expect(
       find.byWidgetPredicate(
@@ -26,28 +25,38 @@ void main() {
   });
 
   testWidgets('local sign in reaches the protected dashboard', (tester) async {
-    await tester.pumpWidget(const ProviderScope(child: CG6App()));
-    await tester.pumpAndSettle();
+    await _pumpApp(tester);
 
     await tester.tap(find.byIcon(Icons.login));
-    await tester.pumpAndSettle();
+    await _pumpRouteChange(tester);
 
     expect(find.text('Dashboard operacional'), findsOneWidget);
     expect(find.text('Lider'), findsWidgets);
   });
 
   testWidgets('registration creates a pending access state', (tester) async {
-    await tester.pumpWidget(const ProviderScope(child: CG6App()));
-    await tester.pumpAndSettle();
+    await _pumpApp(tester);
 
     await tester.tap(find.text('Registro'));
-    await tester.pumpAndSettle();
+    await _pumpRouteChange(tester);
     await tester.enterText(find.byType(TextFormField).at(0), 'Usuario Nuevo');
     await tester.enterText(find.byType(TextFormField).at(1), 'nuevo@cg6.local');
     await tester.enterText(find.byType(TextFormField).at(2), 'password-local');
     await tester.tap(find.byIcon(Icons.person_add_alt));
-    await tester.pumpAndSettle();
+    await _pumpRouteChange(tester);
 
     expect(find.text('Acceso pendiente'), findsOneWidget);
   });
+}
+
+Future<void> _pumpApp(WidgetTester tester) async {
+  await tester.pumpWidget(const ProviderScope(child: CG6App()));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 100));
+}
+
+Future<void> _pumpRouteChange(WidgetTester tester) async {
+  for (var i = 0; i < 8; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
 }

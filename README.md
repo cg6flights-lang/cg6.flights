@@ -17,16 +17,20 @@ Implementation must follow the approved specs, contracts, governance rules, qual
 Without Supabase credentials the app runs in safe local mode for UI/guard validation.
 
 ```sh
-flutter run -d chrome
+scripts/cleanup_flutter_local.sh
+flutter run -d chrome --web-port=8080
 ```
 
 With Supabase:
 
 ```sh
-flutter run -d chrome \
-  --dart-define=SUPABASE_URL=https://your-project-ref.supabase.co \
-  --dart-define=SUPABASE_ANON_KEY=your-public-anon-key
+scripts/cleanup_flutter_local.sh
+flutter run -d chrome --web-port=8080 --dart-define-from-file=.env.json
 ```
+
+Use the workspace Flutter SDK configured in `.vscode/settings.json`.
+Do not leave parallel `flutter run` or temporary Chrome sessions alive before
+running tests or starting a new local deploy.
 
 ## Supabase local
 
