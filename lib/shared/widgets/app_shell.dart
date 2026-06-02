@@ -235,14 +235,6 @@ class _AppLoadingOverlayState extends State<_AppLoadingOverlay>
                   _OverlayDot(controller: _dotsController, index: i),
               ],
             ),
-            const SizedBox(height: 20),
-            Text(
-              'Cargando...',
-              style: TextStyle(
-                fontSize: 13,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
           ],
         ),
       ),

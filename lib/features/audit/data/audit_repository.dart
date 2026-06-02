@@ -73,7 +73,7 @@ class SupabaseAuditRepository implements AuditRepository {
       return const AppFailure(
         AppError(
           code: 'AUDIT_LOAD_FAILED',
-          message: 'No se pudo cargar el registro de auditoria.',
+          message: 'No se pudo cargar el registro de auditoría.',
           category: AppErrorCategory.data,
           severity: AppErrorSeverity.high,
         ),

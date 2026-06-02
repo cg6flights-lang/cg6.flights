@@ -99,7 +99,7 @@ class SupabaseAuthRepository implements AuthRepository {
         return const AppFailure(
           AppError(
             code: 'AUTH_SESSION_MISSING',
-            message: 'No se pudo iniciar sesion.',
+            message: 'No se pudo iniciar sesión.',
             category: AppErrorCategory.auth,
             severity: AppErrorSeverity.high,
           ),
@@ -199,7 +199,7 @@ class SupabaseAuthRepository implements AuthRepository {
       return const AppFailure(
         AppError(
           code: 'SYSTEM_UNEXPECTED',
-          message: 'No se pudo activar el primer Lider.',
+          message: 'No se pudo activar el primer Líder.',
           category: AppErrorCategory.system,
           severity: AppErrorSeverity.high,
         ),
