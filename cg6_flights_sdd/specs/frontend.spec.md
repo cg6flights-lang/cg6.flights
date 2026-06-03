@@ -217,9 +217,43 @@ Vista limitada de vuelo asignado y confirmación autorizada.
 - EXPORT: mostrar falla de generación desde Reports.
 - SYSTEM: mensaje seguro sin detalles internos.
 
-## 11.4 UI/UX — Flight Orders (Orden de Vuelo)
+## 11.4 UI/UX — Mensajes
 
 ### 11.4.1 Estructura de componentes
+
+| Componente | Responsabilidad |
+|---|---|
+| `MessagesPage` | Ruta única `/messages` con modo Chat/Publicaciones |
+| `MessageComposeDialog` | Inicio de chat privado con destinatario y cuerpo |
+| `MessagesRepository` | Streams realtime, envío de chat, vistos, publicaciones, comentarios y confirmaciones |
+
+### 11.4.2 Modo Chat
+
+- Primera columna: selector `Chat` / `Publicaciones`, indicador realtime, refresh y estado de permisos.
+- Segunda columna: lista de conversaciones por usuario con nombre, rol/unidad/email, último mensaje, hora, badge de no leídos y estado activo visual.
+- Tercera columna: chat privado con header del contacto, burbujas derecha/izquierda, composer inferior y ticks de enviado/visto.
+- El botón `Nuevo chat` se muestra solo con `messages.send`.
+- Los errores realtime no deben convertirse en estado vacío.
+
+### 11.4.3 Modo Publicaciones
+
+- Al seleccionar `Publicaciones`, la segunda columna se oculta y el timeline ocupa el espacio central.
+- Composer superior visible solo con `message_posts.create`.
+- Selector de alcance:
+  - global solo para roles globales;
+  - unidad para roles globales o roles de unidad dentro de su unidad.
+- Cards con autor, rol, fecha, scope, cuerpo, contador de comentarios, contador de vistos y botón de confirmación de lectura.
+- Todos los roles con `message_posts.comment` pueden comentar publicaciones visibles.
+
+### 11.4.4 Responsive
+
+- Desktop: multipanel.
+- Tablet: lista + detalle o timeline expandido.
+- Móvil: Chat alterna lista/detalle; Publicaciones usa timeline compacto.
+
+## 11.5 UI/UX — Flight Orders (Orden de Vuelo)
+
+### 11.5.1 Estructura de componentes
 
 | Componente | Archivo | Responsabilidad |
 |---|---|---|
@@ -229,7 +263,7 @@ Vista limitada de vuelo asignado y confirmación autorizada.
 | `FlightItemFormDialog` | `flight_item_form_dialog.dart` | Diálogo modal: agregar vuelo a orden (8 secciones) |
 | `FlightOrderPdfService` | `flight_order_pdf_service.dart` | Generación PDF A4 landscape |
 
-### 11.4.2 FlightOrdersPage
+### 11.5.2 FlightOrdersPage
 
 **Layout responsivo**:
 - ≥ 1100px: `Row` — DataTable (flex 3, altura 550px, scroll vertical) + `VerticalDivider` + Panel detalle (flex 2).
@@ -253,7 +287,7 @@ Vista limitada de vuelo asignado y confirmación autorizada.
 
 **Providers**: `_ordersListProvider` (FutureProvider local invalidado al crear/cambiar/borrar órdenes).
 
-### 11.4.3 FlightOrderDetailPanel
+### 11.5.3 FlightOrderDetailPanel
 
 **Encabezado**: N° Orden, Unidad, Fecha, chip de estado, botón "+" (agregar item, solo draft y canCreate).
 
@@ -277,7 +311,7 @@ Vista limitada de vuelo asignado y confirmación autorizada.
 - Lista de perfiles con botón eliminar (icono X)
 - Botón agregar perfil: diálogo con campo `description` obligatorio
 
-### 11.4.4 FlightOrderFormDialog
+### 11.5.4 FlightOrderFormDialog
 
 Diálogo `AlertDialog` (ancho 450px):
 - **Unidad**: `DropdownButtonFormField` cargado de `units` activas (orden `name`). Validación: requerido.
@@ -285,7 +319,7 @@ Diálogo `AlertDialog` (ancho 450px):
 - **Acciones**: Cancelar + Guardar (con spinner durante submit).
 - Llama a `manageFlightOrder(action: 'create')` vía repositorio.
 
-### 11.4.5 FlightItemFormDialog
+### 11.5.5 FlightItemFormDialog
 
 Diálogo extenso con 8 secciones:
 
@@ -298,7 +332,7 @@ Diálogo extenso con 8 secciones:
 7. **Perfiles**: `FilterChip` multi-select. Muestra perfiles definidos en la orden (`profile_number - description`).
 8. **Tripulación**: PC (dropdown requerido), CP (dropdown opcional), checkbox "¿Mecánico a bordo?" → MA (dropdown condicional). Function code opcional por tripulante (dropdown PS/IP/PM/CP/CO/PI/PR). Datos cargados de `crew_members` filtrados por unidad.
 
-### 11.4.6 FlightOrderPdfService
+### 11.5.6 FlightOrderPdfService
 
 **Formato**: A4 landscape, package `pdf`.
 **Contenido**:
@@ -308,7 +342,7 @@ Diálogo extenso con 8 secciones:
 - Sección firmas: Comando de Unidad, Administrador de Unidad
 **Descarga**: `dart:html` — `AnchorElement` con `Blob` + `URL.createObjectURL`.
 
-### 11.4.7 Traducciones requeridas
+### 11.5.7 Traducciones requeridas
 
 Keys bajo prefijo `flightOrders.*` (~60 keys ES/EN):
 - `orderNumber`, `unit`, `operationDate`, `status`, `add`, `submit`, `approve`, `observe`, `close`, `reopen`, `delete`, `deleteTitle`, `deleteConfirm`, `exportPdf`, `exportingPdf`, `pdfExported`, `loadFailed`, `empty`, `draft`, `submitted`, `observed`, `approved`, `closed`, `reopened`

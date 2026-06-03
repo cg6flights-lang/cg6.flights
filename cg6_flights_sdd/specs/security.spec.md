@@ -52,6 +52,7 @@ Permisos mínimos:
 - `audit.read`.
 - `notifications.read`, `notifications.manage`.
 - `messages.read`, `messages.send`.
+- `message_posts.read`, `message_posts.create`, `message_posts.comment`.
 - `reports.read`, `reports.export`.
 - `calendar.read`, `maps.read`, `profile.update`, `settings.manage`.
 
@@ -61,6 +62,7 @@ Permisos mínimos:
 - Roles de unidad solo operan su unidad.
 - TTAA solo ve información asignada o autorizada.
 - El alcance se valida en UI, services, RLS y Edge Functions.
+- Los chats privados son excepción de privacidad: solo remitente y destinatario pueden leerlos, incluso frente a roles globales.
 
 ## 6. RLS
 
@@ -121,6 +123,7 @@ Obligatoria para:
 
 - Canales filtrados por unidad o usuario.
 - Prohibido realtime global de operaciones.
+- Mensajes privados y publicaciones usan RLS antes de entregar eventos realtime.
 - No enviar secretos ni datos fuera de alcance.
 
 ## 13. Headers y despliegue web
