@@ -251,9 +251,27 @@ Vista limitada de vuelo asignado y confirmación autorizada.
 - Tablet: lista + detalle o timeline expandido.
 - Móvil: Chat alterna lista/detalle; Publicaciones usa timeline compacto.
 
-## 11.5 UI/UX — Flight Orders (Orden de Vuelo)
+## 11.5 UI/UX — Calendario Operacional
 
-### 11.5.1 Estructura de componentes
+- `/calendar` reemplaza el stub por una vista operacional de actividades próximas.
+- Layout de referencia:
+  - tabs superiores `Resumen`, `Calendario`, `Actividades`;
+  - tarjeta principal con calendario mensual compacto a la izquierda;
+  - lista de actividades próximas a la derecha;
+  - cards con fecha, estado, tipo, hora, ubicación y descripción corta.
+- `Nueva actividad` solo visible con `calendar.manage`.
+- Estados visuales: `Programada`, `En curso`, `Completada`, `Cancelada`.
+- El ícono de calendario del header conserva badge del día, abre un preview tipo menú con mini calendario, alertas próximas y botón `Ampliar` hacia `/calendar`.
+- Al abrir `/calendar`, el día seleccionado por defecto es hoy y la lista base muestra las actividades del mes visible, excluyendo meses auxiliares.
+- Si el día seleccionado tiene actividades, se muestra un panel operacional con acciones para usuarios con `calendar.manage`: iniciar, modificar fecha y confirmar realizada.
+- La parte inferior muestra un Gantt mensual con barras por duración, color por tipo, estado visual, línea de hoy y marcador del día seleccionado.
+- Responsive:
+  - desktop: calendario y lista en dos columnas;
+  - tablet/móvil: calendario arriba, lista debajo, Gantt scrolleable sin cortes.
+
+## 11.6 UI/UX — Flight Orders (Orden de Vuelo)
+
+### 11.6.1 Estructura de componentes
 
 | Componente | Archivo | Responsabilidad |
 |---|---|---|
@@ -263,7 +281,7 @@ Vista limitada de vuelo asignado y confirmación autorizada.
 | `FlightItemFormDialog` | `flight_item_form_dialog.dart` | Diálogo modal: agregar vuelo a orden (8 secciones) |
 | `FlightOrderPdfService` | `flight_order_pdf_service.dart` | Generación PDF A4 landscape |
 
-### 11.5.2 FlightOrdersPage
+### 11.6.2 FlightOrdersPage
 
 **Layout responsivo**:
 - ≥ 1100px: `Row` — DataTable (flex 3, altura 550px, scroll vertical) + `VerticalDivider` + Panel detalle (flex 2).
@@ -287,7 +305,7 @@ Vista limitada de vuelo asignado y confirmación autorizada.
 
 **Providers**: `_ordersListProvider` (FutureProvider local invalidado al crear/cambiar/borrar órdenes).
 
-### 11.5.3 FlightOrderDetailPanel
+### 11.6.3 FlightOrderDetailPanel
 
 **Encabezado**: N° Orden, Unidad, Fecha, chip de estado, botón "+" (agregar item, solo draft y canCreate).
 
@@ -311,7 +329,7 @@ Vista limitada de vuelo asignado y confirmación autorizada.
 - Lista de perfiles con botón eliminar (icono X)
 - Botón agregar perfil: diálogo con campo `description` obligatorio
 
-### 11.5.4 FlightOrderFormDialog
+### 11.6.4 FlightOrderFormDialog
 
 Diálogo `AlertDialog` (ancho 450px):
 - **Unidad**: `DropdownButtonFormField` cargado de `units` activas (orden `name`). Validación: requerido.
@@ -319,7 +337,7 @@ Diálogo `AlertDialog` (ancho 450px):
 - **Acciones**: Cancelar + Guardar (con spinner durante submit).
 - Llama a `manageFlightOrder(action: 'create')` vía repositorio.
 
-### 11.5.5 FlightItemFormDialog
+### 11.6.5 FlightItemFormDialog
 
 Diálogo extenso con 8 secciones:
 
@@ -332,7 +350,7 @@ Diálogo extenso con 8 secciones:
 7. **Perfiles**: `FilterChip` multi-select. Muestra perfiles definidos en la orden (`profile_number - description`).
 8. **Tripulación**: PC (dropdown requerido), CP (dropdown opcional), checkbox "¿Mecánico a bordo?" → MA (dropdown condicional). Function code opcional por tripulante (dropdown PS/IP/PM/CP/CO/PI/PR). Datos cargados de `crew_members` filtrados por unidad.
 
-### 11.5.6 FlightOrderPdfService
+### 11.6.6 FlightOrderPdfService
 
 **Formato**: A4 landscape, package `pdf`.
 **Contenido**:
@@ -342,7 +360,7 @@ Diálogo extenso con 8 secciones:
 - Sección firmas: Comando de Unidad, Administrador de Unidad
 **Descarga**: `dart:html` — `AnchorElement` con `Blob` + `URL.createObjectURL`.
 
-### 11.5.7 Traducciones requeridas
+### 11.6.7 Traducciones requeridas
 
 Keys bajo prefijo `flightOrders.*` (~60 keys ES/EN):
 - `orderNumber`, `unit`, `operationDate`, `status`, `add`, `submit`, `approve`, `observe`, `close`, `reopen`, `delete`, `deleteTitle`, `deleteConfirm`, `exportPdf`, `exportingPdf`, `pdfExported`, `loadFailed`, `empty`, `draft`, `submitted`, `observed`, `approved`, `closed`, `reopened`

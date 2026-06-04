@@ -233,6 +233,26 @@ Reglas:
 - `read_at` timestamptz nullable.
 - `created_at`.
 
+### calendar_events
+
+- `id` UUID PK.
+- `title` text.
+- `description` text nullable.
+- `location` text nullable.
+- `event_type` text (`operations`, `training`, `maintenance`, `briefing`, `administrative`, `other`).
+- `status` text (`scheduled`, `in_progress`, `completed`, `cancelled`).
+- `starts_at` timestamptz.
+- `ends_at` timestamptz.
+- `created_by` UUID FK profiles.
+- `created_at`, `updated_at`, `deleted_at`.
+
+Reglas:
+
+- `ends_at >= starts_at`.
+- Lectura para usuarios activos con `calendar.read`.
+- Gestión solo vía Edge Function para usuarios con `calendar.manage`.
+- Eliminación ordinaria es lógica mediante `deleted_at`.
+
 ### messages
 
 - `id` UUID PK.
@@ -323,6 +343,8 @@ Reglas:
 - `flight_order_profiles(flight_order_id, profile_number)`.
 - `flight_order_item_profiles(flight_order_item_id, profile_id)`.
 - `notifications(recipient_id, read_at)`.
+- `calendar_events(starts_at)`.
+- `calendar_events(status, starts_at)`.
 - `messages(sender_id, created_at desc)`.
 - `messages(recipient_id, created_at desc)`.
 - `message_reads(message_id, profile_id)`.
@@ -352,6 +374,7 @@ Políticas base:
 - Usuario pending, inactive o sin rol no accede a datos operativos.
 - Excepción de privacidad: `messages` de chat privado solo permite lectura a remitente o destinatario aunque el usuario sea líder o administrador global.
 - Publicaciones (`message_posts`) admiten alcance global o unidad; comentarios y confirmaciones siguen la visibilidad del post.
+- Calendario (`calendar_events`) es global de lectura para todo usuario activo con `calendar.read`; `calendar.manage` queda limitado a líder y administrador general.
 
 ## 9. Integridad y reglas DB
 

@@ -53,6 +53,7 @@ Permisos mínimos:
 - `notifications.read`, `notifications.manage`.
 - `messages.read`, `messages.send`.
 - `message_posts.read`, `message_posts.create`, `message_posts.comment`.
+- `calendar.manage`.
 - `reports.read`, `reports.export`.
 - `calendar.read`, `maps.read`, `profile.update`, `settings.manage`.
 
@@ -63,6 +64,7 @@ Permisos mínimos:
 - TTAA solo ve información asignada o autorizada.
 - El alcance se valida en UI, services, RLS y Edge Functions.
 - Los chats privados son excepción de privacidad: solo remitente y destinatario pueden leerlos, incluso frente a roles globales.
+- `calendar.manage` solo se concede a leader y general_admin; `calendar.read` se concede a todos los roles activos.
 
 ## 6. RLS
 

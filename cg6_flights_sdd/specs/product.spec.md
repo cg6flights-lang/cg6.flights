@@ -180,6 +180,10 @@ Nota de implementación v1.0: RF-033 pertenece al módulo Históricos y debe res
 - RF-102: El sistema debe generar notificaciones.
 - RF-103: El sistema debe permitir mensajería interna.
 - RF-104: El sistema debe soportar disposiciones generales y por unidad.
+- RF-105: El sistema debe permitir que Líder y Administrador General programen actividades globales en calendario para visualización de todos los usuarios activos.
+- RF-106: El sistema debe mostrar actividades próximas con fecha, hora, ubicación, tipo y estado.
+- RF-107: El sistema debe mostrar un preview rápido de calendario desde el header con alertas próximas y acceso `Ampliar` a la sección completa.
+- RF-108: El sistema debe visualizar actividades del mes en formato Gantt y permitir control diario de estado: iniciar, reprogramar y confirmar realización.
 
 ### UI y plataforma
 

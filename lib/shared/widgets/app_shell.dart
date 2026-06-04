@@ -1,14 +1,30 @@
 import 'package:cg6_flights/app/i18n/app_localizations.dart';
+import 'package:cg6_flights/core/results/app_result.dart';
+import 'package:cg6_flights/core/security/app_permission.dart';
 import 'package:cg6_flights/core/state/locale_controller.dart';
 import 'package:cg6_flights/core/state/theme_mode_controller.dart';
 import 'package:cg6_flights/features/auth/application/session_controller.dart';
 import 'package:cg6_flights/features/auth/domain/app_user.dart';
+import 'package:cg6_flights/features/calendar/data/calendar_repository.dart';
+import 'package:cg6_flights/features/calendar/domain/calendar_event.dart';
 import 'package:cg6_flights/shared/widgets/app_badges.dart';
 import 'package:cg6_flights/shared/widgets/profile_modal.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+final _calendarPreviewProvider =
+    FutureProvider.autoDispose<AppResult<List<CalendarEvent>>>((ref) {
+      final today = DateTime.now();
+      final from = DateTime(today.year, today.month, today.day);
+      final to = from.add(
+        const Duration(days: 14, hours: 23, minutes: 59, seconds: 59),
+      );
+      return ref
+          .read(calendarRepositoryProvider)
+          .listEvents(from: from, to: to);
+    });
 
 class NavigationItem {
   const NavigationItem({
@@ -286,28 +302,478 @@ class _OverlayDot extends StatelessWidget {
   }
 }
 
-class _CalendarIcon extends StatelessWidget {
+class _CalendarIcon extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final canRead = ref
+        .watch(sessionControllerProvider)
+        .can(AppPermission.calendarRead);
+    final now = DateTime.now();
+    final day = now.day.toString();
+    final icon = Badge(
+      smallSize: 14,
+      largeSize: 18,
+      padding: const EdgeInsets.all(1),
+      label: Text(
+        day,
+        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700),
+      ),
+      child: const Icon(Icons.calendar_month_outlined),
+    );
+    if (!canRead) {
+      return Tooltip(
+        message: l10n.t('calendar.loadFailed'),
+        child: IconButton(onPressed: null, icon: icon),
+      );
+    }
+
+    return Tooltip(
+      message: l10n.t('nav.calendar'),
+      child: PopupMenuButton<String>(
+        offset: const Offset(0, 48),
+        tooltip: l10n.t('nav.calendar'),
+        onSelected: (value) {
+          if (value == 'expand') context.go('/calendar');
+        },
+        itemBuilder: (context) => [
+          const PopupMenuItem<String>(
+            enabled: false,
+            child: _CalendarPreviewBody(),
+          ),
+          const PopupMenuDivider(),
+          PopupMenuItem<String>(
+            value: 'expand',
+            child: Row(
+              children: [
+                const Icon(Icons.open_in_full_outlined, size: 18),
+                const SizedBox(width: 8),
+                Text(l10n.t('calendar.expand')),
+              ],
+            ),
+          ),
+        ],
+        child: Padding(padding: const EdgeInsets.all(8), child: icon),
+      ),
+    );
+  }
+}
+
+class _CalendarPreviewBody extends ConsumerWidget {
+  const _CalendarPreviewBody();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final preview = ref.watch(_calendarPreviewProvider);
+    return SizedBox(
+      width: 340,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.calendar_month_outlined,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l10n.t('calendar.upcomingAlerts'),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          preview.when(
+            loading: () => const _HeaderPreviewLoading(),
+            error: (_, _) => _HeaderPreviewEmpty(
+              icon: Icons.error_outline,
+              title: l10n.t('calendar.loadFailed'),
+            ),
+            data: (result) => switch (result) {
+              AppFailure<List<CalendarEvent>>() => _HeaderPreviewEmpty(
+                icon: Icons.error_outline,
+                title: l10n.t('calendar.loadFailed'),
+              ),
+              AppSuccess<List<CalendarEvent>>(data: final events) =>
+                _CalendarPreviewContent(events: events),
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CalendarPreviewContent extends StatelessWidget {
+  const _CalendarPreviewContent({required this.events});
+
+  final List<CalendarEvent> events;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final sorted = [...events]
+      ..sort((a, b) => a.localStart.compareTo(b.localStart));
+    final activeEvents = sorted
+        .where((event) => event.status != CalendarEventStatus.cancelled)
+        .toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _PreviewMiniCalendar(events: activeEvents),
+        const SizedBox(height: 12),
+        if (activeEvents.isEmpty)
+          _HeaderPreviewEmpty(
+            icon: Icons.event_available_outlined,
+            title: l10n.t('calendar.noAlerts'),
+          )
+        else
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 240),
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  for (final event in activeEvents.take(4))
+                    _PreviewEventTile(event: event),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _PreviewMiniCalendar extends StatelessWidget {
+  const _PreviewMiniCalendar({required this.events});
+
+  final List<CalendarEvent> events;
+
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final day = now.day.toString();
-    return Tooltip(
-      message: 'Calendario',
-      child: IconButton(
-        onPressed: () => context.go('/calendar'),
-        icon: Badge(
-          smallSize: 14,
-          largeSize: 18,
-          padding: const EdgeInsets.all(1),
-          label: Text(
-            day,
-            style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700),
-          ),
-          child: const Icon(Icons.calendar_month_outlined),
+    final month = DateTime(now.year, now.month);
+    final days = _previewMonthGridDays(month);
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final weekDays = [
+      l10n.t('calendar.weekSun'),
+      l10n.t('calendar.weekMon'),
+      l10n.t('calendar.weekTue'),
+      l10n.t('calendar.weekWed'),
+      l10n.t('calendar.weekThu'),
+      l10n.t('calendar.weekFri'),
+      l10n.t('calendar.weekSat'),
+    ];
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.52),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${_previewMonthName(month.month, l10n)} ${month.year}',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                _TodayPill(),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                for (final label in weekDays)
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        label,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: days.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 7,
+                mainAxisSpacing: 4,
+                crossAxisSpacing: 4,
+              ),
+              itemBuilder: (context, index) {
+                final date = days[index];
+                final inMonth = date.month == month.month;
+                final today = _previewSameDay(date, now);
+                final hasEvent = events.any((event) => event.occursOn(date));
+                return DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: today ? scheme.primary : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Text(
+                        date.day.toString(),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: today
+                              ? scheme.onPrimary
+                              : inMonth
+                              ? scheme.onSurface
+                              : scheme.onSurfaceVariant.withValues(alpha: 0.42),
+                          fontWeight: today ? FontWeight.w900 : FontWeight.w700,
+                        ),
+                      ),
+                      if (hasEvent)
+                        Positioned(
+                          bottom: 3,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: today ? scheme.onPrimary : scheme.primary,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const SizedBox.square(dimension: 4),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
         ),
       ),
     );
   }
+}
+
+class _TodayPill extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Text(
+          l10n.t('calendar.today'),
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: theme.colorScheme.primary,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PreviewEventTile extends StatelessWidget {
+  const _PreviewEventTile({required this.event});
+
+  final CalendarEvent event;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border.all(color: scheme.outlineVariant),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Row(
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: _previewStatusColor(
+                    event.status,
+                    scheme,
+                  ).withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: SizedBox(
+                  width: 42,
+                  height: 48,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        event.localStart.day.toString().padLeft(2, '0'),
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      Text(
+                        _previewShortWeekDay(
+                          event.localStart,
+                          AppLocalizations.of(context),
+                        ),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      event.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      event.shortTime,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeaderPreviewLoading extends StatelessWidget {
+  const _HeaderPreviewLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 18),
+      child: Center(
+        child: SizedBox.square(
+          dimension: 22,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeaderPreviewEmpty extends StatelessWidget {
+  const _HeaderPreviewEmpty({required this.icon, required this.title});
+
+  final IconData icon;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Column(
+        children: [
+          Icon(icon, size: 30, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+List<DateTime> _previewMonthGridDays(DateTime visibleMonth) {
+  final firstDay = DateTime(visibleMonth.year, visibleMonth.month);
+  final start = firstDay.subtract(Duration(days: firstDay.weekday % 7));
+  return [for (var i = 0; i < 42; i++) start.add(Duration(days: i))];
+}
+
+bool _previewSameDay(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month && a.day == b.day;
+
+String _previewMonthName(int month, AppLocalizations l10n) {
+  return switch (month) {
+    1 => l10n.t('calendar.monthJan'),
+    2 => l10n.t('calendar.monthFeb'),
+    3 => l10n.t('calendar.monthMar'),
+    4 => l10n.t('calendar.monthApr'),
+    5 => l10n.t('calendar.monthMay'),
+    6 => l10n.t('calendar.monthJun'),
+    7 => l10n.t('calendar.monthJul'),
+    8 => l10n.t('calendar.monthAug'),
+    9 => l10n.t('calendar.monthSep'),
+    10 => l10n.t('calendar.monthOct'),
+    11 => l10n.t('calendar.monthNov'),
+    _ => l10n.t('calendar.monthDec'),
+  };
+}
+
+String _previewShortWeekDay(DateTime date, AppLocalizations l10n) {
+  return switch (date.weekday % 7) {
+    0 => l10n.t('calendar.weekSun'),
+    1 => l10n.t('calendar.weekMon'),
+    2 => l10n.t('calendar.weekTue'),
+    3 => l10n.t('calendar.weekWed'),
+    4 => l10n.t('calendar.weekThu'),
+    5 => l10n.t('calendar.weekFri'),
+    _ => l10n.t('calendar.weekSat'),
+  };
+}
+
+Color _previewStatusColor(CalendarEventStatus status, ColorScheme scheme) {
+  return switch (status) {
+    CalendarEventStatus.scheduled => scheme.primary,
+    CalendarEventStatus.inProgress => const Color(0xFFE0A100),
+    CalendarEventStatus.completed => const Color(0xFF2E9D57),
+    CalendarEventStatus.cancelled => scheme.error,
+  };
 }
 
 class _NotificationBell extends StatelessWidget {

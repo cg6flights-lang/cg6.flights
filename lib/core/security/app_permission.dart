@@ -40,6 +40,7 @@ class AppPermission {
   static const reportsRead = 'reports.read';
   static const reportsExport = 'reports.export';
   static const calendarRead = 'calendar.read';
+  static const calendarManage = 'calendar.manage';
   static const mapsRead = 'maps.read';
   static const profileUpdate = 'profile.update';
   static const settingsManage = 'settings.manage';
@@ -82,6 +83,7 @@ class AppPermission {
     reportsRead,
     reportsExport,
     calendarRead,
+    calendarManage,
     mapsRead,
     profileUpdate,
     settingsManage,
@@ -114,6 +116,7 @@ const rolePermissionMatrix = <AppRole, Set<String>>{
     AppPermission.reportsRead,
     AppPermission.reportsExport,
     AppPermission.calendarRead,
+    AppPermission.calendarManage,
     AppPermission.mapsRead,
     AppPermission.profileUpdate,
   },
@@ -173,6 +176,7 @@ const rolePermissionMatrix = <AppRole, Set<String>>{
     AppPermission.messagesRead,
     AppPermission.messagePostsRead,
     AppPermission.messagePostsComment,
+    AppPermission.calendarRead,
     AppPermission.mapsRead,
     AppPermission.profileUpdate,
   },

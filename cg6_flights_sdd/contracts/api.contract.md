@@ -308,6 +308,38 @@ Reglas:
 - Audita éxito, denegación y fallas relevantes.
 - Responde con `{ "ok": true, "data": { "post_id"|"comment_id": "uuid" } }` o error normalizado.
 
+### POST `/functions/v1/manage-calendar-event`
+
+Crea, edita, cambia estado o elimina lógicamente actividades globales del calendario operacional.
+
+Request:
+
+```json
+{
+  "action": "create|update|delete|status",
+  "event_id": "uuid|null",
+  "title": "string",
+  "description": "string|null",
+  "location": "string|null",
+  "event_type": "operations|training|maintenance|briefing|administrative|other",
+  "status": "scheduled|in_progress|completed|cancelled",
+  "starts_at": "ISO-8601",
+  "ends_at": "ISO-8601"
+}
+```
+
+Permisos:
+- `calendar.manage`.
+
+Reglas:
+- Requiere JWT válido y perfil activo.
+- Solo `leader` y `general_admin` pueden crear, editar o eliminar.
+- `status` actualiza solo el estado (`scheduled|in_progress|completed|cancelled`) y se usa para iniciar o confirmar actividades.
+- `delete` usa `deleted_at` y no eliminación física.
+- Valida título obligatorio, fechas válidas y `ends_at >= starts_at`.
+- Audita éxito, denegación y fallas relevantes.
+- Responde con `{ "ok": true, "data": { "event_id": "uuid" } }` o error normalizado.
+
 ## 7. Repositories directos con Supabase Client
 
 Permitidos solo con RLS y filtros explícitos:
@@ -318,6 +350,7 @@ Permitidos solo con RLS y filtros explícitos:
 - Catálogo de permisos.
 - Lectura de dashboards por vistas autorizadas.
 - Lectura de notificaciones del usuario.
+- Lectura de actividades de calendario autorizadas por RLS.
 - Lectura realtime de mensajes privados, vistos, publicaciones, comentarios y confirmaciones filtradas por RLS.
 - Inserción de chat privado y confirmaciones de lectura cuando RLS valida remitente/destinatario.
 

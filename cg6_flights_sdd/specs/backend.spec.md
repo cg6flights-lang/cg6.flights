@@ -149,6 +149,8 @@ No se agrega un servidor backend adicional en v1.0 salvo ADR aprobado.
 ### Calendar, Maps, Profile e I18n
 
 - Calendar expone eventos operativos autorizados.
+- Calendar permite crear, editar y eliminar lógicamente actividades globales solo a Líder y Administrador General mediante Edge Function auditada.
+- Calendar permite actualizar estado de actividad mediante acción auditada para iniciar o confirmar realización, restringida a `calendar.manage`.
 - Maps encapsula proveedor y no activa geolocalización remota sin política.
 - Profile administra foto hasta 5 MB en bucket privado.
 - I18n entrega llaves estables para Español e Inglés.
@@ -179,6 +181,8 @@ Todo DTO debe incluir validaciones de tipo, longitud y obligatoriedad.
 - MessagePostInput: scope (`global`/`unit`), body, unit_id opcional.
 - MessagePostCommentInput: post_id, body.
 - MessagePostReadInput: post_id.
+- CalendarEventInput: title, description opcional, location opcional, event_type, status, starts_at, ends_at.
+- CalendarEventStatusInput: event_id, status.
 
 ## 7. Validaciones obligatorias
 
@@ -201,6 +205,8 @@ Todo DTO debe incluir validaciones de tipo, longitud y obligatoriedad.
 - No se puede leer chat privado si el usuario no es remitente ni destinatario.
 - No se puede crear publicación global sin rol global.
 - No se puede crear publicación de unidad fuera del alcance permitido.
+- No se puede gestionar calendario sin `calendar.manage`.
+- No se puede guardar una actividad con `ends_at < starts_at`.
 
 ## 8. Respuesta normalizada
 
@@ -246,6 +252,8 @@ Todo DTO debe incluir validaciones de tipo, longitud y obligatoriedad.
 - MESSAGE_READ_FAILED.
 - MESSAGE_POST_SAVE_FAILED.
 - MESSAGE_POST_READ_FAILED.
+- CALENDAR_EVENTS_LOAD_FAILED.
+- CALENDAR_EVENT_SAVE_FAILED.
 - SYSTEM_UNEXPECTED.
 
 ## 10. Logging y auditoría

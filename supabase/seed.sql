@@ -35,6 +35,7 @@ values
   ('reports.read', 'Leer reportes', 'reports'),
   ('reports.export', 'Exportar reportes', 'reports'),
   ('calendar.read', 'Leer calendario', 'calendar'),
+  ('calendar.manage', 'Gestionar actividades del calendario', 'calendar'),
   ('routes.read', 'Leer rutas', 'routes'),
   ('routes.manage', 'Administrar rutas', 'routes'),
   ('maps.read', 'Leer mapas', 'maps'),
@@ -83,6 +84,7 @@ where key in (
   'reports.read',
   'reports.export',
   'calendar.read',
+  'calendar.manage',
   'maps.read',
   'profile.update'
 )
@@ -158,6 +160,7 @@ where key in (
   'messages.read',
   'message_posts.read',
   'message_posts.comment',
+  'calendar.read',
   'maps.read',
   'profile.update'
 )
