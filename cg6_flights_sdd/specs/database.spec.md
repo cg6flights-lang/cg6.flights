@@ -233,15 +233,76 @@ Reglas:
 - `read_at` timestamptz nullable.
 - `created_at`.
 
+### calendar_events
+
+- `id` UUID PK.
+- `title` text.
+- `description` text nullable.
+- `location` text nullable.
+- `event_type` text (`operations`, `training`, `maintenance`, `briefing`, `administrative`, `other`).
+- `status` text (`scheduled`, `in_progress`, `completed`, `cancelled`).
+- `starts_at` timestamptz.
+- `ends_at` timestamptz.
+- `created_by` UUID FK profiles.
+- `created_at`, `updated_at`, `deleted_at`.
+
+Reglas:
+
+- `ends_at >= starts_at`.
+- Lectura para usuarios activos con `calendar.read`.
+- Gestión solo vía Edge Function para usuarios con `calendar.manage`.
+- Eliminación ordinaria es lógica mediante `deleted_at`.
+
 ### messages
 
 - `id` UUID PK.
 - `sender_id` UUID FK profiles.
-- `recipient_id` UUID FK profiles nullable.
-- `unit_id` UUID FK units nullable.
-- `subject` text.
+- `recipient_id` UUID FK profiles.
+- `unit_id` UUID FK units nullable; debe ser null para chat privado v1.1.
+- `subject` text; por defecto `Chat`.
 - `body` text.
 - `created_at`.
+
+Reglas:
+
+- Chats privados solo son visibles para remitente y destinatario.
+- Los roles globales no leen conversaciones privadas ajenas.
+
+### message_reads
+
+- `id` UUID PK.
+- `message_id` UUID FK messages.
+- `profile_id` UUID FK profiles.
+- `read_at` timestamptz.
+- `created_at`.
+- Unique `(message_id, profile_id)`.
+
+### message_posts
+
+- `id` UUID PK.
+- `author_id` UUID FK profiles.
+- `scope` text (`global` o `unit`).
+- `unit_id` UUID FK units nullable.
+- `body` text.
+- `created_at`, `updated_at`, `deleted_at`.
+- Constraint: scope global requiere `unit_id is null`; scope unidad requiere `unit_id is not null`.
+
+### message_post_comments
+
+- `id` UUID PK.
+- `post_id` UUID FK message_posts.
+- `author_id` UUID FK profiles.
+- `body` text.
+- `created_at`, `deleted_at`.
+
+### message_post_reads
+
+- `id` UUID PK.
+- `post_id` UUID FK message_posts.
+- `profile_id` UUID FK profiles.
+- `read_at` timestamptz.
+- `created_at`.
+- Unique `(post_id, profile_id)`.
 
 ### report_exports
 
@@ -282,6 +343,14 @@ Reglas:
 - `flight_order_profiles(flight_order_id, profile_number)`.
 - `flight_order_item_profiles(flight_order_item_id, profile_id)`.
 - `notifications(recipient_id, read_at)`.
+- `calendar_events(starts_at)`.
+- `calendar_events(status, starts_at)`.
+- `messages(sender_id, created_at desc)`.
+- `messages(recipient_id, created_at desc)`.
+- `message_reads(message_id, profile_id)`.
+- `message_posts(scope, unit_id, created_at desc)`.
+- `message_post_comments(post_id, created_at)`.
+- `message_post_reads(post_id, profile_id)`.
 
 ## 8. RLS obligatorio
 
@@ -303,6 +372,9 @@ Políticas base:
 - Administrador de Unidad opera su unidad.
 - TTAA solo lee vuelos asignados o autorizados.
 - Usuario pending, inactive o sin rol no accede a datos operativos.
+- Excepción de privacidad: `messages` de chat privado solo permite lectura a remitente o destinatario aunque el usuario sea líder o administrador global.
+- Publicaciones (`message_posts`) admiten alcance global o unidad; comentarios y confirmaciones siguen la visibilidad del post.
+- Calendario (`calendar_events`) es global de lectura para todo usuario activo con `calendar.read`; `calendar.manage` queda limitado a líder y administrador general.
 
 ## 9. Integridad y reglas DB
 

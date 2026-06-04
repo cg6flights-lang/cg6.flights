@@ -279,6 +279,67 @@ Reglas:
 - Avance de estado registra timestamp en `flight_order_state_events`.
 - Perfiles auto-numerados por orden (`profile_number`).
 
+### POST `/functions/v1/manage-message-post`
+
+Crea publicaciones internas y comentarios sobre publicaciones visibles.
+
+Request:
+
+```json
+{
+  "action": "create_post|add_comment",
+  "scope": "global|unit",
+  "unit_id": "uuid|null",
+  "post_id": "uuid|null",
+  "body": "string"
+}
+```
+
+Permisos:
+- `message_posts.create` para `create_post`.
+- `message_posts.comment` para `add_comment`.
+
+Reglas:
+- Requiere JWT válido y perfil activo.
+- `create_post` global solo para `leader` y `general_admin`.
+- `create_post` de unidad permitido para roles globales o roles de la misma unidad.
+- `unit_command` y `unit_admin` publican dentro de su unidad asignada.
+- `add_comment` solo aplica sobre publicaciones visibles por RLS/alcance.
+- Audita éxito, denegación y fallas relevantes.
+- Responde con `{ "ok": true, "data": { "post_id"|"comment_id": "uuid" } }` o error normalizado.
+
+### POST `/functions/v1/manage-calendar-event`
+
+Crea, edita, cambia estado o elimina lógicamente actividades globales del calendario operacional.
+
+Request:
+
+```json
+{
+  "action": "create|update|delete|status",
+  "event_id": "uuid|null",
+  "title": "string",
+  "description": "string|null",
+  "location": "string|null",
+  "event_type": "operations|training|maintenance|briefing|administrative|other",
+  "status": "scheduled|in_progress|completed|cancelled",
+  "starts_at": "ISO-8601",
+  "ends_at": "ISO-8601"
+}
+```
+
+Permisos:
+- `calendar.manage`.
+
+Reglas:
+- Requiere JWT válido y perfil activo.
+- Solo `leader` y `general_admin` pueden crear, editar o eliminar.
+- `status` actualiza solo el estado (`scheduled|in_progress|completed|cancelled`) y se usa para iniciar o confirmar actividades.
+- `delete` usa `deleted_at` y no eliminación física.
+- Valida título obligatorio, fechas válidas y `ends_at >= starts_at`.
+- Audita éxito, denegación y fallas relevantes.
+- Responde con `{ "ok": true, "data": { "event_id": "uuid" } }` o error normalizado.
+
 ## 7. Repositories directos con Supabase Client
 
 Permitidos solo con RLS y filtros explícitos:
@@ -289,6 +350,9 @@ Permitidos solo con RLS y filtros explícitos:
 - Catálogo de permisos.
 - Lectura de dashboards por vistas autorizadas.
 - Lectura de notificaciones del usuario.
+- Lectura de actividades de calendario autorizadas por RLS.
+- Lectura realtime de mensajes privados, vistos, publicaciones, comentarios y confirmaciones filtradas por RLS.
+- Inserción de chat privado y confirmaciones de lectura cuando RLS valida remitente/destinatario.
 
 Prohibido:
 
@@ -296,6 +360,7 @@ Prohibido:
 - Consultas sensibles desde widgets.
 - Usar service role key.
 - Canales realtime globales.
+- Leer chats privados ajenos aunque el usuario tenga rol global.
 
 ## 8. Paginación y filtros
 
@@ -314,6 +379,11 @@ Canales permitidos:
 - `unit:{unit_id}:flight_order_items`.
 - `unit:{unit_id}:notifications`.
 - `profile:{profile_id}:notifications`.
+- `profile:{profile_id}:messages`.
+- `profile:{profile_id}:message_reads`.
+- `message_posts` filtrado por RLS.
+- `message_post_comments` filtrado por RLS.
+- `message_post_reads` filtrado por RLS.
 
 Cada canal debe filtrar por unidad o usuario.
 

@@ -9,6 +9,7 @@ import 'package:cg6_flights/features/flight_orders/domain/flight_order.dart';
 import 'package:cg6_flights/features/flights/presentation/flight_detail_panel.dart';
 import 'package:cg6_flights/features/flights/presentation/flight_led_board.dart';
 import 'package:cg6_flights/features/flights/presentation/metar_widget.dart';
+import 'package:cg6_flights/features/routes/data/routes_repository.dart';
 import 'package:cg6_flights/features/units/data/units_repository.dart';
 import 'package:cg6_flights/features/units/domain/unit_option.dart';
 import 'package:cg6_flights/shared/widgets/status_chip.dart';
@@ -24,6 +25,20 @@ final _flightsProvider =
       return repo.listFlightsByDate(date: date);
     });
 
+final _routeIcaosProvider = FutureProvider<Set<String>>((ref) async {
+  final repo = ref.read(routesRepositoryProvider);
+  final result = await repo.listRoutes();
+  final icaos = <String>{};
+  if (result case AppSuccess(data: final routes)) {
+    for (final r in routes) {
+      if (r.icaoCode != null && r.icaoCode!.isNotEmpty) {
+        icaos.add(r.icaoCode!.toUpperCase());
+      }
+    }
+  }
+  return icaos;
+});
+
 class FlightsPage extends ConsumerStatefulWidget {
   const FlightsPage({super.key});
 
@@ -32,7 +47,7 @@ class FlightsPage extends ConsumerStatefulWidget {
 }
 
 class _FlightsPageState extends ConsumerState<FlightsPage> {
-  DateTime _selectedDate = DateTime.now();
+  late DateTime _selectedDate;
   FlightOrderItem? _selectedItem;
   String? _selectedUnitId;
   List<UnitOption> _units = [];
@@ -40,6 +55,7 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
   @override
   void initState() {
     super.initState();
+    _selectedDate = DateTime.now();
     _loadUnits();
   }
 
@@ -68,7 +84,8 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
   };
 
   DateTime get _today {
-    final now = DateTime.now();
+    final tz = ref.read(timezoneProvider);
+    final now = toLocalTime(DateTime.now(), tz);
     return DateTime(now.year, now.month, now.day);
   }
 
@@ -426,7 +443,7 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               MetarWidget(
-                icaoCodes: _extractIcaos(flights),
+                icaoCodes: {..._extractIcaos(flights), ...(ref.watch(_routeIcaosProvider).value ?? const <String>{})}.toList()..sort(),
               ),
               const SizedBox(height: 12),
               _sectionHeader('🛫 Departures', departures.length, theme),

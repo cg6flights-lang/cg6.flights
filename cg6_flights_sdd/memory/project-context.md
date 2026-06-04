@@ -28,7 +28,7 @@ Plataforma web para Base Aérea Las Palmas, orientada a control diario de vuelos
 - Supabase.
 - Vercel.
 
-## Estado actual de implementación (2026-05-30)
+## Estado actual de implementación (2026-06-02)
 
 ### Completado
 - **Auth** — Login, registro, sesión, RBAC, permisos derivados de rol vía rolePermissionMatrix
@@ -62,12 +62,21 @@ Plataforma web para Base Aérea Las Palmas, orientada a control diario de vuelos
 - **Transiciones de estado sin confirmación**: Submit, approve, observe, close, reopen se ejecutan sin diálogo de confirmación previa.
 
 ### Pendiente
-Flight Status, Closures, History, Audit, Notifications, Messages, Reports, Calendar, Maps, Settings
+Flight Status, Closures, History, Notifications, Reports, Calendar, Maps, Settings
 
-### SDD (2026-05-27)
-- **`specs/flight-orders.spec.md`** creado — module spec completo con 7 entidades, 14 casos de uso, máquinas de estado, UI/UX spec, y tests requeridos.
-- **`specs/product.spec.md`** actualizado — RFs 050-059 detallados reemplazando 5 RFs genéricos.
-- **`specs/frontend.spec.md`** actualizado — Sección 11.4 UI/UX Flight Orders con especificación de 6 componentes, layouts responsivos, estados visuales, y flujos de interacción.
+### Completado recientemente (2026-06-02)
+- **Audit** — Sección completa con 2 pestañas: Eventos (4 bloques temáticos en 2 columnas: Operaciones, Gestión de Vuelo, Personal, Sistema) y Rendimiento (4 gráficas fl_chart: tendencias, dona, barras apiladas, KPIs). RLS con scope por unidad + limpieza pg_cron cada 2 meses.
+- **Messages** — Mensajería dual realtime v1.1. Chat privado 1:1 con confirmación de visto. Publicaciones operacionales con scope global/unidad y comentarios. 5 modelos, 3 nuevos permisos, 8 políticas RLS, Edge Function `manage-message-post`. UI 3-columnas desktop con Realtime.
+- **METAR** — Widget corregido: selector muestra todos los aeropuertos de la tabla `routes`.
+- **Branding** — Header con isotipo favicon + texto colorizado CG6 Flights v1.0. Sidebar hover scale 1.35x. Botón idioma con globo.
+- **Deploy** — Primer despliegue Vercel en producción. Script `deploy_local.sh`.
+
+### SDD (2026-06-02)
+- **`specs/flight-orders.spec.md`** — module spec completo con 7 entidades, 14 casos de uso.
+- **`specs/audit.spec.md`** — spec post-implementación de Auditoría.
+- **`specs/messages.spec.md`** — spec con 5 entidades, 8 casos de uso, permisos, RLS, Realtime.
+- **`specs/product.spec.md`** — actualizado con RFs 050-059.
+- **`specs/frontend.spec.md`** — actualizado con sección 11.4 UI/UX Flight Orders.
 
 ### Decisiones técnicas recientes
 - **fl_chart** v1.2.0 para gráficas (MIT license, 100% Dart puro, compatible con Web)
@@ -79,6 +88,10 @@ Flight Status, Closures, History, Audit, Notifications, Messages, Reports, Calen
 - `listItems` con queries separadas + `inFilter` en lugar de select anidado complejo (en diagnóstico)
 - PDF generation con package `pdf` + `dart:html` para descarga en web (conditional exports)
 - Pantalla LED de Vuelos implementada sin nuevas dependencias, usando Flutter puro (`CustomPainter`, sombras, gradientes y timers) y presenter para mantener la lógica fuera de widgets.
+- Mensajería dual realtime con Supabase Realtime (5 tablas con streams) + Edge Function `manage-message-post`. Chat privado RLS restringido a participantes. Publicaciones con scope global/unidad.
+- pg_cron para limpieza automática de audit_logs cada 2 meses.
+- Script `deploy_local.sh` con detección de compilación DDC vía response time de `main.dart.js`.
+- Vercel deploy con `outputDirectory: build/web` (sin buildCommand porque Flutter no está en las build machines).
 
 ## Principios
 

@@ -217,9 +217,61 @@ Vista limitada de vuelo asignado y confirmación autorizada.
 - EXPORT: mostrar falla de generación desde Reports.
 - SYSTEM: mensaje seguro sin detalles internos.
 
-## 11.4 UI/UX — Flight Orders (Orden de Vuelo)
+## 11.4 UI/UX — Mensajes
 
 ### 11.4.1 Estructura de componentes
+
+| Componente | Responsabilidad |
+|---|---|
+| `MessagesPage` | Ruta única `/messages` con modo Chat/Publicaciones |
+| `MessageComposeDialog` | Inicio de chat privado con destinatario y cuerpo |
+| `MessagesRepository` | Streams realtime, envío de chat, vistos, publicaciones, comentarios y confirmaciones |
+
+### 11.4.2 Modo Chat
+
+- Primera columna: selector `Chat` / `Publicaciones`, indicador realtime, refresh y estado de permisos.
+- Segunda columna: lista de conversaciones por usuario con nombre, rol/unidad/email, último mensaje, hora, badge de no leídos y estado activo visual.
+- Tercera columna: chat privado con header del contacto, burbujas derecha/izquierda, composer inferior y ticks de enviado/visto.
+- El botón `Nuevo chat` se muestra solo con `messages.send`.
+- Los errores realtime no deben convertirse en estado vacío.
+
+### 11.4.3 Modo Publicaciones
+
+- Al seleccionar `Publicaciones`, la segunda columna se oculta y el timeline ocupa el espacio central.
+- Composer superior visible solo con `message_posts.create`.
+- Selector de alcance:
+  - global solo para roles globales;
+  - unidad para roles globales o roles de unidad dentro de su unidad.
+- Cards con autor, rol, fecha, scope, cuerpo, contador de comentarios, contador de vistos y botón de confirmación de lectura.
+- Todos los roles con `message_posts.comment` pueden comentar publicaciones visibles.
+
+### 11.4.4 Responsive
+
+- Desktop: multipanel.
+- Tablet: lista + detalle o timeline expandido.
+- Móvil: Chat alterna lista/detalle; Publicaciones usa timeline compacto.
+
+## 11.5 UI/UX — Calendario Operacional
+
+- `/calendar` reemplaza el stub por una vista operacional de actividades próximas.
+- Layout de referencia:
+  - tabs superiores `Resumen`, `Calendario`, `Actividades`;
+  - tarjeta principal con calendario mensual compacto a la izquierda;
+  - lista de actividades próximas a la derecha;
+  - cards con fecha, estado, tipo, hora, ubicación y descripción corta.
+- `Nueva actividad` solo visible con `calendar.manage`.
+- Estados visuales: `Programada`, `En curso`, `Completada`, `Cancelada`.
+- El ícono de calendario del header conserva badge del día, abre un preview tipo menú con mini calendario, alertas próximas y botón `Ampliar` hacia `/calendar`.
+- Al abrir `/calendar`, el día seleccionado por defecto es hoy y la lista base muestra las actividades del mes visible, excluyendo meses auxiliares.
+- Si el día seleccionado tiene actividades, se muestra un panel operacional con acciones para usuarios con `calendar.manage`: iniciar, modificar fecha y confirmar realizada.
+- La parte inferior muestra un Gantt mensual con barras por duración, color por tipo, estado visual, línea de hoy y marcador del día seleccionado.
+- Responsive:
+  - desktop: calendario y lista en dos columnas;
+  - tablet/móvil: calendario arriba, lista debajo, Gantt scrolleable sin cortes.
+
+## 11.6 UI/UX — Flight Orders (Orden de Vuelo)
+
+### 11.6.1 Estructura de componentes
 
 | Componente | Archivo | Responsabilidad |
 |---|---|---|
@@ -229,7 +281,7 @@ Vista limitada de vuelo asignado y confirmación autorizada.
 | `FlightItemFormDialog` | `flight_item_form_dialog.dart` | Diálogo modal: agregar vuelo a orden (8 secciones) |
 | `FlightOrderPdfService` | `flight_order_pdf_service.dart` | Generación PDF A4 landscape |
 
-### 11.4.2 FlightOrdersPage
+### 11.6.2 FlightOrdersPage
 
 **Layout responsivo**:
 - ≥ 1100px: `Row` — DataTable (flex 3, altura 550px, scroll vertical) + `VerticalDivider` + Panel detalle (flex 2).
@@ -253,7 +305,7 @@ Vista limitada de vuelo asignado y confirmación autorizada.
 
 **Providers**: `_ordersListProvider` (FutureProvider local invalidado al crear/cambiar/borrar órdenes).
 
-### 11.4.3 FlightOrderDetailPanel
+### 11.6.3 FlightOrderDetailPanel
 
 **Encabezado**: N° Orden, Unidad, Fecha, chip de estado, botón "+" (agregar item, solo draft y canCreate).
 
@@ -277,7 +329,7 @@ Vista limitada de vuelo asignado y confirmación autorizada.
 - Lista de perfiles con botón eliminar (icono X)
 - Botón agregar perfil: diálogo con campo `description` obligatorio
 
-### 11.4.4 FlightOrderFormDialog
+### 11.6.4 FlightOrderFormDialog
 
 Diálogo `AlertDialog` (ancho 450px):
 - **Unidad**: `DropdownButtonFormField` cargado de `units` activas (orden `name`). Validación: requerido.
@@ -285,7 +337,7 @@ Diálogo `AlertDialog` (ancho 450px):
 - **Acciones**: Cancelar + Guardar (con spinner durante submit).
 - Llama a `manageFlightOrder(action: 'create')` vía repositorio.
 
-### 11.4.5 FlightItemFormDialog
+### 11.6.5 FlightItemFormDialog
 
 Diálogo extenso con 8 secciones:
 
@@ -298,7 +350,7 @@ Diálogo extenso con 8 secciones:
 7. **Perfiles**: `FilterChip` multi-select. Muestra perfiles definidos en la orden (`profile_number - description`).
 8. **Tripulación**: PC (dropdown requerido), CP (dropdown opcional), checkbox "¿Mecánico a bordo?" → MA (dropdown condicional). Function code opcional por tripulante (dropdown PS/IP/PM/CP/CO/PI/PR). Datos cargados de `crew_members` filtrados por unidad.
 
-### 11.4.6 FlightOrderPdfService
+### 11.6.6 FlightOrderPdfService
 
 **Formato**: A4 landscape, package `pdf`.
 **Contenido**:
@@ -308,7 +360,7 @@ Diálogo extenso con 8 secciones:
 - Sección firmas: Comando de Unidad, Administrador de Unidad
 **Descarga**: `dart:html` — `AnchorElement` con `Blob` + `URL.createObjectURL`.
 
-### 11.4.7 Traducciones requeridas
+### 11.6.7 Traducciones requeridas
 
 Keys bajo prefijo `flightOrders.*` (~60 keys ES/EN):
 - `orderNumber`, `unit`, `operationDate`, `status`, `add`, `submit`, `approve`, `observe`, `close`, `reopen`, `delete`, `deleteTitle`, `deleteConfirm`, `exportPdf`, `exportingPdf`, `pdfExported`, `loadFailed`, `empty`, `draft`, `submitted`, `observed`, `approved`, `closed`, `reopened`
@@ -350,3 +402,35 @@ Idiomas:
 - No depender solo de color.
 - Mensajes claros.
 - Tamaños táctiles razonables.
+
+---
+
+## 6. Changelog 2026-06-01 a 2026-06-04
+
+### Dashboard Modular v2
+
+- **Layout**: Dos secciones — widgets anchos (span-2/3) a la izquierda (2/3 ancho), widgets angostos (span-1) apilados a la derecha (1/3). Sin huecos.
+- **8 widgets visibles**: Mapa, KPIs, Timeline (Gantt), Próximos Vuelos, METAR, Operatividad (fl_chart), Notificaciones, Flota.
+- **3 widgets ocultos**: Resumen del Día, Acciones Rápidas, Calendario Mini. Activables desde Personalizar.
+- **Modo Edición**: Drag & drop con `ReorderableListView`, ajuste de ancho (-/+), toggle visibilidad.
+- **Preferencias**: orden, visibilidad y span persistidos en memoria vía `DashboardPreferencesNotifier`.
+- **Responsivo**: 2/3+1/3 en ≥1100px, 1/2+1/2 en ≥700px, columna única en <700px.
+- **Wrapper**: `DashboardWidgetWrapper` como `StatelessWidget` con Card + header.
+
+### Flight Orders — Mejoras
+
+- **Numeración con año**: `ACRONYM-XXX-YYYY` (ej. EDACI-051-2026). Secuencia por unidad.
+- **Perfiles**: numeración romana (I, II, III...). Sección movida debajo de la tabla de OVs, no en el panel de detalle. Visibles en cualquier estado.
+- **Vuelo Local**: checkbox en el formulario de vuelo. Origen = destino = mismo aeropuerto. Zona de trabajo opcional.
+- **Filtros**: unificados al estilo Crew (`DropdownButtonFormField` con `OutlineInputBorder`).
+- **Borrado**: Líder puede borrar OVs en cualquier estado. Edge function `manage-flight-order` actualizada.
+
+### Timezone
+
+- **Sistema**: `timezoneProvider` con offset configurable (default Perú UTC-5).
+- **Corrección**: `toLocalTime` ajusta desde `_sourceOffset` (-5) al offset configurado. Datos en DB están en hora local Perú.
+- **Widgets actualizados**: upcoming flights, timeline, activity, calendar mini, flights page, flight orders page, LED board, dashboard providers, mensajes.
+
+### Data Cleanup
+
+- Borrado de OVs y Vuelos existentes. Nueva OV EDACI-051-2026 creada como draft.

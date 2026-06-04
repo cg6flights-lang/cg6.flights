@@ -34,9 +34,13 @@ class AppPermission {
   static const notificationsManage = 'notifications.manage';
   static const messagesRead = 'messages.read';
   static const messagesSend = 'messages.send';
+  static const messagePostsRead = 'message_posts.read';
+  static const messagePostsCreate = 'message_posts.create';
+  static const messagePostsComment = 'message_posts.comment';
   static const reportsRead = 'reports.read';
   static const reportsExport = 'reports.export';
   static const calendarRead = 'calendar.read';
+  static const calendarManage = 'calendar.manage';
   static const mapsRead = 'maps.read';
   static const profileUpdate = 'profile.update';
   static const settingsManage = 'settings.manage';
@@ -73,9 +77,13 @@ class AppPermission {
     notificationsManage,
     messagesRead,
     messagesSend,
+    messagePostsRead,
+    messagePostsCreate,
+    messagePostsComment,
     reportsRead,
     reportsExport,
     calendarRead,
+    calendarManage,
     mapsRead,
     profileUpdate,
     settingsManage,
@@ -102,9 +110,13 @@ const rolePermissionMatrix = <AppRole, Set<String>>{
     AppPermission.notificationsRead,
     AppPermission.messagesRead,
     AppPermission.messagesSend,
+    AppPermission.messagePostsRead,
+    AppPermission.messagePostsCreate,
+    AppPermission.messagePostsComment,
     AppPermission.reportsRead,
     AppPermission.reportsExport,
     AppPermission.calendarRead,
+    AppPermission.calendarManage,
     AppPermission.mapsRead,
     AppPermission.profileUpdate,
   },
@@ -124,6 +136,9 @@ const rolePermissionMatrix = <AppRole, Set<String>>{
     AppPermission.notificationsRead,
     AppPermission.messagesRead,
     AppPermission.messagesSend,
+    AppPermission.messagePostsRead,
+    AppPermission.messagePostsCreate,
+    AppPermission.messagePostsComment,
     AppPermission.reportsRead,
     AppPermission.calendarRead,
     AppPermission.mapsRead,
@@ -146,6 +161,9 @@ const rolePermissionMatrix = <AppRole, Set<String>>{
     AppPermission.notificationsRead,
     AppPermission.messagesRead,
     AppPermission.messagesSend,
+    AppPermission.messagePostsRead,
+    AppPermission.messagePostsCreate,
+    AppPermission.messagePostsComment,
     AppPermission.reportsRead,
     AppPermission.calendarRead,
     AppPermission.mapsRead,
@@ -156,6 +174,9 @@ const rolePermissionMatrix = <AppRole, Set<String>>{
     AppPermission.flightStatusCreate,
     AppPermission.notificationsRead,
     AppPermission.messagesRead,
+    AppPermission.messagePostsRead,
+    AppPermission.messagePostsComment,
+    AppPermission.calendarRead,
     AppPermission.mapsRead,
     AppPermission.profileUpdate,
   },

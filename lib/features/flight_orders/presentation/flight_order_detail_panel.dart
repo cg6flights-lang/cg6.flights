@@ -102,7 +102,7 @@ class FlightOrderDetailPanel extends ConsumerWidget {
                           label: Text(l10n.t('flightOrders.submit')),
                           onPressed: () => _confirmOrderAction(context, ref, 'submit', l10n),
                         ),
-                      if (order.status == 'draft' && canDelete)
+                      if (canDelete)
                         ActionChip(
                           avatar: const Icon(Icons.delete_outline, size: 16),
                           label: Text(l10n.t('flightOrders.delete')),
@@ -155,11 +155,6 @@ class FlightOrderDetailPanel extends ConsumerWidget {
                           _openAddItemDialog(context, ref, l10n),
                       icon: const Icon(Icons.add, size: 18),
                       label: Text(l10n.t('flightOrders.addItem')),
-                    ),
-                    const SizedBox(height: 12),
-                    _ProfilesSection(
-                      flightOrderId: order.id,
-                      onChanged: () => onOrderChanged(order),
                     ),
                     const Divider(height: 24),
                   ],
@@ -588,143 +583,3 @@ class _FlightItemCard extends StatelessWidget {
   }
 }
 
-// Profiles section
-class _ProfilesSection extends ConsumerStatefulWidget {
-  const _ProfilesSection({required this.flightOrderId, required this.onChanged});
-
-  final String flightOrderId;
-  final VoidCallback onChanged;
-
-  @override
-  ConsumerState<_ProfilesSection> createState() => _ProfilesSectionState();
-}
-
-class _ProfilesSectionState extends ConsumerState<_ProfilesSection> {
-  final _descCtrl = TextEditingController();
-  bool _adding = false;
-
-  @override
-  void dispose() {
-    _descCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<List<FlightOrderProfile>> _loadProfiles() async {
-    final result = await ref
-        .read(flightOrdersRepositoryProvider)
-        .listOrderProfiles(widget.flightOrderId);
-    return switch (result) {
-      AppSuccess(data: final v) => v,
-      _ => [],
-    };
-  }
-
-  Future<void> _addProfile() async {
-    final desc = _descCtrl.text.trim();
-    if (desc.isEmpty) return;
-    setState(() => _adding = true);
-    final result = await ref
-        .read(flightOrdersRepositoryProvider)
-        .addOrderProfile(
-            flightOrderId: widget.flightOrderId, description: desc);
-    if (!mounted) return;
-    setState(() {
-      _adding = false;
-      _descCtrl.clear();
-    });
-    switch (result) {
-      case AppSuccess():
-        widget.onChanged();
-      case AppFailure(error: final e):
-        ScaffoldMessenger.of(context)
-          ..clearSnackBars()
-          ..showSnackBar(SnackBar(content: Text(e.message)));
-    }
-  }
-
-  Future<void> _removeProfile(String profileId) async {
-    final result = await ref
-        .read(flightOrdersRepositoryProvider)
-        .removeOrderProfile(profileId);
-    if (!mounted) return;
-    switch (result) {
-      case AppSuccess():
-        widget.onChanged();
-      case AppFailure(error: final e):
-        ScaffoldMessenger.of(context)
-          ..clearSnackBars()
-          ..showSnackBar(SnackBar(content: Text(e.message)));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-
-    return FutureBuilder<List<FlightOrderProfile>>(
-      future: _loadProfiles(),
-      builder: (context, snapshot) {
-        final profiles = snapshot.data ?? [];
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(l10n.t('flightOrders.profiles'),
-                style: Theme.of(context).textTheme.labelLarge),
-            const SizedBox(height: 8),
-            if (profiles.isNotEmpty)
-              ...profiles.map((p) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.list_alt, size: 16, color: Colors.grey),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Perfil ${p.profileNumber}: ${p.description}',
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, size: 16),
-                          visualDensity: VisualDensity.compact,
-                          onPressed: () => _removeProfile(p.id),
-                        ),
-                      ],
-                    ),
-                  )),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _descCtrl,
-                    decoration: InputDecoration(
-                      hintText: l10n.t('flightOrders.profileDescription'),
-                      border: const OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: _adding
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.add, size: 20),
-                  visualDensity: VisualDensity.compact,
-                  onPressed: _adding ? null : _addProfile,
-                ),
-              ],
-            ),
-          ],
-        );
-      },
-    );
-  }
-}

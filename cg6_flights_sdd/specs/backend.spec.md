@@ -133,7 +133,11 @@ No se agrega un servidor backend adicional en v1.0 salvo ADR aprobado.
 
 - Crear notificaciones por eventos relevantes.
 - Marcar notificaciones vistas sin borrar auditoría.
-- Mensajería interna trazable por alcance global o unidad.
+- Chat privado realtime visible solo para remitente y destinatario.
+- Confirmar visto de mensajes mediante `message_reads`.
+- Publicaciones internas con alcance global o unidad.
+- Comentarios y confirmación de lectura de publicaciones.
+- Crear publicaciones y comentarios institucionales mediante Edge Function auditada.
 
 ### Reports
 
@@ -145,6 +149,8 @@ No se agrega un servidor backend adicional en v1.0 salvo ADR aprobado.
 ### Calendar, Maps, Profile e I18n
 
 - Calendar expone eventos operativos autorizados.
+- Calendar permite crear, editar y eliminar lógicamente actividades globales solo a Líder y Administrador General mediante Edge Function auditada.
+- Calendar permite actualizar estado de actividad mediante acción auditada para iniciar o confirmar realización, restringida a `calendar.manage`.
 - Maps encapsula proveedor y no activa geolocalización remota sin política.
 - Profile administra foto hasta 5 MB en bucket privado.
 - I18n entrega llaves estables para Español e Inglés.
@@ -170,6 +176,13 @@ Todo DTO debe incluir validaciones de tipo, longitud y obligatoriedad.
 - FlightOrderProfileInput: flight_order_id, description.
 - ClosureRequestInput: flight_order_id, notes opcional.
 - ReportRequestInput: report_type, date_range, filters, format.
+- PrivateMessageInput: recipient_id, body, subject opcional.
+- MessageReadInput: message_ids[].
+- MessagePostInput: scope (`global`/`unit`), body, unit_id opcional.
+- MessagePostCommentInput: post_id, body.
+- MessagePostReadInput: post_id.
+- CalendarEventInput: title, description opcional, location opcional, event_type, status, starts_at, ends_at.
+- CalendarEventStatusInput: event_id, status.
 
 ## 7. Validaciones obligatorias
 
@@ -189,6 +202,11 @@ Todo DTO debe incluir validaciones de tipo, longitud y obligatoriedad.
 - No se puede cerrar una ficha con vuelos incompletos salvo observación autorizada.
 - No se puede exportar sin permiso `reports.export`.
 - No se puede leer auditoría sin permiso `audit.read`.
+- No se puede leer chat privado si el usuario no es remitente ni destinatario.
+- No se puede crear publicación global sin rol global.
+- No se puede crear publicación de unidad fuera del alcance permitido.
+- No se puede gestionar calendario sin `calendar.manage`.
+- No se puede guardar una actividad con `ends_at < starts_at`.
 
 ## 8. Respuesta normalizada
 
@@ -229,6 +247,13 @@ Todo DTO debe incluir validaciones de tipo, longitud y obligatoriedad.
 - DATA_CONFLICT.
 - STORAGE_FILE_TOO_LARGE.
 - EXPORT_NOT_ALLOWED.
+- MESSAGES_LOAD_FAILED.
+- MESSAGE_SEND_FAILED.
+- MESSAGE_READ_FAILED.
+- MESSAGE_POST_SAVE_FAILED.
+- MESSAGE_POST_READ_FAILED.
+- CALENDAR_EVENTS_LOAD_FAILED.
+- CALENDAR_EVENT_SAVE_FAILED.
 - SYSTEM_UNEXPECTED.
 
 ## 10. Logging y auditoría
@@ -243,6 +268,8 @@ Todo DTO debe incluir validaciones de tipo, longitud y obligatoriedad.
 - Queda prohibido canal global de vuelos.
 - Cada suscripción debe validar sesión y alcance.
 - Realtime no reemplaza auditoría ni persistencia.
+- Mensajería permite streams sobre `messages`, `message_reads`, `message_posts`, `message_post_comments` y `message_post_reads` siempre que RLS filtre filas visibles.
+- Los streams de chat privado no pueden exponer conversaciones donde el usuario no participa.
 
 ## 12. Criterios de aceptación
 

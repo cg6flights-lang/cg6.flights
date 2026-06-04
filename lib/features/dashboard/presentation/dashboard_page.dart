@@ -1,99 +1,489 @@
+import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/features/auth/application/session_controller.dart';
-import 'package:cg6_flights/shared/widgets/app_badges.dart';
+import 'package:cg6_flights/features/dashboard/application/dashboard_preferences.dart';
+import 'package:cg6_flights/features/dashboard/domain/dashboard_widget_config.dart';
+import 'package:cg6_flights/features/dashboard/presentation/widgets/activity_widget.dart';
+import 'package:cg6_flights/features/dashboard/presentation/widgets/calendar_mini_widget.dart';
+import 'package:cg6_flights/features/dashboard/presentation/widgets/fleet_status_widget.dart';
+import 'package:cg6_flights/features/dashboard/presentation/widgets/kpis_widget.dart';
+import 'package:cg6_flights/features/dashboard/presentation/widgets/map_widget.dart';
+import 'package:cg6_flights/features/dashboard/presentation/widgets/metar_dashboard_widget.dart';
+import 'package:cg6_flights/features/dashboard/presentation/widgets/notifications_widget.dart';
+import 'package:cg6_flights/features/dashboard/presentation/widgets/operability_chart_widget.dart';
+import 'package:cg6_flights/features/dashboard/presentation/widgets/quick_actions_widget.dart';
+import 'package:cg6_flights/features/dashboard/presentation/widgets/resumen_widget.dart';
+import 'package:cg6_flights/features/dashboard/presentation/widgets/timeline_widget.dart';
+import 'package:cg6_flights/features/dashboard/presentation/widgets/upcoming_flights_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-class DashboardPage extends ConsumerWidget {
+class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
+  @override
+  ConsumerState<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends ConsumerState<DashboardPage> {
+  bool _editMode = false;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final user = ref.watch(sessionControllerProvider).user;
-    final cards = [
-      ('Ordenes del dia', '0', Icons.assignment_outlined),
-      ('Vuelos activos', '0', Icons.flight_takeoff),
-      ('Cierres pendientes', '0', Icons.task_alt),
-      ('Alertas operativas', '0', Icons.notification_important_outlined),
-    ];
+    final allPrefs = ref.watch(dashboardPreferencesProvider);
 
-    return ListView(
-      padding: const EdgeInsets.all(24),
-      children: [
-        Text(
-          'Dashboard operacional',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            RoleBadge(role: user?.role),
-            UnitBadge(unitName: user?.unitName),
-            const StatusBadge(text: 'Auditoria activa', icon: Icons.verified),
-          ],
-        ),
-        const SizedBox(height: 24),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 260,
-            mainAxisExtent: 132,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
+    final visible = allPrefs.where((p) => p.visible).toList()
+      ..sort((a, b) => a.order.compareTo(b.order));
+
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Header(
+            theme: theme,
+            l10n: l10n,
+            roleLabel: user?.role?.labelEs,
+            editMode: _editMode,
+            onEditToggle: () => setState(() => _editMode = !_editMode),
+            onCustomize: () => _showCustomizeSheet(),
           ),
-          itemCount: cards.length,
-          itemBuilder: (context, index) {
-            final card = cards[index];
-            return Card(
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(card.$3, size: 28),
-                    const Spacer(),
-                    Text(
-                      card.$2,
-                      style: Theme.of(context).textTheme.headlineMedium,
+          const SizedBox(height: 8),
+          Expanded(
+            child: visible.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Sin widgets visibles.',
+                      style: TextStyle(fontSize: 14),
                     ),
-                    Text(card.$1, overflow: TextOverflow.ellipsis),
-                  ],
+                  )
+                : _editMode
+                ? _buildEditView(allPrefs, theme)
+                : _buildGrid(visible, theme),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  NORMAL GRID
+  // ═══════════════════════════════════════════════════════════════════
+
+  Widget _buildGrid(List<WidgetPref> visible, ThemeData theme) {
+    return LayoutBuilder(builder: (context, constraints) {
+      final width = constraints.maxWidth;
+      final twoCols = width >= 700;
+      final leftFrac = width >= 1100 ? 2 / 3 : 1 / 2;
+      const gap = 8.0;
+
+      final wide = visible.where((p) => p.span >= 2).toList();
+      final narrow = visible.where((p) => p.span == 1).toList();
+
+      if (!twoCols) {
+        return SingleChildScrollView(
+          child: Column(children: [
+            for (final w in visible)
+              Padding(
+                padding: EdgeInsets.only(bottom: gap),
+                child: _widgetFor(w.id),
+              ),
+          ]),
+        );
+      }
+
+      final leftW = (width - gap) * leftFrac;
+      final rightW = (width - gap) * (1 - leftFrac);
+
+      return SingleChildScrollView(
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SizedBox(
+            width: leftW,
+            child: Column(children: [
+              for (final w in wide)
+                Padding(
+                  padding: EdgeInsets.only(bottom: gap),
+                  child: _widgetFor(w.id),
+                ),
+            ]),
+          ),
+          SizedBox(width: gap),
+          SizedBox(
+            width: rightW,
+            child: Column(children: [
+              for (final w in narrow)
+                Padding(
+                  padding: EdgeInsets.only(bottom: gap),
+                  child: _widgetFor(w.id),
+                ),
+            ]),
+          ),
+        ]),
+      );
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  EDIT VIEW
+  // ═══════════════════════════════════════════════════════════════════
+
+  Widget _buildEditView(List<WidgetPref> all, ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            'Long-press ≡ para arrastrar y reordenar. -/+ cambia ancho. 👁 visibilidad.',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        Expanded(
+          child: ReorderableListView.builder(
+            itemCount: all.length,
+            onReorderItem: (oldIndex, newIndex) {
+              ref
+                  .read(dashboardPreferencesProvider.notifier)
+                  .move(oldIndex, newIndex);
+            },
+            itemBuilder: (context, index) {
+              final pref = all[index];
+              final config = DashboardWidgetConfig.byId(pref.id);
+              if (config == null) return const SizedBox.shrink();
+
+              final visibilityIcon = pref.visible
+                  ? Icons.visibility
+                  : Icons.visibility_off;
+              final visibilityColor = pref.visible
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4);
+
+              return Card(
+                key: ValueKey(pref.id),
+                margin: const EdgeInsets.only(bottom: 6),
+                clipBehavior: Clip.antiAlias,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
+                  child: Row(
+                    children: [
+                      ReorderableDragStartListener(
+                        index: index,
+                        child: Icon(
+                          Icons.drag_indicator,
+                          size: 22,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        config.icon,
+                        size: 20,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          AppLocalizations.of(context).t(config.titleKey),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      _spanChip(pref, theme),
+                      const SizedBox(width: 8),
+                      InkWell(
+                        onTap: () => ref
+                            .read(dashboardPreferencesProvider.notifier)
+                            .toggleVisibility(pref.id),
+                        borderRadius: BorderRadius.circular(4),
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(
+                            visibilityIcon,
+                            size: 20,
+                            color: visibilityColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _spanChip(WidgetPref pref, ThemeData theme) {
+    final notifier = ref.read(dashboardPreferencesProvider.notifier);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        InkWell(
+          onTap: () {
+            if (pref.span > 1) notifier.setSpan(pref.id, pref.span - 1);
+          },
+          borderRadius: BorderRadius.circular(4),
+          child: Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: theme.colorScheme.outlineVariant),
+            ),
+            child: const Icon(Icons.remove, size: 14),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          child: Text(
+            '${pref.span}',
+            style: theme.textTheme.labelSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        InkWell(
+          onTap: () {
+            if (pref.span < 3) notifier.setSpan(pref.id, pref.span + 1);
+          },
+          borderRadius: BorderRadius.circular(4),
+          child: Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: theme.colorScheme.outlineVariant),
+            ),
+            child: const Icon(Icons.add, size: 14),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+
+  Widget _widgetFor(String id) {
+    return switch (id) {
+      'map' => const MapWidget(),
+      'kpis' => const KpisWidget(),
+      'timeline' => const TimelineWidget(),
+      'upcoming' => const UpcomingFlightsWidget(),
+      'metar' => const MetarDashboardWidget(),
+      'operability' => const OperabilityChartWidget(),
+      'notifications' => const NotificationsWidget(),
+      'activity' => const ActivityWidget(),
+      'fleet' => const FleetStatusWidget(),
+      'resumen' => const ResumenWidget(),
+      'quick_actions' => const QuickActionsWidget(),
+      'calendar_mini' => const CalendarMiniWidget(),
+      _ => const SizedBox.shrink(),
+    };
+  }
+
+  void _showCustomizeSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      builder: (_) => const _CustomizeSheet(),
+    );
+  }
+}
+
+// ── Header ────────────────────────────────────────────────────────────
+
+class _Header extends StatelessWidget {
+  const _Header({
+    required this.theme,
+    required this.l10n,
+    required this.roleLabel,
+    required this.editMode,
+    required this.onEditToggle,
+    required this.onCustomize,
+  });
+  final ThemeData theme;
+  final AppLocalizations l10n;
+  final String? roleLabel;
+  final bool editMode;
+  final VoidCallback onEditToggle;
+  final VoidCallback onCustomize;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(
+          Icons.dashboard_outlined,
+          color: theme.colorScheme.primary,
+          size: 22,
+        ),
+        const SizedBox(width: 8),
+        Text('Dashboard operacional', style: theme.textTheme.titleMedium),
+        if (roleLabel != null) ...[
+          const SizedBox(width: 10),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: theme.colorScheme.outlineVariant),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              child: Text(
+                roleLabel!,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onPrimaryContainer,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-            );
-          },
-        ),
-        const SizedBox(height: 24),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+          ),
+        ],
+        const SizedBox(width: 12),
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            reverse: true,
+            child: Row(
               children: [
-                Text(
-                  'Estado de integracion',
-                  style: Theme.of(context).textTheme.titleMedium,
+                _Btn(
+                  icon: editMode ? Icons.check : Icons.edit_outlined,
+                  label: editMode ? 'Listo' : 'Editar',
+                  onTap: onEditToggle,
                 ),
-                const SizedBox(height: 12),
-                const ListTile(
-                  leading: Icon(Icons.security),
-                  title: Text('RBAC y guards activos'),
-                  subtitle: Text('Permisos por accion y alcance operacional.'),
+                const SizedBox(width: 6),
+                _Btn(
+                  icon: Icons.tune,
+                  label: 'Personalizar',
+                  onTap: onCustomize,
                 ),
-                const ListTile(
-                  leading: Icon(Icons.storage),
-                  title: Text('Supabase preparado'),
-                  subtitle: Text(
-                    'Migraciones, RLS y Edge Functions en estructura.',
-                  ),
+                const SizedBox(width: 6),
+                _Btn(
+                  icon: Icons.assignment_outlined,
+                  label: 'Nueva OV',
+                  onTap: () => context.go('/flight-orders'),
+                ),
+                const SizedBox(width: 6),
+                _Btn(
+                  icon: Icons.flight_takeoff,
+                  label: 'Vuelos',
+                  onTap: () => context.go('/flights'),
+                ),
+                const SizedBox(width: 6),
+                _Btn(
+                  icon: Icons.mark_unread_chat_alt_outlined,
+                  label: 'Mensajes',
+                  onTap: () => context.go('/messages'),
                 ),
               ],
             ),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _Btn extends StatelessWidget {
+  const _Btn({required this.icon, required this.label, required this.onTap});
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 14),
+      label: Text(label, style: theme.textTheme.labelSmall),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+    );
+  }
+}
+
+// ── Customize sheet ───────────────────────────────────────────────────
+
+class _CustomizeSheet extends ConsumerWidget {
+  const _CustomizeSheet();
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final prefs = ref.watch(dashboardPreferencesProvider);
+    return SizedBox(
+      height: 500,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+            child: Row(
+              children: [
+                Text(
+                  'Personalizar Dashboard',
+                  style: theme.textTheme.titleSmall,
+                ),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: () => ref
+                      .read(dashboardPreferencesProvider.notifier)
+                      .resetToDefaults(),
+                  icon: const Icon(Icons.restore, size: 16),
+                  label: const Text('Restablecer'),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ReorderableListView.builder(
+              itemCount: prefs.length,
+              onReorderItem: (o, n) =>
+                  ref.read(dashboardPreferencesProvider.notifier).move(o, n),
+              itemBuilder: (ctx, i) {
+                final p = prefs[i];
+                final c = DashboardWidgetConfig.byId(p.id);
+                if (c == null) return const SizedBox.shrink();
+                return ListTile(
+                  key: ValueKey(p.id),
+                  leading: Icon(
+                    Icons.drag_handle,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  title: Row(
+                    children: [
+                      Icon(c.icon, size: 18, color: theme.colorScheme.primary),
+                      const SizedBox(width: 8),
+                      Text(AppLocalizations.of(context).t(c.titleKey)),
+                    ],
+                  ),
+                  trailing: Switch(
+                    value: p.visible,
+                    onChanged: (_) => ref
+                        .read(dashboardPreferencesProvider.notifier)
+                        .toggleVisibility(p.id),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

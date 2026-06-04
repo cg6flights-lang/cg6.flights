@@ -180,15 +180,17 @@ Deno.serve(async (req) => {
       .limit(1)
       .maybeSingle();
 
+    const year = new Date().getFullYear();
     let seq = 1;
     if (last?.order_number) {
       const parts = String(last.order_number).split("-");
+      // parts[1] is always the sequence: "EDACI-050" → "050", "EDACI-051-2026" → "051"
       if (parts.length > 1) {
-        seq = parseInt(parts[parts.length - 1], 10) || 0;
+        seq = parseInt(parts[1], 10) || 0;
         seq += 1;
       }
     }
-    return `${acronym}-${String(seq).padStart(3, "0")}`;
+    return `${acronym}-${String(seq).padStart(3, "0")}-${year}`;
   }
 
   // ── Helper: create a flight order item with nested routes, crew, profiles ──
@@ -506,11 +508,12 @@ Deno.serve(async (req) => {
       return errorResponse(404, "DATA_NOT_FOUND", "Orden de Vuelo no encontrada.", "DATA");
     }
 
-    if (order.status !== "draft") {
-      return errorResponse(400, "BUSINESS_ORDER_NOT_DRAFT", "Solo se pueden borrar ordenes en borrador.", "BUSINESS_RULE");
-    }
-
+    // Global roles (Líder) can delete orders in any status.
+    // Unit-level roles can only delete draft orders from their own unit.
     if (!globalRoles.has(actorProfile.role)) {
+      if (order.status !== "draft") {
+        return errorResponse(400, "BUSINESS_ORDER_NOT_DRAFT", "Solo el Lider puede borrar ordenes que no esten en borrador.", "BUSINESS_RULE");
+      }
       if (actorProfile.unit_id !== order.unit_id) {
         return errorResponse(403, "AUTH_UNIT_MISMATCH", "No puedes borrar ordenes de otra unidad.", "AUTHORIZATION");
       }
