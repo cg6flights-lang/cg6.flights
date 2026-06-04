@@ -29,7 +29,7 @@ class FlightLedBoardPresenter {
     DateTime? now,
     int tzOffset = -5,
   }) {
-    final currentTime = (now ?? DateTime.now()).toUtc();
+    final currentTime = now ?? DateTime.now();
     final sortedFlights = [...flights]
       ..sort((a, b) {
         final ga = _group(a);
@@ -85,10 +85,10 @@ class FlightLedBoardPresenter {
     return events.last.occurredAt;
   }
 
-  String _timeText(DateTime utc, int tzOffset) {
-    final local = utc.add(Duration(hours: tzOffset));
-    return '${local.hour.toString().padLeft(2, '0')}:'
-        '${local.minute.toString().padLeft(2, '0')}';
+  String _timeText(DateTime localTime, int tzOffset) {
+    // Data is already in local time (Peru), offset already applied by caller
+    return '${localTime.hour.toString().padLeft(2, '0')}:'
+        '${localTime.minute.toString().padLeft(2, '0')}';
   }
 
   String _unitText(FlightOrderItem flight) {

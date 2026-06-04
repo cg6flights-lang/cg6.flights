@@ -252,7 +252,7 @@ class SupabaseMessagesRepository implements MessagesRepository {
     if (ids.isEmpty) return const AppSuccess(null);
 
     try {
-      final now = DateTime.now().toIso8601String();
+      final now = DateTime.now().toUtc().toIso8601String();
       await _client.from('message_reads').upsert([
         for (final id in ids)
           {'message_id': id, 'profile_id': profileId, 'read_at': now},

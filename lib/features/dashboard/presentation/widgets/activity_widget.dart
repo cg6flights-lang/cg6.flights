@@ -2,6 +2,7 @@ import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/features/audit/domain/audit_log.dart';
 import 'package:cg6_flights/features/dashboard/application/dashboard_providers.dart';
 import 'package:cg6_flights/features/dashboard/domain/dashboard_widget_config.dart';
+import 'package:cg6_flights/core/state/timezone_provider.dart';
 import 'package:cg6_flights/features/dashboard/presentation/widgets/dashboard_widget_base.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,12 +14,14 @@ class ActivityWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activityAsync = ref.watch(recentActivityProvider);
+    final tz = ref.watch(timezoneProvider);
 
     final child = activityAsync.when(
       loading: () => const _Centered(child: CircularProgressIndicator(strokeWidth: 2)),
       error: (_, _) => const _Centered(child: Icon(Icons.error_outline, size: 20)),
       data: (r) => _ActivityContent(
         logs: switch (r) { AppSuccess(data: final d) => d, _ => [] },
+        tz: tz,
       ),
     );
 
@@ -30,8 +33,9 @@ class ActivityWidget extends ConsumerWidget {
 }
 
 class _ActivityContent extends StatelessWidget {
-  const _ActivityContent({required this.logs});
+  const _ActivityContent({required this.logs, required this.tz});
   final List<AuditLog> logs;
+  final int tz;
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +54,7 @@ class _ActivityContent extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: 2),
           child: Row(children: [
             Text(
-              '${log.createdAt.hour.toString().padLeft(2, '0')}:${log.createdAt.minute.toString().padLeft(2, '0')}',
+              formatTimeWithOffset(log.createdAt, tz),
               style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: 10),
             ),
             const SizedBox(width: 4),

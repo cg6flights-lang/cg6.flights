@@ -402,3 +402,35 @@ Idiomas:
 - No depender solo de color.
 - Mensajes claros.
 - Tamaños táctiles razonables.
+
+---
+
+## 6. Changelog 2026-06-01 a 2026-06-04
+
+### Dashboard Modular v2
+
+- **Layout**: Dos secciones — widgets anchos (span-2/3) a la izquierda (2/3 ancho), widgets angostos (span-1) apilados a la derecha (1/3). Sin huecos.
+- **8 widgets visibles**: Mapa, KPIs, Timeline (Gantt), Próximos Vuelos, METAR, Operatividad (fl_chart), Notificaciones, Flota.
+- **3 widgets ocultos**: Resumen del Día, Acciones Rápidas, Calendario Mini. Activables desde Personalizar.
+- **Modo Edición**: Drag & drop con `ReorderableListView`, ajuste de ancho (-/+), toggle visibilidad.
+- **Preferencias**: orden, visibilidad y span persistidos en memoria vía `DashboardPreferencesNotifier`.
+- **Responsivo**: 2/3+1/3 en ≥1100px, 1/2+1/2 en ≥700px, columna única en <700px.
+- **Wrapper**: `DashboardWidgetWrapper` como `StatelessWidget` con Card + header.
+
+### Flight Orders — Mejoras
+
+- **Numeración con año**: `ACRONYM-XXX-YYYY` (ej. EDACI-051-2026). Secuencia por unidad.
+- **Perfiles**: numeración romana (I, II, III...). Sección movida debajo de la tabla de OVs, no en el panel de detalle. Visibles en cualquier estado.
+- **Vuelo Local**: checkbox en el formulario de vuelo. Origen = destino = mismo aeropuerto. Zona de trabajo opcional.
+- **Filtros**: unificados al estilo Crew (`DropdownButtonFormField` con `OutlineInputBorder`).
+- **Borrado**: Líder puede borrar OVs en cualquier estado. Edge function `manage-flight-order` actualizada.
+
+### Timezone
+
+- **Sistema**: `timezoneProvider` con offset configurable (default Perú UTC-5).
+- **Corrección**: `toLocalTime` ajusta desde `_sourceOffset` (-5) al offset configurado. Datos en DB están en hora local Perú.
+- **Widgets actualizados**: upcoming flights, timeline, activity, calendar mini, flights page, flight orders page, LED board, dashboard providers, mensajes.
+
+### Data Cleanup
+
+- Borrado de OVs y Vuelos existentes. Nueva OV EDACI-051-2026 creada como draft.

@@ -1,6 +1,7 @@
 import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/core/security/app_permission.dart';
+import 'package:cg6_flights/core/state/timezone_provider.dart';
 import 'package:cg6_flights/features/auth/application/session_controller.dart';
 import 'package:cg6_flights/features/flight_orders/application/flight_order_pdf_downloader.dart';
 import 'package:cg6_flights/features/flight_orders/application/flight_order_pdf_service.dart';
@@ -55,7 +56,8 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
   }
 
   List<FlightOrder> _applyFilters(List<FlightOrder> orders) {
-    final now = DateTime.now();
+    final tz = ref.read(timezoneProvider);
+    final now = toLocalTime(DateTime.now(), tz);
     final today = DateTime(now.year, now.month, now.day);
 
     return orders.where((o) {
@@ -208,14 +210,28 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
                             Expanded(
                               flex: 3,
                               child: SizedBox(
-                                height: 550,
-                                child: Card(
-                                  elevation: 1,
-                                  margin: EdgeInsets.zero,
-                                  child: SingleChildScrollView(
-                                    padding: const EdgeInsets.all(12),
-                                    child: _buildTable(context, filtered, l10n),
-                                  ),
+                                height: MediaQuery.of(context).size.height - 280,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    Expanded(
+                                      child: Card(
+                                        elevation: 1,
+                                        margin: EdgeInsets.zero,
+                                        child: SingleChildScrollView(
+                                          padding: const EdgeInsets.all(12),
+                                          child: _buildTable(context, filtered, l10n),
+                                        ),
+                                      ),
+                                    ),
+                                    if (_selectedOrder != null) ...[
+                                      const SizedBox(height: 8),
+                                      _ProfilesCard(
+                                        orderId: _selectedOrder!.id,
+                                        onChanged: () => _selectOrder(_selectedOrder!),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ),
                             ),
@@ -349,26 +365,6 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
     'reopened',
   ];
 
-  String get _unitLabel {
-    if (_selectedUnitId == null) return 'Todas';
-    final u = _units.where((e) => e.id == _selectedUnitId).firstOrNull;
-    return u?.name ?? u?.code ?? '--';
-  }
-
-  String get _dateLabel {
-    return switch (_dateFilter) {
-      'today' => 'Hoy',
-      'yesterday' => 'Ayer',
-      'week' => 'Esta semana',
-      _ => 'Todo',
-    };
-  }
-
-  String get _statusLabel {
-    if (_statusFilters.isEmpty) return 'Todos';
-    return _statusFilters.join(', ');
-  }
-
   bool get _hasActiveFilters =>
       _selectedUnitId != null ||
       _dateFilter != 'all' ||
@@ -383,158 +379,85 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
   }
 
   Widget _buildFilterBar(AppLocalizations l10n) {
-    final theme = Theme.of(context);
-    final outlineColor = theme.colorScheme.outline.withValues(alpha: 0.3);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // ── Dropdown row ──────────────────────────────────────────
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            _FilterDropdown(
-              label: l10n.t('flightOrders.unit'),
-              icon: Icons.business_outlined,
-              selectedLabel: _unitLabel,
-              outlineColor: outlineColor,
-              menuChildren: [
-                _unitMenuItem(null, 'Todas'),
-                for (final u in _units.where((e) => e.active))
-                  _unitMenuItem(u.id, u.name.isNotEmpty ? u.name : u.code),
-              ],
+            SizedBox(
+              width: 180,
+              child: DropdownButtonFormField<String>(
+                value: _selectedUnitId,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: l10n.t('flightOrders.unit'),
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+                items: [
+                  const DropdownMenuItem<String>(value: null, child: Text('Todas', style: TextStyle(fontSize: 13))),
+                  for (final u in _units.where((e) => e.active))
+                    DropdownMenuItem<String>(
+                      value: u.id,
+                      child: Text(u.name.isNotEmpty ? u.name : u.code, style: const TextStyle(fontSize: 13)),
+                    ),
+                ],
+                onChanged: (v) => setState(() => _selectedUnitId = v),
+              ),
             ),
-            _FilterDropdown(
-              label: l10n.t('flightOrders.date'),
-              icon: Icons.calendar_month_outlined,
-              selectedLabel: _dateLabel,
-              outlineColor: outlineColor,
-              menuChildren: [
-                for (final (value, label) in _dateOptions)
-                  _dateMenuItem(value, label),
-              ],
+            SizedBox(
+              width: 160,
+              child: DropdownButtonFormField<String>(
+                value: _dateFilter,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: l10n.t('flightOrders.date'),
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+                items: [
+                  for (final (value, label) in _dateOptions)
+                    DropdownMenuItem<String>(value: value, child: Text(label, style: const TextStyle(fontSize: 13))),
+                ],
+                onChanged: (v) => setState(() => _dateFilter = v ?? 'all'),
+              ),
             ),
-            _FilterDropdown(
-              label: l10n.t('flightOrders.status'),
-              icon: Icons.label_outlined,
-              selectedLabel: _statusLabel,
-              outlineColor: outlineColor,
-              menuChildren: [for (final s in _allStatuses) _statusMenuItem(s)],
+            SizedBox(
+              width: 160,
+              child: DropdownButtonFormField<String>(
+                value: _statusFilters.isNotEmpty ? _statusFilters.first : null,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: l10n.t('flightOrders.status'),
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+                items: [
+                  const DropdownMenuItem<String>(value: null, child: Text('Todos', style: TextStyle(fontSize: 13))),
+                  for (final s in _allStatuses)
+                    DropdownMenuItem<String>(value: s, child: Text(s, style: const TextStyle(fontSize: 13))),
+                ],
+                onChanged: (v) => setState(() {
+                  _statusFilters.clear();
+                  if (v != null) _statusFilters.add(v);
+                }),
+              ),
             ),
             if (_hasActiveFilters)
               IconButton(
                 icon: const Icon(Icons.clear_all, size: 18),
-                tooltip: l10n.t('flightOrders.clearFilters'),
+                tooltip: 'Limpiar filtros',
                 visualDensity: VisualDensity.compact,
                 onPressed: _clearAllFilters,
               ),
           ],
         ),
-
-        // ── Active filter chips ───────────────────────────────────
-        if (_hasActiveFilters) ...[
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 4,
-            children: [
-              if (_selectedUnitId != null)
-                _activeChip(
-                  '${l10n.t("flightOrders.unit")}: $_unitLabel',
-                  () => setState(() => _selectedUnitId = null),
-                ),
-              if (_dateFilter != 'all')
-                _activeChip(
-                  _dateLabel,
-                  () => setState(() => _dateFilter = 'all'),
-                ),
-              for (final s in _statusFilters)
-                _activeChip(s, () => setState(() => _statusFilters.remove(s))),
-            ],
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _activeChip(String label, VoidCallback onDeleted) {
-    return InputChip(
-      label: Text(label, style: const TextStyle(fontSize: 11)),
-      onDeleted: onDeleted,
-      deleteIcon: const Icon(Icons.close, size: 14),
-      visualDensity: VisualDensity.compact,
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-    );
-  }
-
-  // ── PopupMenu items ──────────────────────────────────────────────
-
-  PopupMenuItem<void> _unitMenuItem(String? unitId, String label) {
-    return PopupMenuItem<void>(
-      onTap: () => setState(() => _selectedUnitId = unitId),
-      child: _popupRadio(label, _selectedUnitId == unitId),
-    );
-  }
-
-  PopupMenuItem<void> _dateMenuItem(String value, String label) {
-    return PopupMenuItem<void>(
-      onTap: () => setState(() => _dateFilter = value),
-      child: _popupRadio(label, _dateFilter == value),
-    );
-  }
-
-  PopupMenuItem<void> _statusMenuItem(String status) {
-    final checked = _statusFilters.contains(status);
-    return PopupMenuItem<void>(
-      onTap: () {
-        setState(() {
-          if (checked) {
-            _statusFilters.remove(status);
-          } else {
-            _statusFilters.add(status);
-          }
-        });
-      },
-      child: _popupCheck(status, checked),
-    );
-  }
-
-  Widget _popupRadio(String label, bool selected) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          selected ? Icons.radio_button_checked : Icons.radio_button_off,
-          size: 18,
-          color: selected
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
-        const SizedBox(width: 8),
-        Text(label, style: const TextStyle(fontSize: 13)),
-      ],
-    );
-  }
-
-  Widget _popupCheck(String label, bool selected) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: 18,
-          height: 18,
-          child: Checkbox(
-            value: selected,
-            onChanged: (_) {},
-            visualDensity: VisualDensity.compact,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(label, style: const TextStyle(fontSize: 13)),
       ],
     );
   }
@@ -797,76 +720,6 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
 
 // ── Filter dropdown widget ─────────────────────────────────────────
 
-class _FilterDropdown extends StatelessWidget {
-  const _FilterDropdown({
-    required this.label,
-    required this.icon,
-    required this.selectedLabel,
-    required this.outlineColor,
-    required this.menuChildren,
-  });
-
-  final String label;
-  final IconData icon;
-  final String selectedLabel;
-  final Color outlineColor;
-  final List<Widget> menuChildren;
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<void>(
-      offset: const Offset(0, 4),
-      padding: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      itemBuilder: (_) => menuChildren.cast<PopupMenuEntry<void>>(),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          border: Border.all(color: outlineColor),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(width: 6),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                Text(
-                  selectedLabel,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              Icons.arrow_drop_down,
-              size: 18,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Loading dots overlay ───────────────────────────────────────────
-
 class _LoadingDotsOverlay extends StatefulWidget {
   const _LoadingDotsOverlay({super.key});
 
@@ -1005,5 +858,78 @@ class _EmptyState extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _ProfilesCard extends ConsumerStatefulWidget {
+  const _ProfilesCard({required this.orderId, required this.onChanged});
+  final String orderId;
+  final VoidCallback onChanged;
+  @override
+  ConsumerState<_ProfilesCard> createState() => _ProfilesCardState();
+}
+
+class _ProfilesCardState extends ConsumerState<_ProfilesCard> {
+  final _descCtrl = TextEditingController();
+  bool _adding = false;
+  List<FlightOrderProfile> _profiles = [];
+  bool _loaded = false;
+
+  @override
+  void dispose() { _descCtrl.dispose(); super.dispose(); }
+
+  Future<void> _load() async {
+    final result = await ref.read(flightOrdersRepositoryProvider).listOrderProfiles(widget.orderId);
+    if (!mounted) return;
+    if (result case AppSuccess(data: final list)) {
+      setState(() { _profiles = list; _loaded = true; });
+    } else {
+      setState(() => _loaded = true);
+    }
+  }
+
+  Future<void> _add() async {
+    final desc = _descCtrl.text.trim();
+    if (desc.isEmpty) return;
+    setState(() => _adding = true);
+    await ref.read(flightOrdersRepositoryProvider).addOrderProfile(flightOrderId: widget.orderId, description: desc);
+    _descCtrl.clear();
+    setState(() => _adding = false);
+    widget.onChanged();
+    await _load();
+  }
+
+  Future<void> _remove(String id) async {
+    await ref.read(flightOrdersRepositoryProvider).removeOrderProfile(id);
+    widget.onChanged();
+    await _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(elevation: 1, margin: EdgeInsets.zero, child: Padding(padding: const EdgeInsets.all(12), child: FutureBuilder(
+      future: _loaded ? Future.value() : _load(),
+      builder: (context, _) {
+        if (!_loaded) return const SizedBox(height: 48, child: Center(child: CircularProgressIndicator(strokeWidth: 2)));
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text('Perfiles', style: theme.textTheme.labelLarge),
+          const SizedBox(height: 6),
+          if (_profiles.isNotEmpty) ...[
+            ..._profiles.map((p) => Padding(padding: const EdgeInsets.only(bottom: 4), child: Row(children: [
+              Text('[${p.profileLabel}] ', style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700)),
+              Expanded(child: Text(p.description, style: theme.textTheme.bodySmall)),
+              InkWell(onTap: () => _remove(p.id), borderRadius: BorderRadius.circular(4), child: Padding(padding: const EdgeInsets.all(2), child: Icon(Icons.close, size: 14, color: theme.colorScheme.onSurfaceVariant))),
+            ]))),
+            const SizedBox(height: 8),
+          ],
+          Row(children: [
+            Expanded(child: TextFormField(controller: _descCtrl, decoration: const InputDecoration(hintText: 'Descripción del perfil', isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8)), style: theme.textTheme.bodySmall)),
+            const SizedBox(width: 8),
+            IconButton(onPressed: _adding ? null : _add, icon: _adding ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.add, size: 18)),
+          ]),
+        ]);
+      },
+    )));
   }
 }

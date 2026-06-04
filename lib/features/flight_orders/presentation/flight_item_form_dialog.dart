@@ -34,6 +34,7 @@ class _RouteSegmentData {
   String segmentType;
   bool originIsAirport;
   bool destIsAirport;
+  bool _isLocal = false;
   String originAltType = 'zone';
   String destAltType = 'zone';
   final TextEditingController originRouteIdCtrl;
@@ -45,11 +46,31 @@ class _RouteSegmentData {
   final TextEditingController destLatCtrl;
   final TextEditingController destLngCtrl;
 
+  factory _RouteSegmentData.local() {
+    final data = _RouteSegmentData(order: 1);
+    data.segmentType = 'local';
+    data._isLocal = true;
+    return data;
+  }
+
   Map<String, dynamic> toPayload() {
     final m = <String, dynamic>{
       'segment_order': segmentOrder,
-      'segment_type': segmentType,
+      'segment_type': _isLocal ? 'local' : segmentType,
     };
+
+    if (_isLocal) {
+      m['origin_type'] = 'airport';
+      m['destination_type'] = 'airport';
+      if (originRouteIdCtrl.text.isNotEmpty) {
+        m['origin_route_id'] = originRouteIdCtrl.text;
+        m['destination_route_id'] = originRouteIdCtrl.text;
+      }
+      if (originLabelCtrl.text.isNotEmpty) {
+        m['origin_label'] = originLabelCtrl.text;
+      }
+      return m;
+    }
 
     if (originIsAirport) {
       m['origin_type'] = 'airport';
@@ -122,7 +143,7 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
   bool _saving = false;
   int _currentStep = 0;
 
-  static const _stepLabels = ['Vuelo', 'Combustible y Ruta', 'Tripulación y Perfiles'];
+  static const _stepLabels = ['Vuelo', 'Combustible y Ruta'];
 
   String? _aircraftId;
   String? _aircraftError;
@@ -140,8 +161,7 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
   bool _fuelLastEditedLbs = true;
 
   final _segments = <_RouteSegmentData>[_RouteSegmentData(order: 1)];
-
-  final _selectedProfileIds = <String>{};
+  bool _isLocal = false;
 
   String? _pcId;
   String? _cpId;
@@ -157,9 +177,6 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
   bool _crewLoaded = false;
   List<dynamic> _routesList = [];
   bool _routesLoaded = false;
-  List<FlightOrderProfile> _profilesList = [];
-  bool _profilesLoaded = false;
-
   static const _functionCodes = [
     {'code': 'PS', 'label': 'PS - Piloto de Seguridad'},
     {'code': 'IP', 'label': 'IP - Piloto Instructor'},
@@ -192,13 +209,15 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
       _fuelType = item.fuelType ?? 'Jet A1';
       _fuelLbsCtrl.text = item.fuelAmount?.toString() ?? '';
       _recalcFuel(fromLbs: true);
-      _selectedProfileIds.addAll(item.profileIds);
       // Pre-fill segments from routes
       if (item.routes.isNotEmpty) {
         _segments.clear();
+        // Detect if this is a local flight
+        final isLocal = item.routes.any((r) => r.segmentType == 'local');
+        if (isLocal) _isLocal = true;
         for (final r in item.routes) {
-          final seg = _RouteSegmentData(order: r.segmentOrder);
-          seg.segmentType = r.segmentType;
+          final seg = isLocal ? _RouteSegmentData.local() : _RouteSegmentData(order: r.segmentOrder);
+          if (!isLocal) seg.segmentType = r.segmentType;
           if (r.originType == 'airport') {
             seg.originIsAirport = true;
             seg.originRouteIdCtrl.text = r.originRouteId ?? '';
@@ -240,7 +259,6 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
     _loadAircraft();
     _loadCrewMembers();
     _loadRoutes();
-    _loadProfiles();
   }
 
   @override
@@ -340,26 +358,6 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
     }
   }
 
-  Future<void> _loadProfiles() async {
-    try {
-      final result = await ref
-          .read(flightOrdersRepositoryProvider)
-          .listOrderProfiles(widget.flightOrderId);
-      if (mounted) {
-        switch (result) {
-          case AppSuccess(data: final profiles):
-            setState(() {
-              _profilesList = profiles;
-              _profilesLoaded = true;
-            });
-          case AppFailure():
-            setState(() => _profilesLoaded = true);
-        }
-      }
-    } catch (_) {
-      if (mounted) setState(() => _profilesLoaded = true);
-    }
-  }
 
   bool _canAdvance() {
     switch (_currentStep) {
@@ -413,7 +411,7 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
           onPressed: _saving ? null : () => Navigator.of(context).pop(false),
           child: Text(l10n.t('common.cancel')),
         ),
-        if (_currentStep < 2)
+        if (_currentStep < 1)
           FilledButton(
             onPressed: _canAdvance()
                 ? () => setState(() => _currentStep++)
@@ -505,7 +503,7 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
       case 1:
         return _buildStep2(l10n);
       case 2:
-        return _buildStep3(l10n);
+        return _buildStep2(l10n);
       default:
         return const SizedBox.shrink();
     }
@@ -528,7 +526,7 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
     );
   }
 
-  // Step 2: Fuel + Routes
+  // Step 2: Fuel + Routes + Crew
   Widget _buildStep2(AppLocalizations l10n) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -537,23 +535,13 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
         _buildFuelSection(l10n),
         const SizedBox(height: 20),
         _buildRoutesSection(l10n),
-      ],
-    );
-  }
-
-  // Step 3: Crew + Profiles
-  Widget _buildStep3(AppLocalizations l10n) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildProfilesSection(l10n),
         const SizedBox(height: 20),
         _buildCrewSection(l10n),
       ],
     );
   }
 
+  // Step 3: Crew + Profiles
   Widget _buildAircraftSection(AppLocalizations l10n) {
     if (!_aircraftLoaded) {
       return const Center(child: CircularProgressIndicator());
@@ -831,20 +819,124 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
           l10n.t('flightOrders.routes'),
           style: Theme.of(context).textTheme.titleSmall,
         ),
-        const SizedBox(height: 8),
-        for (var i = 0; i < _segments.length; i++) ...[
-          if (i > 0) const SizedBox(height: 12),
-          _buildSegmentCard(l10n, i),
-        ],
-        const SizedBox(height: 8),
-        TextButton.icon(
-          onPressed: () => setState(() {
-            _segments.add(_RouteSegmentData(order: _segments.length + 1));
+        const SizedBox(height: 4),
+        CheckboxListTile(
+          title: const Text('Vuelo Local'),
+          subtitle: const Text('Despegue y aterrizaje en el mismo aeropuerto'),
+          value: _isLocal,
+          dense: true,
+          contentPadding: EdgeInsets.zero,
+          onChanged: (v) => setState(() {
+            _isLocal = v ?? false;
+            _segments.clear();
+            if (_isLocal) {
+              _segments.add(_RouteSegmentData.local());
+            } else {
+              _segments.add(_RouteSegmentData(order: 1));
+            }
           }),
-          icon: const Icon(Icons.add, size: 18),
-          label: Text(l10n.t('flightOrders.addRoute')),
         ),
+        if (_isLocal) ...[
+          const SizedBox(height: 4),
+          _buildLocalSegment(l10n),
+        ] else ...[
+          const SizedBox(height: 8),
+          for (var i = 0; i < _segments.length; i++) ...[
+            if (i > 0) const SizedBox(height: 12),
+            _buildSegmentCard(l10n, i),
+          ],
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: () => setState(() {
+              _segments.add(_RouteSegmentData(order: _segments.length + 1));
+            }),
+            icon: const Icon(Icons.add, size: 18),
+            label: Text(l10n.t('flightOrders.addRoute')),
+          ),
+        ],
       ],
+    );
+  }
+
+  Widget _buildLocalSegment(AppLocalizations l10n) {
+    final seg = _segments.first;
+    final theme = Theme.of(context);
+
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          // Airport selector (required)
+          Text(l10n.t('flightOrders.airport'), style: theme.textTheme.labelSmall),
+          const SizedBox(height: 4),
+          _routesLoaded
+              ? InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Aeropuerto',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: seg.originRouteIdCtrl.text.isEmpty ? null : seg.originRouteIdCtrl.text,
+                      isExpanded: true,
+                      isDense: true,
+                      hint: const Text('Seleccionar aeropuerto', style: TextStyle(fontSize: 13)),
+                      items: [
+                        for (final r in _routesList)
+                          DropdownMenuItem<String>(
+                            value: r['id'].toString(),
+                            child: Text(
+                              '${r['icao_code'] != null ? '${r['icao_code']} - ' : ''}${r['airport_name']}',
+                              style: const TextStyle(fontSize: 13)),
+                          ),
+                      ],
+                      onChanged: (v) {
+                        setState(() => seg.originRouteIdCtrl.text = v ?? '');
+                      },
+                    ),
+                  ),
+                )
+              : const SizedBox(height: 48, child: Center(child: CircularProgressIndicator(strokeWidth: 2))),
+          const SizedBox(height: 12),
+          // Zone selector (optional)
+          Text('Zona de trabajo (opcional)', style: theme.textTheme.labelSmall),
+          const SizedBox(height: 4),
+          InputDecorator(
+            decoration: const InputDecoration(
+              labelText: 'Zona de trabajo (opcional)',
+              border: OutlineInputBorder(),
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: seg.originLabelCtrl.text.isEmpty ? null : seg.originLabelCtrl.text,
+                isExpanded: true,
+                isDense: true,
+                hint: const Text('Ninguna (solo aeropuerto)', style: TextStyle(fontSize: 13)),
+                items: [
+                  const DropdownMenuItem<String>(value: null, child: Text('Ninguna', style: TextStyle(fontSize: 13))),
+                  const DropdownMenuItem<String>(value: 'Zona 1', child: Text('Zona 1', style: TextStyle(fontSize: 13))),
+                  const DropdownMenuItem<String>(value: 'Zona 2', child: Text('Zona 2', style: TextStyle(fontSize: 13))),
+                  const DropdownMenuItem<String>(value: 'Zona 3', child: Text('Zona 3', style: TextStyle(fontSize: 13))),
+                  const DropdownMenuItem<String>(value: 'Zona 4', child: Text('Zona 4', style: TextStyle(fontSize: 13))),
+                ],
+                onChanged: (v) {
+                  setState(() => seg.originLabelCtrl.text = v ?? '');
+                },
+              ),
+            ),
+          ),
+        ]),
+      ),
     );
   }
 
@@ -1161,47 +1253,6 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
     );
   }
 
-  Widget _buildProfilesSection(AppLocalizations l10n) {
-    if (!_profilesLoaded) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_profilesList.isEmpty) return const SizedBox.shrink();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          l10n.t('flightOrders.profiles'),
-          style: Theme.of(context).textTheme.titleSmall,
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 4,
-          children: _profilesList.map((p) {
-            final selected = _selectedProfileIds.contains(p.id);
-            return FilterChip(
-              label: Text(
-                'Perfil ${p.profileNumber}: ${p.description}',
-                style: const TextStyle(fontSize: 12),
-              ),
-              selected: selected,
-              onSelected: (v) {
-                setState(() {
-                  if (v) {
-                    _selectedProfileIds.add(p.id);
-                  } else {
-                    _selectedProfileIds.remove(p.id);
-                  }
-                });
-              },
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
   Widget _buildCrewSection(AppLocalizations l10n) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1362,8 +1413,6 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
       'fuel_amount': double.tryParse(_fuelLbsCtrl.text.trim()),
       'scheduled_departure': departure.toIso8601String(),
       'routes': _segments.map((s) => s.toPayload()).toList(),
-      if (_selectedProfileIds.isNotEmpty)
-        'profile_ids': _selectedProfileIds.toList(),
       'crew': [
         if (_pcId != null)
           {

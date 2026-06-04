@@ -47,7 +47,7 @@ class FlightsPage extends ConsumerStatefulWidget {
 }
 
 class _FlightsPageState extends ConsumerState<FlightsPage> {
-  DateTime _selectedDate = DateTime.now();
+  late DateTime _selectedDate;
   FlightOrderItem? _selectedItem;
   String? _selectedUnitId;
   List<UnitOption> _units = [];
@@ -55,6 +55,7 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
   @override
   void initState() {
     super.initState();
+    _selectedDate = DateTime.now();
     _loadUnits();
   }
 
@@ -83,7 +84,8 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
   };
 
   DateTime get _today {
-    final now = DateTime.now();
+    final tz = ref.read(timezoneProvider);
+    final now = toLocalTime(DateTime.now(), tz);
     return DateTime(now.year, now.month, now.day);
   }
 

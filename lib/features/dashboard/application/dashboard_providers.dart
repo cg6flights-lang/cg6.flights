@@ -1,4 +1,5 @@
 import 'package:cg6_flights/core/errors/app_error.dart';
+import 'package:cg6_flights/core/state/timezone_provider.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/features/aircraft/data/aircraft_repository.dart';
 import 'package:cg6_flights/features/aircraft/domain/operational_data_point.dart';
@@ -12,7 +13,8 @@ import 'package:cg6_flights/features/messages/domain/message_post.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final _todayProvider = Provider<DateTime>((ref) {
-  final now = DateTime.now();
+  final tz = ref.watch(timezoneProvider);
+  final now = toLocalTime(DateTime.now(), tz);
   return DateTime(now.year, now.month, now.day);
 });
 

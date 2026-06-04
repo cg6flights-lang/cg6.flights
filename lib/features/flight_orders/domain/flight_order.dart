@@ -496,6 +496,17 @@ class FlightOrderProfile {
   final int profileNumber;
   final String description;
 
+  /// Roman numeral label: I, II, III, IV...
+  String get profileLabel {
+    const roman = [
+      'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X',
+      'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX',
+    ];
+    final n = profileNumber;
+    if (n >= 1 && n <= roman.length) return roman[n - 1];
+    return n.toString();
+  }
+
   factory FlightOrderProfile.fromJson(Map<String, dynamic> json) {
     return FlightOrderProfile(
       id: json['id'].toString(),
