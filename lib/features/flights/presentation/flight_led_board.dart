@@ -102,7 +102,7 @@ class _FlightLedBoardState extends ConsumerState<FlightLedBoard> {
 
   void _startAutoRefresh() {
     _autoRefresh?.cancel();
-    _autoRefresh = Timer.periodic(const Duration(seconds: 60), (_) {
+    _autoRefresh = Timer.periodic(const Duration(seconds: 3), (_) {
       if (!_powerOn || !mounted) return;
       _refresh();
     });
@@ -471,7 +471,9 @@ class _FlightLedBoardState extends ConsumerState<FlightLedBoard> {
       unit: l10n.t('flights.ledColUnit'),
       tail: l10n.t('flights.ledColTail'),
       destination: l10n.t('flights.ledColDestination'),
+      takeoff: l10n.t('flights.ledColTakeoff'),
       eta: l10n.t('flights.ledColEta'),
+      landing: l10n.t('flights.ledColLanding'),
       observation: l10n.t('flights.ledColObservation'),
       color: _yellow,
       size: 13,
@@ -497,7 +499,9 @@ class _FlightLedBoardState extends ConsumerState<FlightLedBoard> {
           unit: row.unit,
           tail: row.tail,
           destination: row.destination,
+          takeoff: row.takeoff,
           eta: row.eta,
+          landing: row.landing,
           observation: l10n.t(row.statusKey),
           color: toneColor,
           observationColor: toneColor,
@@ -535,7 +539,9 @@ class _FlightLedBoardState extends ConsumerState<FlightLedBoard> {
     required String unit,
     required String tail,
     required String destination,
+    required String takeoff,
     required String eta,
+    required String landing,
     required String observation,
     required Color color,
     Color? observationColor,
@@ -563,13 +569,15 @@ class _FlightLedBoardState extends ConsumerState<FlightLedBoard> {
       ),
       child: Row(
         children: [
-          Expanded(flex: 2, child: Text(time, style: style)),
-          Expanded(flex: 2, child: Text(unit, style: style)),
-          Expanded(flex: 3, child: Text(tail, style: style)),
-          Expanded(flex: 3, child: Text(destination, style: style)),
-          Expanded(flex: 2, child: Text(eta, style: style)),
+          Expanded(flex: 1, child: Text(time, style: style)),
+          Expanded(flex: 1, child: Text(unit, style: style)),
+          Expanded(flex: 1, child: Text(tail, style: style)),
+          Expanded(flex: 1, child: Text(destination, style: style)),
+          Expanded(flex: 1, child: Text(takeoff, style: style)),
+          Expanded(flex: 1, child: Text(eta, style: style)),
+          Expanded(flex: 1, child: Text(landing, style: style)),
           Expanded(
-            flex: 3,
+            flex: 1,
             child: blink
                 ? AnimatedOpacity(
                     opacity: _now.second.isEven ? 1 : 0.35,

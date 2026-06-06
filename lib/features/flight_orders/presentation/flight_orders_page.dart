@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/core/security/app_permission.dart';
@@ -33,15 +34,26 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
   List<FlightOrderItem> _items = [];
   bool _isLoadingItems = false;
   String? _selectedUnitId; // null = Todas
-  String _dateFilter = 'today'; // 'all' | 'today' | 'yesterday' | 'week'
+  DateTime? _selectedDate = DateTime.now(); // null = todas las fechas
   final _statusFilters = <String>{};
   bool _initialSelectDone = false;
   List<UnitOption> _units = [];
+
+  Timer? _autoRefresh;
 
   @override
   void initState() {
     super.initState();
     _loadUnits();
+    _autoRefresh = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (mounted) setState(() => ref.invalidate(_ordersListProvider));
+    });
+  }
+
+  @override
+  void dispose() {
+    _autoRefresh?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadUnits() async {
@@ -56,34 +68,15 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
   }
 
   List<FlightOrder> _applyFilters(List<FlightOrder> orders) {
-    final tz = ref.read(timezoneProvider);
-    final now = toLocalTime(DateTime.now(), tz);
-    final today = DateTime(now.year, now.month, now.day);
-
     return orders.where((o) {
-      if (_selectedUnitId != null && o.unitId != _selectedUnitId) {
-        return false;
-      }
-      if (_dateFilter == 'today') {
+      if (_selectedUnitId != null && o.unitId != _selectedUnitId) return false;
+      if (_selectedDate != null) {
         final od = o.operationDate;
         final orderDate = DateTime(od.year, od.month, od.day);
-        if (orderDate != today) return false;
-      } else if (_dateFilter == 'yesterday') {
-        final od = o.operationDate;
-        final orderDate = DateTime(od.year, od.month, od.day);
-        if (orderDate != today.subtract(const Duration(days: 1))) return false;
-      } else if (_dateFilter == 'week') {
-        final od = o.operationDate;
-        final orderDate = DateTime(od.year, od.month, od.day);
-        final weekStart = today.subtract(Duration(days: today.weekday - 1));
-        final weekEnd = weekStart.add(const Duration(days: 6));
-        if (orderDate.isBefore(weekStart) || orderDate.isAfter(weekEnd)) {
-          return false;
-        }
+        final target = DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day);
+        if (orderDate != target) return false;
       }
-      if (_statusFilters.isNotEmpty && !_statusFilters.contains(o.status)) {
-        return false;
-      }
+      if (_statusFilters.isNotEmpty && !_statusFilters.contains(o.status)) return false;
       return true;
     }).toList();
   }
@@ -350,12 +343,6 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
 
   // ── Filter bar ───────────────────────────────────────────────────
 
-  static const _dateOptions = [
-    ('all', 'Todo'),
-    ('today', 'Hoy'),
-    ('yesterday', 'Ayer'),
-    ('week', 'Esta semana'),
-  ];
   static const _allStatuses = [
     'draft',
     'submitted',
@@ -367,13 +354,13 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
 
   bool get _hasActiveFilters =>
       _selectedUnitId != null ||
-      _dateFilter != 'all' ||
+      _selectedDate != null ||
       _statusFilters.isNotEmpty;
 
   void _clearAllFilters() {
     setState(() {
       _selectedUnitId = null;
-      _dateFilter = 'all';
+      _selectedDate = null;
       _statusFilters.clear();
     });
   }
@@ -409,23 +396,10 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
                 onChanged: (v) => setState(() => _selectedUnitId = v),
               ),
             ),
-            SizedBox(
-              width: 160,
-              child: DropdownButtonFormField<String>(
-                value: _dateFilter,
-                isExpanded: true,
-                decoration: InputDecoration(
-                  labelText: l10n.t('flightOrders.date'),
-                  border: const OutlineInputBorder(),
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                ),
-                items: [
-                  for (final (value, label) in _dateOptions)
-                    DropdownMenuItem<String>(value: value, child: Text(label, style: const TextStyle(fontSize: 13))),
-                ],
-                onChanged: (v) => setState(() => _dateFilter = v ?? 'all'),
-              ),
+            _CalendarDropdown(
+              selectedDate: _selectedDate,
+              ovSummary: _buildOvSummary(),
+              onDateSelected: (d) => setState(() => _selectedDate = d),
             ),
             SizedBox(
               width: 160,
@@ -606,6 +580,20 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
       'DIC',
     ];
     return '${date.day} ${months[date.month - 1]} ${date.year}';
+  }
+
+  Map<String, Map<String, int>> _buildOvSummary() {
+    final allOrders = ref.read(_ordersListProvider).asData?.value;
+    final orders = allOrders is AppSuccess ? (allOrders as AppSuccess).data : <FlightOrder>[];
+    final summary = <String, Map<String, int>>{};
+    for (final o in orders) {
+      final d = o.operationDate;
+      final key = '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+      final unit = o.unitName ?? '--';
+      summary.putIfAbsent(key, () => {});
+      summary[key]![unit] = (summary[key]![unit] ?? 0) + 1;
+    }
+    return summary;
   }
 
   Future<void> _confirmDeleteOrder(
@@ -931,5 +919,95 @@ class _ProfilesCardState extends ConsumerState<_ProfilesCard> {
         ]);
       },
     )));
+  }
+}
+
+// ── Calendar Dropdown ──────────────────────────────────────────────────
+
+class _CalendarDropdown extends StatelessWidget {
+  const _CalendarDropdown({required this.selectedDate, required this.ovSummary, required this.onDateSelected});
+  final DateTime? selectedDate;
+  final Map<String, Map<String, int>> ovSummary;
+  final ValueChanged<DateTime?> onDateSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final months = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+    final label = selectedDate != null ? '${selectedDate!.day} ${months[selectedDate!.month - 1]} ${selectedDate!.year}' : 'Todas las fechas';
+    return PopupMenuButton<DateTime?>(
+      offset: const Offset(0, 48),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      onSelected: onDateSelected,
+      itemBuilder: (ctx) => [
+        PopupMenuItem<DateTime?>(enabled: false, padding: EdgeInsets.zero, child: _CalendarGrid(selectedDate: selectedDate, ovSummary: ovSummary, onDateSelected: (d) { Navigator.pop(ctx, d); onDateSelected(d); })),
+        PopupMenuItem<DateTime?>(value: null, child: Row(children: [Icon(Icons.clear, size: 18, color: theme.colorScheme.error), const SizedBox(width: 8), Text('Limpiar fecha', style: TextStyle(color: theme.colorScheme.error))])),
+      ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.5))),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.calendar_month, size: 16, color: theme.colorScheme.primary), const SizedBox(width: 8),
+          Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: selectedDate != null ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant)),
+          const SizedBox(width: 4), Icon(Icons.arrow_drop_down, size: 18, color: theme.colorScheme.onSurfaceVariant),
+        ]),
+      ),
+    );
+  }
+}
+
+class _CalendarGrid extends StatefulWidget {
+  const _CalendarGrid({required this.selectedDate, required this.ovSummary, required this.onDateSelected});
+  final DateTime? selectedDate;
+  final Map<String, Map<String, int>> ovSummary;
+  final ValueChanged<DateTime> onDateSelected;
+  @override State<_CalendarGrid> createState() => _CalendarGridState();
+}
+
+class _CalendarGridState extends State<_CalendarGrid> {
+  late DateTime _month;
+  @override void initState() { super.initState(); _month = DateTime(DateTime.now().year, DateTime.now().month); }
+
+  String _key(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    final firstDay = DateTime(_month.year, _month.month, 1);
+    final lastDay = DateTime(_month.year, _month.month + 1, 0);
+    final startOffset = (firstDay.weekday - 1) % 7;
+    return SizedBox(width: 300, child: Column(mainAxisSize: MainAxisSize.min, children: [
+      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        IconButton(icon: const Icon(Icons.chevron_left, size: 20), onPressed: () => setState(() => _month = DateTime(_month.year, _month.month - 1)), visualDensity: VisualDensity.compact),
+        Text('${months[_month.month - 1]} ${_month.year}', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+        IconButton(icon: const Icon(Icons.chevron_right, size: 20), onPressed: () => setState(() => _month = DateTime(_month.year, _month.month + 1)), visualDensity: VisualDensity.compact),
+      ]),
+      const SizedBox(height: 4),
+      Row(children: ['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d) => Expanded(child: Center(child: Text(d, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurfaceVariant))))).toList()),
+      const SizedBox(height: 4),
+      for (int w = 0; w < 6; w++)
+        Row(children: [for (int d = 0; d < 7; d++) Expanded(child: () {
+          final dayNum = w * 7 + d - startOffset + 1;
+          if (dayNum < 1 || dayNum > lastDay.day) return const SizedBox(height: 32);
+          final date = DateTime(_month.year, _month.month, dayNum);
+          final key = _key(date);
+          final summary = widget.ovSummary[key];
+          final isSelected = widget.selectedDate != null && _key(widget.selectedDate!) == key;
+          final isToday = _key(DateTime.now()) == key;
+          return Tooltip(
+            message: summary != null
+                ? '${date.day} ${months[_month.month - 1]}\n${summary.entries.map((e) => '${e.key}: ${e.value} OV').join('\n')}\nTotal: ${summary.values.fold(0, (a, b) => a + b)} OVs'
+                : '${date.day} ${months[_month.month - 1]}\nSin OVs',
+            child: InkWell(
+              onTap: () => widget.onDateSelected(date), borderRadius: BorderRadius.circular(16),
+              child: Container(width: 32, height: 32,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: isSelected ? theme.colorScheme.primary : (isToday ? theme.colorScheme.primaryContainer : null)),
+                child: Center(child: Text('$dayNum', style: TextStyle(fontSize: 12, fontWeight: isSelected || isToday ? FontWeight.w700 : FontWeight.normal, color: isSelected ? theme.colorScheme.onPrimary : (summary != null ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant)))),
+              ),
+            ),
+          );
+        }())]),
+    ]));
   }
 }

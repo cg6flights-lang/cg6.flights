@@ -14,7 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final _todayProvider = Provider<DateTime>((ref) {
   final tz = ref.watch(timezoneProvider);
-  final now = toLocalTime(DateTime.now(), tz);
+  final now = DateTime.now();
   return DateTime(now.year, now.month, now.day);
 });
 

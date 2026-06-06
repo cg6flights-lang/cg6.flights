@@ -8,7 +8,6 @@ import 'package:cg6_flights/features/auth/presentation/pending_access_page.dart'
 import 'package:cg6_flights/features/auth/presentation/permission_denied_page.dart';
 import 'package:cg6_flights/features/auth/presentation/register_page.dart';
 import 'package:cg6_flights/features/calendar/presentation/calendar_page.dart';
-import 'package:cg6_flights/features/closures/presentation/closures_page.dart';
 import 'package:cg6_flights/features/crew/presentation/crew_page.dart';
 import 'package:cg6_flights/features/dashboard/presentation/dashboard_page.dart';
 import 'package:cg6_flights/features/flight_orders/presentation/flight_orders_page.dart';
@@ -81,10 +80,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const RoutesPage(),
           ),
           GoRoute(
-            path: '/closures',
-            builder: (context, state) => const ClosuresPage(),
-          ),
-          GoRoute(
             path: '/audit',
             builder: (context, state) => const AuditPage(),
           ),
@@ -128,7 +123,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return '/users';
       }
 
-      if (location == '/notifications' || location == '/profile') {
+      if (location == '/profile') {
         return '/dashboard';
       }
 
@@ -178,69 +173,13 @@ const _routePermissions = <String, String>{
 };
 
 const _navigationItems = [
-  NavigationItem(
-    path: '/dashboard',
-    labelKey: 'nav.dashboard',
-    icon: Icons.space_dashboard_outlined,
-  ),
-  NavigationItem(
-    path: '/users',
-    labelKey: 'nav.users',
-    icon: Icons.people_alt_outlined,
-    permission: AppPermission.usersRead,
-  ),
-  NavigationItem(
-    path: '/units',
-    labelKey: 'nav.units',
-    icon: Icons.flag_outlined,
-    permission: AppPermission.unitsRead,
-  ),
-  NavigationItem(
-    path: '/aircraft',
-    labelKey: 'nav.aircraft',
-    icon: Icons.flight,
-    permission: AppPermission.aircraftRead,
-  ),
-  NavigationItem(
-    path: '/crew',
-    labelKey: 'nav.crew',
-    icon: Icons.groups_2_outlined,
-    permission: AppPermission.crewRead,
-  ),
-  NavigationItem(
-    path: '/flight-orders',
-    labelKey: 'nav.flightOrders',
-    icon: Icons.assignment_outlined,
-    permission: AppPermission.flightOrdersRead,
-  ),
-  NavigationItem(
-    path: '/flights',
-    labelKey: 'nav.flights',
-    icon: Icons.flight_takeoff,
-    permission: AppPermission.flightsRead,
-  ),
-  NavigationItem(
-    path: '/routes',
-    labelKey: 'nav.routes',
-    icon: Icons.route_outlined,
-    permission: AppPermission.routesRead,
-  ),
-  NavigationItem(
-    path: '/closures',
-    labelKey: 'nav.closures',
-    icon: Icons.task_alt,
-    permission: AppPermission.closuresRequest,
-  ),
-  NavigationItem(
-    path: '/audit',
-    labelKey: 'nav.audit',
-    icon: Icons.fact_check_outlined,
-    permission: AppPermission.auditRead,
-  ),
-  NavigationItem(
-    path: '/messages',
-    labelKey: 'nav.messages',
-    icon: Icons.mark_unread_chat_alt_outlined,
-    permission: AppPermission.messagesRead,
-  ),
+  NavigationItem(path: '/dashboard', labelKey: 'nav.dashboard', icon: Icons.space_dashboard_outlined),
+  NavigationItem(path: '/flights', labelKey: 'nav.flights', icon: Icons.flight_takeoff, permission: AppPermission.flightsRead),
+  NavigationItem(path: '/flight-orders', labelKey: 'nav.flightOrders', icon: Icons.assignment_outlined, permission: AppPermission.flightOrdersRead),
+  NavigationItem(path: '/aircraft', labelKey: 'nav.aircraft', icon: Icons.flight, permission: AppPermission.aircraftRead),
+  NavigationItem(path: '/crew', labelKey: 'nav.crew', icon: Icons.groups_2_outlined, permission: AppPermission.crewRead),
+  NavigationItem(path: '/units', labelKey: 'nav.units', icon: Icons.flag_outlined, permission: AppPermission.unitsRead),
+  NavigationItem(path: '/routes', labelKey: 'nav.routes', icon: Icons.route_outlined, permission: AppPermission.routesRead),
+  NavigationItem(path: '/messages', labelKey: 'nav.messages', icon: Icons.mark_unread_chat_alt_outlined, permission: AppPermission.messagesRead),
+  NavigationItem(path: '/users', labelKey: 'nav.users', icon: Icons.admin_panel_settings, permission: AppPermission.usersRead),
 ];

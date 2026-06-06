@@ -11,7 +11,7 @@ class CalendarMiniWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final tz = ref.watch(timezoneProvider);
-    final now = toLocalTime(DateTime.now(), tz);
+    final now = DateTime.now();
     final months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     final days = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 

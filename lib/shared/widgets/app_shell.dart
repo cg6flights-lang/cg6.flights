@@ -3,6 +3,9 @@ import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/core/security/app_permission.dart';
 import 'package:cg6_flights/core/state/locale_controller.dart';
 import 'package:cg6_flights/core/state/theme_mode_controller.dart';
+import 'package:cg6_flights/features/notifications/application/notification_providers.dart';
+import 'package:cg6_flights/features/notifications/data/notification_repository.dart';
+import 'package:cg6_flights/features/notifications/domain/notification.dart';
 import 'package:cg6_flights/features/auth/application/session_controller.dart';
 import 'package:cg6_flights/features/auth/domain/app_user.dart';
 import 'package:cg6_flights/features/calendar/data/calendar_repository.dart';
@@ -776,51 +779,106 @@ Color _previewStatusColor(CalendarEventStatus status, ColorScheme scheme) {
   };
 }
 
-class _NotificationBell extends StatelessWidget {
+class _NotificationBell extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final notifAsync = ref.watch(notificationsProvider);
+    final theme = Theme.of(context);
+
+    final notifications = notifAsync.asData?.value is AppSuccess
+        ? (notifAsync.asData!.value as AppSuccess<List<AppNotification>>).data
+        : <AppNotification>[];
+    final unread = notifications.where((n) => !n.isRead).length;
+    final latest = notifications.where((n) => !n.isRead).take(5).toList();
+
     return PopupMenuButton<String>(
       offset: const Offset(0, 48),
       tooltip: 'Notificaciones',
-      icon: const Icon(Icons.notifications_outlined),
+      icon: unread > 0
+          ? Badge(
+              label: Text('${unread > 99 ? '99+' : unread}', style: const TextStyle(fontSize: 10)),
+              child: const Icon(Icons.notifications_outlined),
+            )
+          : const Icon(Icons.notifications_outlined),
       onSelected: (value) {
-        if (value == 'all') context.go('/notifications');
+        if (value == 'all') {
+          context.go('/notifications');
+        } else {
+          ref.read(notificationRepositoryProvider).markAsRead(value);
+        }
       },
       itemBuilder: (context) => [
-        const PopupMenuItem<String>(
+        PopupMenuItem<String>(
           enabled: false,
-          child: Text(
-            'Notificaciones',
-            style: TextStyle(fontWeight: FontWeight.w600),
-          ),
+          child: Row(children: [
+            Text('Notificaciones', style: TextStyle(fontWeight: FontWeight.w600)),
+            if (unread > 0) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(color: theme.colorScheme.primary, borderRadius: BorderRadius.circular(10)),
+                child: Text('$unread', style: TextStyle(color: theme.colorScheme.onPrimary, fontSize: 11)),
+              ),
+            ],
+          ]),
         ),
         const PopupMenuDivider(),
-        const PopupMenuItem<String>(
-          enabled: false,
-          child: SizedBox(
-            width: 280,
-            child: Column(
-              children: [
+        if (latest.isEmpty)
+          const PopupMenuItem<String>(
+            enabled: false,
+            child: SizedBox(
+              width: 300,
+              child: Column(children: [
                 Icon(Icons.notifications_off_outlined, size: 36),
                 SizedBox(height: 8),
                 Text('Sin notificaciones nuevas'),
-              ],
+              ]),
             ),
+          )
+        else ...[
+          for (final n in latest)
+            PopupMenuItem<String>(
+              value: n.id,
+              onTap: () => ref.read(notificationRepositoryProvider).markAsRead(n.id),
+              child: SizedBox(
+                width: 300,
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    if (!n.isRead) Container(width: 8, height: 8, decoration: BoxDecoration(shape: BoxShape.circle, color: theme.colorScheme.primary)),
+                    if (!n.isRead) const SizedBox(width: 8),
+                    Expanded(child: Text(n.title, style: TextStyle(fontWeight: n.isRead ? FontWeight.normal : FontWeight.w600, fontSize: 13))),
+                  ]),
+                  const SizedBox(height: 2),
+                  Padding(
+                    padding: EdgeInsets.only(left: n.isRead ? 0 : 16),
+                    child: Text(n.body, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  ),
+                  const SizedBox(height: 2),
+                  Padding(
+                    padding: EdgeInsets.only(left: n.isRead ? 0 : 16),
+                    child: Text(_timeAgo(n.createdAt), style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7))),
+                  ),
+                ]),
+              ),
+            ),
+        ],
+        if (latest.isNotEmpty) ...[
+          const PopupMenuDivider(),
+          const PopupMenuItem<String>(
+            value: 'all',
+            child: Row(children: [Icon(Icons.history, size: 18), SizedBox(width: 8), Text('Ver todas')]),
           ),
-        ),
-        const PopupMenuDivider(),
-        const PopupMenuItem<String>(
-          value: 'all',
-          child: Row(
-            children: [
-              Icon(Icons.history, size: 18),
-              SizedBox(width: 8),
-              Text('Ver todas'),
-            ],
-          ),
-        ),
+        ],
       ],
     );
+  }
+
+  String _timeAgo(DateTime date) {
+    final diff = DateTime.now().difference(date);
+    if (diff.inMinutes < 1) return 'Ahora';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} min';
+    if (diff.inHours < 24) return '${diff.inHours}h';
+    return '${diff.inDays}d';
   }
 }
 
@@ -842,6 +900,8 @@ class _UserAvatarMenu extends ConsumerWidget {
         switch (value) {
           case 'profile':
             showProfileModal(context, user);
+          case 'audit':
+            context.go('/audit');
           case 'settings':
             context.go('/settings');
           case 'logout':
@@ -864,15 +924,14 @@ class _UserAvatarMenu extends ConsumerWidget {
             ],
           ),
         ),
+        if (user.can(AppPermission.auditRead))
+          PopupMenuItem<String>(
+            value: 'audit',
+            child: Row(children: [Icon(Icons.fact_check_outlined, size: 20), const SizedBox(width: 8), const Text('Auditoría')]),
+          ),
         const PopupMenuItem<String>(
           value: 'settings',
-          child: Row(
-            children: [
-              Icon(Icons.tune, size: 20),
-              SizedBox(width: 8),
-              Text('Configuración'),
-            ],
-          ),
+          child: Row(children: [Icon(Icons.tune, size: 20), const SizedBox(width: 8), const Text('Configuración')]),
         ),
         PopupMenuItem<String>(
           value: 'logout',

@@ -73,7 +73,7 @@ class _TimelineContent extends StatelessWidget {
   Widget _ganttRow(FlightOrderItem f, ThemeData theme) {
     final dept = f.scheduledDeparture != null
         ? toLocalTime(f.scheduledDeparture!, tz)
-        : toLocalTime(DateTime.now(), tz);
+        : DateTime.now();
     final statusColor = StatusColors.of(f.status);
     final label = f.aircraftRegistration?.isNotEmpty == true
         ? f.aircraftRegistration!

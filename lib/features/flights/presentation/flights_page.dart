@@ -52,11 +52,22 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
   String? _selectedUnitId;
   List<UnitOption> _units = [];
 
+  Timer? _autoRefresh;
+
   @override
   void initState() {
     super.initState();
     _selectedDate = DateTime.now();
     _loadUnits();
+    _autoRefresh = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (mounted) setState(() => ref.invalidate(_flightsProvider(_selectedDate)));
+    });
+  }
+
+  @override
+  void dispose() {
+    _autoRefresh?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadUnits() async {
@@ -85,7 +96,7 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
 
   DateTime get _today {
     final tz = ref.read(timezoneProvider);
-    final now = toLocalTime(DateTime.now(), tz);
+    final now = DateTime.now();
     return DateTime(now.year, now.month, now.day);
   }
 

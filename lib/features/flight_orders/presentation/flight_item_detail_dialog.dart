@@ -153,7 +153,9 @@ class _FlightItemDetailDialogState
               // State events timeline
               if (item.stateEvents.isNotEmpty) ...[
                 _sectionLabel(context, l10n.t('flightOrders.stateEvents')),
-                const SizedBox(height: 4),
+                const SizedBox(height: 8),
+                _AnimatedFlightProgress(status: item.status, stateEvents: item.stateEvents, tzOffset: tz),
+                const SizedBox(height: 12),
                 _stateTimeline(item.stateEvents, tz),
                 if (_eventTime(item.stateEvents, 'taxi') != null &&
                     _eventTime(item.stateEvents, 'engine_off') != null) ...[
@@ -357,5 +359,88 @@ class _FlightItemDetailDialogState
             ..showSnackBar(SnackBar(content: Text(error.message)));
       }
     }
+  }
+}
+
+// ── Animated Flight Progress ──────────────────────────────────────────
+
+class _AnimatedFlightProgress extends StatelessWidget {
+  const _AnimatedFlightProgress({
+    required this.status,
+    required this.stateEvents,
+    required this.tzOffset,
+  });
+
+  final String status;
+  final List<FlightOrderStateEvent> stateEvents;
+  final int tzOffset;
+
+  static const _states = ['waiting', 'taxi', 'takeoff', 'landing', 'engine_off'];
+  static const _labels = ['Espera', 'Taxeo', 'Despegue', 'Aterrizaje', 'Motor Apag.'];
+
+  int get _currentStep => _states.indexOf(status).clamp(0, 4);
+
+  DateTime? _eventTime(int i) {
+    final s = _states[i];
+    return stateEvents.where((e) => e.status == s).firstOrNull?.occurredAt;
+  }
+
+  String _fmt(DateTime? t) {
+    if (t == null) return '--';
+    return '${t.hour.toString().padLeft(2, "0")}:${t.minute.toString().padLeft(2, "0")}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final currentStep = _currentStep;
+
+    return LayoutBuilder(builder: (context, constraints) {
+      final totalW = constraints.maxWidth - 20;
+      final stepW = _states.length > 1 ? totalW / (_states.length - 1) : 0;
+      final planeX = (currentStep / (_states.length - 1)) * totalW;
+
+      return SizedBox(
+        height: 60,
+        child: Stack(children: [
+          // Connecting line
+          Positioned(
+            left: 10, right: 10, top: 20,
+            child: Container(height: 2, color: theme.colorScheme.outlineVariant),
+          ),
+          // Dots + labels
+          for (int i = 0; i < _states.length; i++)
+            Positioned(
+              left: 10 + i * stepW - 8,
+              top: 16,
+              child: Tooltip(
+                message: _labels[i],
+                child: Column(children: [
+                  Container(
+                    width: 10, height: 10,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: i <= currentStep
+                          ? (i == currentStep ? theme.colorScheme.primary : Colors.green)
+                          : Colors.grey.shade300,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(_labels[i], style: TextStyle(fontSize: 8, color: i == currentStep ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant)),
+                  Text(_fmt(_eventTime(i)), style: TextStyle(fontSize: 9, fontWeight: i == currentStep ? FontWeight.w700 : FontWeight.normal, color: theme.colorScheme.onSurfaceVariant)),
+                ]),
+              ),
+            ),
+          // Airplane
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeOutCubic,
+            left: 10 + planeX - 10,
+            top: 8,
+            child: Text('✈', style: TextStyle(fontSize: 20, color: theme.colorScheme.primary)),
+          ),
+        ]),
+      );
+    });
   }
 }

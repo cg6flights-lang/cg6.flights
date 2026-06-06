@@ -8,7 +8,9 @@ class LedFlightRow {
     required this.unit,
     required this.tail,
     required this.destination,
+    required this.takeoff,
     required this.eta,
+    required this.landing,
     required this.statusKey,
     required this.tone,
   });
@@ -17,7 +19,9 @@ class LedFlightRow {
   final String unit;
   final String tail;
   final String destination;
+  final String takeoff;
   final String eta;
+  final String landing;
   final String statusKey;
   final LedFlightTone tone;
 }
@@ -51,7 +55,9 @@ class FlightLedBoardPresenter {
           unit: _unitText(flight),
           tail: _tailText(flight),
           destination: _destinationText(flight),
+          takeoff: _takeoffText(flight, tzOffset),
           eta: _etaText(flight, tzOffset),
+          landing: _landingText(flight, tzOffset),
           statusKey: _statusKey(flight, currentTime),
           tone: _tone(flight, currentTime),
         ),
@@ -85,10 +91,11 @@ class FlightLedBoardPresenter {
     return events.last.occurredAt;
   }
 
-  String _timeText(DateTime localTime, int tzOffset) {
-    // Data is already in local time (Peru), offset already applied by caller
-    return '${localTime.hour.toString().padLeft(2, '0')}:'
-        '${localTime.minute.toString().padLeft(2, '0')}';
+  String _timeText(DateTime dt, int tzOffset) {
+    // Supabase returns UTC (+00). toLocal() converts to system local timezone.
+    final local = dt.toLocal();
+    return '${local.hour.toString().padLeft(2, '0')}:'
+        '${local.minute.toString().padLeft(2, '0')}';
   }
 
   String _unitText(FlightOrderItem flight) {
@@ -136,19 +143,25 @@ class FlightLedBoardPresenter {
     return '--';
   }
 
+  DateTime? _findEvent(FlightOrderItem flight, String status) {
+    return flight.stateEvents.where((e) => e.status == status).firstOrNull?.occurredAt;
+  }
+
+  String _eventTimeOrDash(FlightOrderItem flight, String status, int tzOffset) {
+    final t = _findEvent(flight, status);
+    return t != null ? _timeText(t, tzOffset) : '-';
+  }
+
+  String _takeoffText(FlightOrderItem flight, int tzOffset) => _eventTimeOrDash(flight, 'takeoff', tzOffset);
+  String _landingText(FlightOrderItem flight, int tzOffset) => _eventTimeOrDash(flight, 'landing', tzOffset);
+
   String _etaText(FlightOrderItem flight, int tzOffset) {
-    // Already landed → show actual landing time
-    if (flight.status == 'landing' || flight.status == 'engine_off') {
-      final landingEvent = flight.stateEvents
-          .where((e) => e.status == 'landing')
-          .firstOrNull;
-      if (landingEvent != null) {
-        return _timeText(landingEvent.occurredAt, tzOffset);
-      }
-    }
-    // Not landed → show ETA projection
+    // ETA is always a projection: taxi time + eteMinutes.
+    // Never replaced with actual landing time. Compare with ATERRIZAJE column.
+    final taxiTime = _findEvent(flight, 'taxi');
+    final baseTime = taxiTime ?? _baseTime(flight);
     if (flight.eteMinutes != null) {
-      final eta = _baseTime(flight).add(Duration(minutes: flight.eteMinutes!));
+      final eta = baseTime.add(Duration(minutes: flight.eteMinutes!));
       return _timeText(eta, tzOffset);
     }
     return '--:--';
