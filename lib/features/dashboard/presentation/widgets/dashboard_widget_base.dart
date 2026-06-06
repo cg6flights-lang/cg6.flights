@@ -38,32 +38,36 @@ class DashboardWidgetWrapper extends StatelessWidget {
             // Header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              child: Row(children: [
-                if (editMode && dragHandle != null) ...[
-                  dragHandle!,
-                  const SizedBox(width: 4),
-                ],
-                Icon(config.icon, size: 16, color: theme.colorScheme.primary),
-                const SizedBox(width: 6),
-                Text(
-                  _titleFor(config.id),
-                  style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const Spacer(),
-                if (editMode && onToggleExpand != null)
-                  InkWell(
-                    onTap: onToggleExpand,
-                    borderRadius: BorderRadius.circular(4),
-                    child: Padding(
-                      padding: const EdgeInsets.all(2),
-                      child: Icon(
-                        isExpanded ? Icons.expand_less : Icons.expand_more,
-                        size: 18,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+              child: Row(
+                children: [
+                  if (editMode && dragHandle != null) ...[
+                    dragHandle!,
+                    const SizedBox(width: 4),
+                  ],
+                  Icon(config.icon, size: 16, color: theme.colorScheme.primary),
+                  const SizedBox(width: 6),
+                  Text(
+                    _titleFor(config.id),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-              ]),
+                  const Spacer(),
+                  if (editMode && onToggleExpand != null)
+                    InkWell(
+                      onTap: onToggleExpand,
+                      borderRadius: BorderRadius.circular(4),
+                      child: Padding(
+                        padding: const EdgeInsets.all(2),
+                        child: Icon(
+                          isExpanded ? Icons.expand_less : Icons.expand_more,
+                          size: 18,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
             // Content (collapsible)
             if (isExpanded) child,
@@ -76,6 +80,8 @@ class DashboardWidgetWrapper extends StatelessWidget {
   String _titleFor(String id) {
     return switch (id) {
       'map' => 'Mapa de Operaciones',
+      'zulu_clock' => 'Reloj Zulu',
+      'romeo_clock' => 'Reloj Romeo',
       'kpis' => 'KPIs',
       'timeline' => 'Timeline de Vuelos',
       'upcoming' => 'Próximos Vuelos',

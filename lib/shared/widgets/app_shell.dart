@@ -120,27 +120,9 @@ class _AppShellState extends ConsumerState<AppShell> {
                   ),
                 ),
               ),
-              Tooltip(
-                message: langCode == 'es'
-                    ? 'Switch to English'
-                    : 'Cambiar a Espanol',
-                child: IconButton(
-                  onPressed: () => localeNotifier.toggle(),
-                  icon: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.language, size: 18),
-                      const SizedBox(width: 4),
-                      Text(
-                        langCode == 'es' ? 'EN' : 'ES',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              _LanguageToggle(
+                langCode: langCode,
+                onPressed: () => localeNotifier.toggle(),
               ),
               if (user != null) _UserAvatarMenu(user: user),
               const SizedBox(width: 8),
@@ -796,7 +778,10 @@ class _NotificationBell extends ConsumerWidget {
       tooltip: 'Notificaciones',
       icon: unread > 0
           ? Badge(
-              label: Text('${unread > 99 ? '99+' : unread}', style: const TextStyle(fontSize: 10)),
+              label: Text(
+                '${unread > 99 ? '99+' : unread}',
+                style: const TextStyle(fontSize: 10),
+              ),
               child: const Icon(Icons.notifications_outlined),
             )
           : const Icon(Icons.notifications_outlined),
@@ -810,17 +795,34 @@ class _NotificationBell extends ConsumerWidget {
       itemBuilder: (context) => [
         PopupMenuItem<String>(
           enabled: false,
-          child: Row(children: [
-            Text('Notificaciones', style: TextStyle(fontWeight: FontWeight.w600)),
-            if (unread > 0) ...[
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: theme.colorScheme.primary, borderRadius: BorderRadius.circular(10)),
-                child: Text('$unread', style: TextStyle(color: theme.colorScheme.onPrimary, fontSize: 11)),
+          child: Row(
+            children: [
+              Text(
+                'Notificaciones',
+                style: TextStyle(fontWeight: FontWeight.w600),
               ),
+              if (unread > 0) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '$unread',
+                    style: TextStyle(
+                      color: theme.colorScheme.onPrimary,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
             ],
-          ]),
+          ),
         ),
         const PopupMenuDivider(),
         if (latest.isEmpty)
@@ -828,37 +830,79 @@ class _NotificationBell extends ConsumerWidget {
             enabled: false,
             child: SizedBox(
               width: 300,
-              child: Column(children: [
-                Icon(Icons.notifications_off_outlined, size: 36),
-                SizedBox(height: 8),
-                Text('Sin notificaciones nuevas'),
-              ]),
+              child: Column(
+                children: [
+                  Icon(Icons.notifications_off_outlined, size: 36),
+                  SizedBox(height: 8),
+                  Text('Sin notificaciones nuevas'),
+                ],
+              ),
             ),
           )
         else ...[
           for (final n in latest)
             PopupMenuItem<String>(
               value: n.id,
-              onTap: () => ref.read(notificationRepositoryProvider).markAsRead(n.id),
+              onTap: () =>
+                  ref.read(notificationRepositoryProvider).markAsRead(n.id),
               child: SizedBox(
                 width: 300,
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [
-                    if (!n.isRead) Container(width: 8, height: 8, decoration: BoxDecoration(shape: BoxShape.circle, color: theme.colorScheme.primary)),
-                    if (!n.isRead) const SizedBox(width: 8),
-                    Expanded(child: Text(n.title, style: TextStyle(fontWeight: n.isRead ? FontWeight.normal : FontWeight.w600, fontSize: 13))),
-                  ]),
-                  const SizedBox(height: 2),
-                  Padding(
-                    padding: EdgeInsets.only(left: n.isRead ? 0 : 16),
-                    child: Text(n.body, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant), maxLines: 2, overflow: TextOverflow.ellipsis),
-                  ),
-                  const SizedBox(height: 2),
-                  Padding(
-                    padding: EdgeInsets.only(left: n.isRead ? 0 : 16),
-                    child: Text(_timeAgo(n.createdAt), style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7))),
-                  ),
-                ]),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        if (!n.isRead)
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        if (!n.isRead) const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            n.title,
+                            style: TextStyle(
+                              fontWeight: n.isRead
+                                  ? FontWeight.normal
+                                  : FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Padding(
+                      padding: EdgeInsets.only(left: n.isRead ? 0 : 16),
+                      child: Text(
+                        n.body,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Padding(
+                      padding: EdgeInsets.only(left: n.isRead ? 0 : 16),
+                      child: Text(
+                        _timeAgo(n.createdAt),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: theme.colorScheme.onSurfaceVariant.withValues(
+                            alpha: 0.7,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
         ],
@@ -866,7 +910,13 @@ class _NotificationBell extends ConsumerWidget {
           const PopupMenuDivider(),
           const PopupMenuItem<String>(
             value: 'all',
-            child: Row(children: [Icon(Icons.history, size: 18), SizedBox(width: 8), Text('Ver todas')]),
+            child: Row(
+              children: [
+                Icon(Icons.history, size: 18),
+                SizedBox(width: 8),
+                Text('Ver todas'),
+              ],
+            ),
           ),
         ],
       ],
@@ -927,11 +977,23 @@ class _UserAvatarMenu extends ConsumerWidget {
         if (user.can(AppPermission.auditRead))
           PopupMenuItem<String>(
             value: 'audit',
-            child: Row(children: [Icon(Icons.fact_check_outlined, size: 20), const SizedBox(width: 8), const Text('Auditoría')]),
+            child: Row(
+              children: [
+                Icon(Icons.fact_check_outlined, size: 20),
+                const SizedBox(width: 8),
+                const Text('Auditoría'),
+              ],
+            ),
           ),
         const PopupMenuItem<String>(
           value: 'settings',
-          child: Row(children: [Icon(Icons.tune, size: 20), const SizedBox(width: 8), const Text('Configuración')]),
+          child: Row(
+            children: [
+              Icon(Icons.tune, size: 20),
+              SizedBox(width: 8),
+              Text('Configuración'),
+            ],
+          ),
         ),
         PopupMenuItem<String>(
           value: 'logout',
@@ -954,6 +1016,65 @@ class _UserAvatarMenu extends ConsumerWidget {
       child: CircleAvatar(
         radius: 16,
         child: Text(initial, style: const TextStyle(fontSize: 14)),
+      ),
+    );
+  }
+}
+
+class _LanguageToggle extends StatelessWidget {
+  const _LanguageToggle({required this.langCode, required this.onPressed});
+
+  final String langCode;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final nextLabel = langCode == 'es' ? 'EN' : 'ES';
+    final tooltip = langCode == 'es'
+        ? 'Switch to English'
+        : 'Cambiar a Espanol';
+    return Tooltip(
+      message: tooltip,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Material(
+          color: theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(999),
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(999),
+            child: Container(
+              height: 36,
+              constraints: const BoxConstraints(minWidth: 58),
+              padding: const EdgeInsets.symmetric(horizontal: 9),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: theme.colorScheme.outlineVariant),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.language,
+                    size: 17,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    nextLabel,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurface,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

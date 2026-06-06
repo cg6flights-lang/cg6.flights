@@ -1,4 +1,3 @@
-import 'package:cg6_flights/core/state/timezone_provider.dart';
 import 'package:cg6_flights/features/dashboard/domain/dashboard_widget_config.dart';
 import 'package:cg6_flights/features/dashboard/presentation/widgets/dashboard_widget_base.dart';
 import 'package:flutter/material.dart';
@@ -10,7 +9,6 @@ class CalendarMiniWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final tz = ref.watch(timezoneProvider);
     final now = DateTime.now();
     final months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     final days = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];

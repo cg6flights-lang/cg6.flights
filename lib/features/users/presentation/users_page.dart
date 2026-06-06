@@ -111,22 +111,19 @@ class _UsersPageState extends ConsumerState<UsersPage> {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(18),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Left panel — user list
-              SizedBox(
-                width: wide ? 320 : 260,
-                child: _buildUserList(theme),
-              ),
-              Container(
-                width: 1,
-                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
-              ),
-              // Right panel — detail
-              Expanded(child: _buildDetailPanel(theme)),
-            ],
-          ),
+          child: wide
+              ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  SizedBox(width: 320, child: _buildUserList(theme)),
+                  Container(width: 1, color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6)),
+                  Expanded(child: _buildDetailPanel(theme)),
+                ])
+              : Column(children: [
+                  SizedBox(height: 300, child: _buildUserList(theme)),
+                  const Divider(height: 1),
+                  _selected != null
+                      ? Expanded(child: _buildDetailPanel(theme))
+                      : const SizedBox(height: 120, child: Center(child: Text('Selecciona un usuario para ver sus permisos', style: TextStyle(color: Colors.grey)))),
+                ]),
         ),
       ),
     );
@@ -384,7 +381,7 @@ class _UsersPageState extends ConsumerState<UsersPage> {
     required ValueChanged<T?> onChanged,
   }) {
     return DropdownButtonFormField<T>(
-      value: items.contains(value) ? value : null,
+      initialValue: items.contains(value) ? value : null,
       isExpanded: true,
       decoration: InputDecoration(
         labelText: label,

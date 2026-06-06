@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/core/security/app_permission.dart';
-import 'package:cg6_flights/core/state/timezone_provider.dart';
 import 'package:cg6_flights/features/auth/application/session_controller.dart';
 import 'package:cg6_flights/features/flight_orders/application/flight_order_pdf_downloader.dart';
 import 'package:cg6_flights/features/flight_orders/application/flight_order_pdf_service.dart';
@@ -330,6 +329,12 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
                                       ),
                               ),
                             ),
+                            // Profiles card in narrow layout
+                            if (_selectedOrder != null && _selectedOrder!.status == 'draft' && canCreate)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: _ProfilesCard(orderId: _selectedOrder!.id, onChanged: () => _selectOrder(_selectedOrder!)),
+                              ),
                           ],
                         ],
                       );
@@ -377,7 +382,7 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
             SizedBox(
               width: 180,
               child: DropdownButtonFormField<String>(
-                value: _selectedUnitId,
+                initialValue: _selectedUnitId,
                 isExpanded: true,
                 decoration: InputDecoration(
                   labelText: l10n.t('flightOrders.unit'),
@@ -404,7 +409,7 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
             SizedBox(
               width: 160,
               child: DropdownButtonFormField<String>(
-                value: _statusFilters.isNotEmpty ? _statusFilters.first : null,
+                initialValue: _statusFilters.isNotEmpty ? _statusFilters.first : null,
                 isExpanded: true,
                 decoration: InputDecoration(
                   labelText: l10n.t('flightOrders.status'),

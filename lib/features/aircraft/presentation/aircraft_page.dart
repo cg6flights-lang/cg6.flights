@@ -5,8 +5,11 @@ import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/core/security/app_permission.dart';
 import 'package:cg6_flights/features/aircraft/data/aircraft_repository.dart';
 import 'package:cg6_flights/features/aircraft/domain/aircraft.dart';
+import 'package:cg6_flights/features/aircraft/domain/aircraft_flight_hours.dart';
 import 'package:cg6_flights/features/aircraft/domain/operational_data_point.dart';
 import 'package:cg6_flights/features/auth/application/session_controller.dart';
+import 'package:cg6_flights/features/flight_orders/data/flight_orders_repository.dart';
+import 'package:cg6_flights/features/flight_orders/domain/flight_order.dart';
 import 'package:cg6_flights/features/units/data/units_repository.dart';
 import 'package:cg6_flights/features/units/domain/unit_option.dart';
 import 'package:cg6_flights/shared/widgets/data_state_view.dart';
@@ -15,6 +18,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'aircraft_form_dialog.dart';
+
+const _defaultAircraftUnitId = '5334d249-674b-4b4e-8070-aba471a81394';
 
 final _aircraftListProvider = FutureProvider<AppResult<List<Aircraft>>>((
   ref,
@@ -47,16 +52,69 @@ class _CurveParams {
   int get hashCode => Object.hash(unitId, granularity);
 }
 
-final _operationalCurveProvider = FutureProvider.family<
-  AppResult<List<OperationalDataPoint>>,
-  _CurveParams
->((ref, params) async {
-  final repo = ref.read(aircraftRepositoryProvider);
-  return repo.getOperationalCurve(
-    unitId: params.unitId,
-    granularity: params.granularity,
-  );
-});
+final _selectedUnitProvider = NotifierProvider<_UnitNotifier, String?>(
+  _UnitNotifier.new,
+);
+
+class _UnitNotifier extends Notifier<String?> {
+  @override
+  String? build() => _defaultAircraftUnitId;
+  void select(String? id) => state = (state == id ? null : id);
+}
+
+class _AircraftOrdersParams {
+  const _AircraftOrdersParams({
+    required this.aircraftId,
+    required this.from,
+    required this.to,
+  });
+
+  final String aircraftId;
+  final DateTime from;
+  final DateTime to;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _AircraftOrdersParams &&
+      other.aircraftId == aircraftId &&
+      other.from == from &&
+      other.to == to;
+
+  @override
+  int get hashCode => Object.hash(aircraftId, from, to);
+}
+
+final _aircraftOrdersProvider =
+    FutureProvider.family<
+      AppResult<List<FlightOrderItem>>,
+      _AircraftOrdersParams
+    >((ref, params) {
+      return ref
+          .read(flightOrdersRepositoryProvider)
+          .listItemsByAircraft(
+            aircraftId: params.aircraftId,
+            from: params.from,
+            to: params.to,
+          );
+    });
+
+final _flightHoursProvider =
+    FutureProvider.family<AppResult<List<AircraftFlightHours>>, String?>(
+      (ref, unitId) =>
+          ref.read(aircraftRepositoryProvider).getFlightHours(unitId: unitId),
+    );
+
+final _operationalCurveProvider =
+    FutureProvider.family<AppResult<List<OperationalDataPoint>>, _CurveParams>((
+      ref,
+      params,
+    ) async {
+      final repo = ref.read(aircraftRepositoryProvider);
+      return repo.getOperationalCurve(
+        unitId: params.unitId,
+        granularity: params.granularity,
+      );
+    });
 
 class AircraftPage extends ConsumerWidget {
   const AircraftPage({super.key});
@@ -102,15 +160,23 @@ class AircraftPage extends ConsumerWidget {
         }
 
         final units = unitsAsync.value ?? [];
+        final selectedUnitId = ref.watch(_selectedUnitProvider);
 
         final unitAircraft = <String, List<Aircraft>>{};
         for (final a in aircraft) {
           unitAircraft.putIfAbsent(a.unitId, () => []).add(a);
         }
-
-        final showUnits = units
+        final allUnits = units
             .where((u) => unitAircraft.containsKey(u.id))
             .toList();
+        final effectiveSelectedUnitId =
+            selectedUnitId != null &&
+                allUnits.any((u) => u.id == selectedUnitId)
+            ? selectedUnitId
+            : null;
+        final showUnits = effectiveSelectedUnitId != null
+            ? allUnits.where((u) => u.id == effectiveSelectedUnitId).toList()
+            : allUnits;
 
         return ListView(
           padding: const EdgeInsets.all(24),
@@ -132,7 +198,35 @@ class AircraftPage extends ConsumerWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 16),
+            if (session.user?.role?.isGlobal == true &&
+                allUnits.length > 1) ...[
+              const SizedBox(height: 8),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    for (final u in allUnits)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(
+                            u.code,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          selected: effectiveSelectedUnitId == u.id,
+                          onSelected: (_) => ref
+                              .read(_selectedUnitProvider.notifier)
+                              .select(u.id),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
             for (final unit in showUnits)
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
@@ -306,19 +400,13 @@ class _UnitAircraftSectionState extends ConsumerState<_UnitAircraftSection> {
       _filtered.where((a) => a.status == 'operational').toList();
 
   List<Aircraft> get _inoperativas =>
-      _filtered.where((a) => a.status == 'inoperative').toList();
-
-  List<Aircraft> get _mantenimiento =>
-      _filtered.where((a) => a.status == 'maintenance').toList();
+      _filtered.where((a) => a.status != 'operational').toList();
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
 
-    final modelOptions = widget.aircraft
-        .map((a) => a.model)
-        .toSet()
-        .toList()
+    final modelOptions = widget.aircraft.map((a) => a.model).toSet().toList()
       ..sort();
 
     return Card(
@@ -337,16 +425,15 @@ class _UnitAircraftSectionState extends ConsumerState<_UnitAircraftSection> {
                   child: Text(
                     '${widget.unit.code} — ${widget.unit.name}',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 Text(
                   '${_filtered.length}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color:
-                            Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 if (widget.canManage) ...[
                   const SizedBox(width: 8),
@@ -377,8 +464,10 @@ class _UnitAircraftSectionState extends ConsumerState<_UnitAircraftSection> {
                   items: [
                     DropdownMenuItem(
                       value: '',
-                      child: Text(l10n.t('aircraft.all'),
-                          style: const TextStyle(fontSize: 13)),
+                      child: Text(
+                        l10n.t('aircraft.all'),
+                        style: const TextStyle(fontSize: 13),
+                      ),
                     ),
                     for (final m in modelOptions)
                       DropdownMenuItem(
@@ -386,8 +475,7 @@ class _UnitAircraftSectionState extends ConsumerState<_UnitAircraftSection> {
                         child: Text(m, style: const TextStyle(fontSize: 13)),
                       ),
                   ],
-                  onChanged: (v) =>
-                      setState(() => _modelFilter = v ?? ''),
+                  onChanged: (v) => setState(() => _modelFilter = v ?? ''),
                 ),
               ),
             ],
@@ -443,43 +531,45 @@ class _UnitAircraftSectionState extends ConsumerState<_UnitAircraftSection> {
   }
 
   Widget _buildLeftColumn(AppLocalizations l10n) {
+    final byModel = <String, List<Aircraft>>{};
+    for (final a in _filtered) {
+      byModel.putIfAbsent(a.model, () => []).add(a);
+    }
+    final models = byModel.keys.toList()..sort();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildSubsection(
-          title: l10n.t('aircraft.operativeSection'),
-          aircraft: _operativas,
-          icon: Icons.check_circle_outline,
-          color: StatusColors.aircraft['operational']!,
-        ),
-        const SizedBox(height: 16),
-        _buildSubsection(
-          title: l10n.t('aircraft.inoperativeSection'),
-          aircraft: _inoperativas,
-          icon: Icons.error_outline,
-          color: StatusColors.aircraft['inoperative']!,
-        ),
-        const SizedBox(height: 16),
-        _buildSubsection(
-          title: l10n.t('aircraft.maintenanceSection'),
-          aircraft: _mantenimiento,
-          icon: Icons.build_outlined,
-          color: StatusColors.aircraft['maintenance']!,
-        ),
+        for (final model in models)
+          _ModelCardGroup(
+            model: model,
+            aircraft: byModel[model]!,
+            canManage: widget.canManage,
+            onTap: (a) => _showAircraftDetail(
+              context,
+              a,
+              canManage: widget.canManage,
+              onEdit: widget.onEdit,
+            ),
+            onEdit: widget.onEdit,
+          ),
       ],
     );
   }
 
   Widget _buildRightColumn(AppLocalizations l10n) {
-    final curveAsync = ref.watch(_operationalCurveProvider(_CurveParams(
-      unitId: widget.unit.id,
-      granularity: _granularity,
-    )));
+    final curveAsync = ref.watch(
+      _operationalCurveProvider(
+        _CurveParams(unitId: widget.unit.id, granularity: _granularity),
+      ),
+    );
+    final hoursAsync = ref.watch(_flightHoursProvider(widget.unit.id));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildSummaryPanel(l10n),
+        const SizedBox(height: 12),
+        _FlightHoursChart(hoursAsync: hoursAsync),
         const SizedBox(height: 16),
         _buildChartSection(l10n, curveAsync),
       ],
@@ -490,10 +580,15 @@ class _UnitAircraftSectionState extends ConsumerState<_UnitAircraftSection> {
     final total = _filtered.length;
     final op = _operativas.length;
     final inop = _inoperativas.length;
-    final maint = _mantenimiento.length;
 
-    Widget statCard(String label, int count, int? pct, Color color) {
-      return Container(
+    Widget statCard(
+      String label,
+      int count,
+      int? pct,
+      Color color, {
+      VoidCallback? onTap,
+    }) {
+      final content = Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.08),
@@ -506,27 +601,32 @@ class _UnitAircraftSectionState extends ConsumerState<_UnitAircraftSection> {
             Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color:
-                        Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               '$count',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
             ),
             if (pct != null)
               Text(
                 '$pct%',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: color.withValues(alpha: 0.8),
-                    ),
+                  color: color.withValues(alpha: 0.8),
+                ),
               ),
           ],
         ),
+      );
+      if (onTap == null) return content;
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: content,
       );
     }
 
@@ -539,10 +639,9 @@ class _UnitAircraftSectionState extends ConsumerState<_UnitAircraftSection> {
           children: [
             Text(
               l10n.t('aircraft.summary'),
-              style: Theme.of(context)
-                  .textTheme
-                  .titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w600),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
             Row(
@@ -562,34 +661,75 @@ class _UnitAircraftSectionState extends ConsumerState<_UnitAircraftSection> {
                     inop,
                     total > 0 ? (inop * 100 ~/ total) : 0,
                     StatusColors.aircraft['inoperative']!,
+                    onTap: () => _showInoperativeAircraftModal(
+                      context,
+                      _inoperativas,
+                      l10n,
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: statCard(
-                    l10n.t('aircraft.maintenance'),
-                    maint,
-                    total > 0 ? (maint * 100 ~/ total) : 0,
-                    StatusColors.aircraft['maintenance']!,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: statCard(
-                    l10n.t('aircraft.total'),
-                    total,
-                    null,
-                    Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-              ],
+            Text(
+              l10n.t('aircraft.totalSummary').replaceAll('{count}', '$total'),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showInoperativeAircraftModal(
+    BuildContext context,
+    List<Aircraft> aircraft,
+    AppLocalizations l10n,
+  ) {
+    final sorted = [...aircraft]
+      ..sort((a, b) => a.tailNumber.compareTo(b.tailNumber));
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.t('aircraft.inoperativeSummary')),
+        content: SizedBox(
+          width: 560,
+          child: sorted.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Text(
+                    l10n.t('aircraft.noInoperativeAircraft'),
+                    textAlign: TextAlign.center,
+                  ),
+                )
+              : SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final a in sorted)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: _InoperativeAircraftRow(
+                            aircraft: a,
+                            noReasonLabel: l10n.t(
+                              'aircraft.noInoperativeReason',
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(l10n.t('common.close')),
+          ),
+        ],
       ),
     );
   }
@@ -607,33 +747,37 @@ class _UnitAircraftSectionState extends ConsumerState<_UnitAircraftSection> {
           children: [
             Text(
               l10n.t('aircraft.chart.title'),
-              style: Theme.of(context)
-                  .textTheme
-                  .titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w600),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
             SegmentedButton<String>(
               segments: [
                 ButtonSegment(
                   value: 'month',
-                  label: Text(l10n.t('aircraft.chart.month'),
-                      style: const TextStyle(fontSize: 12)),
+                  label: Text(
+                    l10n.t('aircraft.chart.month'),
+                    style: const TextStyle(fontSize: 12),
+                  ),
                 ),
                 ButtonSegment(
                   value: 'week',
-                  label: Text(l10n.t('aircraft.chart.week'),
-                      style: const TextStyle(fontSize: 12)),
+                  label: Text(
+                    l10n.t('aircraft.chart.week'),
+                    style: const TextStyle(fontSize: 12),
+                  ),
                 ),
                 ButtonSegment(
                   value: 'year',
-                  label: Text(l10n.t('aircraft.chart.year'),
-                      style: const TextStyle(fontSize: 12)),
+                  label: Text(
+                    l10n.t('aircraft.chart.year'),
+                    style: const TextStyle(fontSize: 12),
+                  ),
                 ),
               ],
               selected: {_granularity},
-              onSelectionChanged: (v) =>
-                  setState(() => _granularity = v.first),
+              onSelectionChanged: (v) => setState(() => _granularity = v.first),
               emptySelectionAllowed: false,
               showSelectedIcon: false,
               style: ButtonStyle(
@@ -652,13 +796,14 @@ class _UnitAircraftSectionState extends ConsumerState<_UnitAircraftSection> {
                 data: (result) {
                   return switch (result) {
                     AppSuccess<List<OperationalDataPoint>>(
-                      data: final points
+                      data: final points,
                     ) =>
                       points.isEmpty
                           ? _buildNoData(l10n)
                           : _buildLineChart(points),
-                    AppFailure<List<OperationalDataPoint>>() =>
-                      _buildNoData(l10n),
+                    AppFailure<List<OperationalDataPoint>>() => _buildNoData(
+                      l10n,
+                    ),
                   };
                 },
               ),
@@ -683,8 +828,8 @@ class _UnitAircraftSectionState extends ConsumerState<_UnitAircraftSection> {
           Text(
             l10n.t('aircraft.chart.noData'),
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -718,10 +863,9 @@ class _UnitAircraftSectionState extends ConsumerState<_UnitAircraftSection> {
               interval: 20,
               getTitlesWidget: (value, meta) => Text(
                 '${value.toInt()}',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(fontSize: 10),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(fontSize: 10),
               ),
             ),
           ),
@@ -739,10 +883,9 @@ class _UnitAircraftSectionState extends ConsumerState<_UnitAircraftSection> {
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
                     _shortLabel(points[idx].periodLabel),
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(fontSize: 9),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(fontSize: 9),
                   ),
                 );
               },
@@ -767,10 +910,10 @@ class _UnitAircraftSectionState extends ConsumerState<_UnitAircraftSection> {
               show: spots.length <= 12,
               getDotPainter: (spot, percent, barData, index) =>
                   FlDotCirclePainter(
-                radius: 3,
-                color: colorScheme.primary,
-                strokeWidth: 0,
-              ),
+                    radius: 3,
+                    color: colorScheme.primary,
+                    strokeWidth: 0,
+                  ),
             ),
             belowBarData: BarAreaData(
               show: true,
@@ -785,8 +928,9 @@ class _UnitAircraftSectionState extends ConsumerState<_UnitAircraftSection> {
             getTooltipItems: (touchedSpots) {
               return touchedSpots.map((spot) {
                 final idx = spot.spotIndex;
-                final label =
-                    idx < points.length ? points[idx].periodLabel : '';
+                final label = idx < points.length
+                    ? points[idx].periodLabel
+                    : '';
                 return LineTooltipItem(
                   '$label\n${spot.y.toStringAsFixed(1)}%',
                   TextStyle(
@@ -812,107 +956,6 @@ class _UnitAircraftSectionState extends ConsumerState<_UnitAircraftSection> {
   String _shortLabel(String periodLabel) {
     if (periodLabel.length >= 7) return periodLabel.substring(5);
     return periodLabel;
-  }
-
-  Widget _buildSubsection({
-    required String title,
-    required List<Aircraft> aircraft,
-    required IconData icon,
-    required Color color,
-  }) {
-    final l10n = AppLocalizations.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 6),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.2,
-                  ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '(${aircraft.length})',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        if (aircraft.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Text(
-              l10n.t('aircraft.empty'),
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-          )
-        else
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minWidth: 560),
-              child: DataTable(
-                headingTextStyle: Theme.of(context).textTheme.titleSmall,
-                dataRowMinHeight: 48,
-                dataRowMaxHeight: 56,
-                columns: [
-                  DataColumn(label: Text(l10n.t('aircraft.tailNumber'))),
-                  DataColumn(label: Text(l10n.t('aircraft.manufacturer'))),
-                  DataColumn(label: Text(l10n.t('aircraft.model'))),
-                  DataColumn(label: Text(l10n.t('aircraft.year'))),
-                  if (widget.canManage) const DataColumn(label: Text('')),
-                ],
-                rows: [
-                  for (final a in aircraft)
-                    DataRow(
-                      cells: [
-                        DataCell(Text(a.tailNumber,
-                            style: const TextStyle(fontSize: 13))),
-                        DataCell(Text(a.manufacturer,
-                            style: const TextStyle(fontSize: 13))),
-                        DataCell(Text(a.model,
-                            style: const TextStyle(fontSize: 13))),
-                        DataCell(Text(a.year?.toString() ?? '-',
-                            style: const TextStyle(fontSize: 13))),
-                        if (widget.canManage)
-                          DataCell(
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.edit_outlined,
-                                      size: 18),
-                                  tooltip: l10n.t('aircraft.edit'),
-                                  visualDensity: VisualDensity.compact,
-                                  onPressed: () => widget.onEdit(a),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.delete_outline,
-                                      size: 18),
-                                  tooltip: l10n.t('aircraft.deactivate'),
-                                  visualDensity: VisualDensity.compact,
-                                  onPressed: () => widget.onDeactivate(a),
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-                ],
-              ),
-            ),
-          ),
-      ],
-    );
   }
 }
 
@@ -953,6 +996,1048 @@ class _AircraftEmptyState extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _InoperativeAircraftRow extends StatelessWidget {
+  const _InoperativeAircraftRow({
+    required this.aircraft,
+    required this.noReasonLabel,
+  });
+
+  final Aircraft aircraft;
+  final String noReasonLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final reason = aircraft.inoperativeReason?.trim();
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: StatusColors.aircraft['inoperative']!.withValues(alpha: 0.25),
+        ),
+        color: StatusColors.aircraft['inoperative']!.withValues(alpha: 0.06),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  aircraft.tailNumber,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              Text(
+                aircraft.model,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            reason == null || reason.isEmpty ? noReasonLabel : reason,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: StatusColors.aircraft['inoperative'],
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Model Card Group ───────────────────────────────────────────────────
+
+class _ModelCardGroup extends StatelessWidget {
+  const _ModelCardGroup({
+    required this.model,
+    required this.aircraft,
+    required this.canManage,
+    this.onTap,
+    this.onEdit,
+  });
+  final String model;
+  final List<Aircraft> aircraft;
+  final bool canManage;
+  final void Function(Aircraft)? onTap;
+  final void Function(Aircraft)? onEdit;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final ops = aircraft.where((a) => a.status == 'operational').length;
+    final inop = aircraft.length - ops;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.flight,
+                    size: 18,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    model,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(999),
+                      color: Colors.green.withValues(alpha: 0.1),
+                    ),
+                    child: Text(
+                      '$ops ops',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.green,
+                      ),
+                    ),
+                  ),
+                  if (inop > 0) ...[
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(999),
+                        color: Colors.red.withValues(alpha: 0.1),
+                      ),
+                      child: Text(
+                        '$inop inop',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.red,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final a in aircraft)
+                    InkWell(
+                      onTap: onTap != null ? () => onTap!(a) : null,
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        width: 96,
+                        constraints: const BoxConstraints(minHeight: 44),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color:
+                                (a.status == 'operational'
+                                        ? Colors.green
+                                        : Colors.red)
+                                    .withValues(alpha: 0.4),
+                          ),
+                          color:
+                              (a.status == 'operational'
+                                      ? Colors.green
+                                      : Colors.red)
+                                  .withValues(alpha: 0.05),
+                        ),
+                        child: Center(
+                          child: Text(
+                            a.tailNumber,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12.5,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Aircraft Detail Dialog ─────────────────────────────────────────────
+
+void _showAircraftDetail(
+  BuildContext context,
+  Aircraft aircraft, {
+  required bool canManage,
+  required void Function(Aircraft) onEdit,
+}) {
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      contentPadding: EdgeInsets.zero,
+      titlePadding: EdgeInsets.zero,
+      content: SizedBox(
+        width: 640,
+        child: _DetailContent(
+          aircraft: aircraft,
+          canManage: canManage,
+          onEdit: onEdit,
+        ),
+      ),
+    ),
+  );
+}
+
+class _DetailContent extends ConsumerStatefulWidget {
+  const _DetailContent({
+    required this.aircraft,
+    required this.canManage,
+    required this.onEdit,
+  });
+
+  final Aircraft aircraft;
+  final bool canManage;
+  final void Function(Aircraft) onEdit;
+
+  @override
+  ConsumerState<_DetailContent> createState() => _DetailContentState();
+}
+
+class _DetailContentState extends ConsumerState<_DetailContent> {
+  late DateTime _from;
+  late DateTime _to;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _to = DateTime(now.year, now.month, now.day);
+    _from = _to.subtract(const Duration(days: 30));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final aircraft = widget.aircraft;
+    final isOp = aircraft.status == 'operational';
+    final color = isOp ? Colors.green : Colors.red;
+    final hoursAsync = ref.watch(_flightHoursProvider(aircraft.unitId));
+    final ordersAsync = ref.watch(
+      _aircraftOrdersProvider(
+        _AircraftOrdersParams(aircraftId: aircraft.id, from: _from, to: _to),
+      ),
+    );
+    final hours = switch (hoursAsync.asData?.value) {
+      AppSuccess(data: final h) => h,
+      _ => <AircraftFlightHours>[],
+    };
+    final ac = hours.where((h) => h.aircraftId == aircraft.id).firstOrNull;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              color: theme.colorScheme.surfaceContainerHighest,
+              border: Border.all(color: color.withValues(alpha: 0.3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      isOp ? Icons.check_circle : Icons.error,
+                      size: 24,
+                      color: color,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        aircraft.tailNumber,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    if (widget.canManage) ...[
+                      IconButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          widget.onEdit(aircraft);
+                        },
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        tooltip: l10n.t('aircraft.edit'),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(999),
+                        color: color.withValues(alpha: 0.1),
+                      ),
+                      child: Text(
+                        isOp ? 'Operativa' : 'Inoperativa',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: color,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${aircraft.manufacturer} ${aircraft.model}${aircraft.year != null ? ' · ${aircraft.year}' : ''}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                if (aircraft.serialNumber != null)
+                  Text(
+                    '${l10n.t('aircraft.detail.serial')}: ${aircraft.serialNumber}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                if (!isOp && aircraft.inoperativeReason != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '${l10n.t('aircraft.detail.reason')}: ${aircraft.inoperativeReason}',
+                    style: TextStyle(fontSize: 12, color: Colors.red),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (ac != null) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: _HrCard(
+                    l10n.t('aircraft.hours.real'),
+                    '${ac.realHours.toStringAsFixed(1)}h',
+                    Colors.blue,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _HrCard(
+                    l10n.t('aircraft.hours.planned'),
+                    '${ac.plannedHours.toStringAsFixed(1)}h',
+                    Colors.orange,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _HrCard(
+                    l10n.t('aircraft.hours.flights'),
+                    '${ac.flightCount}',
+                    theme.colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              ac.diffHours >= 0
+                  ? l10n
+                        .t('aircraft.hours.more')
+                        .replaceAll(
+                          '{hours}',
+                          ac.diffHours.abs().toStringAsFixed(1),
+                        )
+                  : l10n
+                        .t('aircraft.hours.less')
+                        .replaceAll(
+                          '{hours}',
+                          ac.diffHours.abs().toStringAsFixed(1),
+                        ),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11,
+                color: ac.diffHours >= 0 ? Colors.red : Colors.green,
+              ),
+            ),
+          ],
+          const SizedBox(height: 18),
+          _RelatedOrdersSection(
+            from: _from,
+            to: _to,
+            ordersAsync: ordersAsync,
+            onChangeFrom: () => _pickDate(isFrom: true),
+            onChangeTo: () => _pickDate(isFrom: false),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickDate({required bool isFrom}) async {
+    final current = isFrom ? _from : _to;
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: current,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (selected == null || !mounted) return;
+    setState(() {
+      if (isFrom) {
+        _from = DateTime(selected.year, selected.month, selected.day);
+        if (_from.isAfter(_to)) _to = _from;
+      } else {
+        _to = DateTime(selected.year, selected.month, selected.day);
+        if (_to.isBefore(_from)) _from = _to;
+      }
+    });
+  }
+}
+
+class _RelatedOrdersSection extends StatelessWidget {
+  const _RelatedOrdersSection({
+    required this.from,
+    required this.to,
+    required this.ordersAsync,
+    required this.onChangeFrom,
+    required this.onChangeTo,
+  });
+
+  final DateTime from;
+  final DateTime to;
+  final AsyncValue<AppResult<List<FlightOrderItem>>> ordersAsync;
+  final VoidCallback onChangeFrom;
+  final VoidCallback onChangeTo;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                l10n.t('aircraft.relatedOrders'),
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            OutlinedButton.icon(
+              onPressed: onChangeFrom,
+              icon: const Icon(Icons.date_range_outlined, size: 16),
+              label: Text(
+                '${l10n.t('aircraft.from')}: ${_formatAircraftDate(from)}',
+              ),
+            ),
+            const SizedBox(width: 8),
+            OutlinedButton.icon(
+              onPressed: onChangeTo,
+              icon: const Icon(Icons.event_outlined, size: 16),
+              label: Text(
+                '${l10n.t('aircraft.to')}: ${_formatAircraftDate(to)}',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        ordersAsync.when(
+          loading: () => Container(
+            height: 72,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: theme.colorScheme.outlineVariant),
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+          error: (_, _) => _RelatedOrdersState(
+            message: l10n.t('aircraft.relatedOrdersFailed'),
+          ),
+          data: (result) => switch (result) {
+            AppSuccess<List<FlightOrderItem>>(data: final items) =>
+              items.isEmpty
+                  ? _RelatedOrdersState(
+                      message: l10n.t('aircraft.noRelatedOrders'),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final item in items)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: _RelatedOrderCard(item: item),
+                          ),
+                      ],
+                    ),
+            AppFailure<List<FlightOrderItem>>() => _RelatedOrdersState(
+              message: l10n.t('aircraft.relatedOrdersFailed'),
+            ),
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _RelatedOrdersState extends StatelessWidget {
+  const _RelatedOrdersState({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      constraints: const BoxConstraints(minHeight: 72),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Center(
+        child: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RelatedOrderCard extends StatelessWidget {
+  const _RelatedOrderCard({required this.item});
+
+  final FlightOrderItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  item.orderNumber ?? item.flightOrderId,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              _SmallMetaChip(
+                label: item.operationDate != null
+                    ? _formatAircraftDate(item.operationDate!)
+                    : '--',
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _SmallMetaChip(
+                label:
+                    '${l10n.t('aircraft.orderStatus')}: ${_labelOrDash(item.orderStatus)}',
+              ),
+              _SmallMetaChip(
+                label:
+                    '${l10n.t('aircraft.itemStatus')}: ${_labelOrDash(item.status)}',
+              ),
+              _SmallMetaChip(
+                label:
+                    '${l10n.t('aircraft.etd')}: ${_formatAircraftTime(item.scheduledDeparture)}',
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${l10n.t('aircraft.mission')}: ${_labelOrDash(item.mission)}',
+            style: theme.textTheme.bodySmall,
+          ),
+          Text(
+            '${l10n.t('aircraft.route')}: ${_routeSummary(item)}',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SmallMetaChip extends StatelessWidget {
+  const _SmallMetaChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        color: theme.colorScheme.primary.withValues(alpha: 0.08),
+        border: Border.all(
+          color: theme.colorScheme.primary.withValues(alpha: 0.18),
+        ),
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.onSurface,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+String _formatAircraftDate(DateTime date) {
+  return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+}
+
+String _formatAircraftTime(DateTime? date) {
+  if (date == null) return '--';
+  return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+}
+
+String _labelOrDash(String? value) {
+  if (value == null || value.trim().isEmpty) return '--';
+  return value;
+}
+
+String _routeSummary(FlightOrderItem item) {
+  if (item.routes.isEmpty) return '--';
+  final route = item.routes.first;
+  final origin = route.originIcao ?? route.originRouteName ?? route.originLabel;
+  final destination =
+      route.destinationIcao ??
+      route.destinationRouteName ??
+      route.destinationLabel;
+  return '${_labelOrDash(origin)} - ${_labelOrDash(destination)}';
+}
+
+class _HrCard extends StatelessWidget {
+  const _HrCard(this.label, this.value, this.color);
+  final String label, value;
+  final Color color;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: color.withValues(alpha: 0.3)),
+      color: color.withValues(alpha: 0.05),
+    ),
+    child: Column(
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+// ── Flight Hours Chart ─────────────────────────────────────────────────
+
+class _FlightHoursChart extends StatelessWidget {
+  const _FlightHoursChart({required this.hoursAsync});
+
+  final AsyncValue<AppResult<List<AircraftFlightHours>>> hoursAsync;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    return hoursAsync.when(
+      loading: () => _FlightHoursChartState(
+        title: l10n.t('aircraft.hours.byModel'),
+        child: const SizedBox(
+          height: 56,
+          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        ),
+      ),
+      error: (_, _) => _FlightHoursChartState(
+        title: l10n.t('aircraft.hours.byModel'),
+        message: l10n.t('aircraft.hours.loadFailed'),
+      ),
+      data: (result) => switch (result) {
+        AppSuccess<List<AircraftFlightHours>>(data: final hours) =>
+          hours.isEmpty
+              ? _FlightHoursChartState(
+                  title: l10n.t('aircraft.hours.byModel'),
+                  message: l10n.t('aircraft.hours.empty'),
+                )
+              : _FlightHoursChartContent(hours: hours, theme: theme),
+        AppFailure<List<AircraftFlightHours>>() => _FlightHoursChartState(
+          title: l10n.t('aircraft.hours.byModel'),
+          message: l10n.t('aircraft.hours.loadFailed'),
+        ),
+      },
+    );
+  }
+}
+
+class _FlightHoursChartState extends StatelessWidget {
+  const _FlightHoursChartState({required this.title, this.message, this.child});
+
+  final String title;
+  final String? message;
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          title,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 8),
+        child ??
+            Container(
+              constraints: const BoxConstraints(minHeight: 56),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: theme.colorScheme.outlineVariant),
+              ),
+              child: Center(
+                child: Text(
+                  message ?? '',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ),
+      ],
+    );
+  }
+}
+
+class _FlightHoursChartContent extends StatelessWidget {
+  const _FlightHoursChartContent({required this.hours, required this.theme});
+
+  final List<AircraftFlightHours> hours;
+  final ThemeData theme;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final byModel = <String, List<AircraftFlightHours>>{};
+    for (final h in hours) {
+      byModel.putIfAbsent(h.model, () => []).add(h);
+    }
+    final entries =
+        byModel.entries
+            .map(
+              (entry) => MapEntry(
+                entry.key,
+                entry.value.fold<double>(
+                  0,
+                  (total, aircraft) => total + aircraft.plannedHours,
+                ),
+              ),
+            )
+            .toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          l10n.t('aircraft.hours.byModel'),
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: (entries.length * 32.0).clamp(60, 200),
+          child: BarChart(
+            BarChartData(
+              alignment: BarChartAlignment.spaceAround,
+              barGroups: [
+                for (int i = 0; i < entries.length; i++)
+                  BarChartGroupData(
+                    x: i,
+                    barRods: [
+                      BarChartRodData(
+                        toY: entries[i].value,
+                        color: theme.colorScheme.primary,
+                        width: 16,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+              barTouchData: BarTouchData(
+                enabled: true,
+                handleBuiltInTouches: true,
+                touchCallback: (event, response) {
+                  if (event is! FlTapUpEvent) return;
+                  final index = response?.spot?.touchedBarGroupIndex;
+                  if (index == null || index < 0 || index >= entries.length) {
+                    return;
+                  }
+                  final model = entries[index].key;
+                  _showModelHoursDialog(
+                    context,
+                    model: model,
+                    aircraftHours: byModel[model] ?? const [],
+                  );
+                },
+              ),
+              titlesData: FlTitlesData(
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 30,
+                    getTitlesWidget: (v, _) => Text(
+                      '${v.toInt()}h',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 22,
+                    getTitlesWidget: (v, _) => v.toInt() < entries.length
+                        ? Text(
+                            entries[v.toInt()].key,
+                            style: TextStyle(
+                              fontSize: 9,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                ),
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+              ),
+              borderData: FlBorderData(show: false),
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: false,
+                getDrawingHorizontalLine: (v) => FlLine(
+                  color: theme.colorScheme.outlineVariant.withValues(
+                    alpha: 0.3,
+                  ),
+                  strokeWidth: 0.5,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+void _showModelHoursDialog(
+  BuildContext context, {
+  required String model,
+  required List<AircraftFlightHours> aircraftHours,
+}) {
+  final sorted = [...aircraftHours]
+    ..sort((a, b) {
+      final byHours = b.plannedHours.compareTo(a.plannedHours);
+      if (byHours != 0) return byHours;
+      return a.tailNumber.compareTo(b.tailNumber);
+    });
+  final l10n = AppLocalizations.of(context);
+
+  showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text('${l10n.t('aircraft.hours.modelSummary')} · $model'),
+      content: SizedBox(
+        width: 460,
+        child: sorted.isEmpty
+            ? Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Text(
+                  l10n.t('aircraft.hours.emptyModel'),
+                  textAlign: TextAlign.center,
+                ),
+              )
+            : SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final item in sorted)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _ModelHoursRow(hours: item),
+                      ),
+                  ],
+                ),
+              ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialogContext).pop(),
+          child: Text(l10n.t('common.close')),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ModelHoursRow extends StatelessWidget {
+  const _ModelHoursRow({required this.hours});
+
+  final AircraftFlightHours hours;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              hours.tailNumber,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${l10n.t('aircraft.hours.ov')}: ${hours.plannedHours.toStringAsFixed(1)}h',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${l10n.t('aircraft.hours.engineOff')}: ${hours.realHours.toStringAsFixed(1)}h',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

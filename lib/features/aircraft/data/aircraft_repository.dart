@@ -1,6 +1,7 @@
 import 'package:cg6_flights/core/errors/app_error.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/features/aircraft/domain/aircraft.dart';
+import 'package:cg6_flights/features/aircraft/domain/aircraft_flight_hours.dart';
 import 'package:cg6_flights/features/aircraft/domain/operational_data_point.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -25,6 +26,8 @@ abstract class AircraftRepository {
   });
 
   Future<AppResult<void>> deactivateAircraft(String aircraftId);
+
+  Future<AppResult<List<AircraftFlightHours>>> getFlightHours({String? unitId});
 
   Future<AppResult<List<OperationalDataPoint>>> getOperationalCurve({
     required String unitId,
@@ -97,6 +100,19 @@ class SupabaseAircraftRepository implements AircraftRepository {
   @override
   Future<AppResult<void>> deactivateAircraft(String aircraftId) {
     return _manageAircraft(action: 'deactivate', aircraftId: aircraftId);
+  }
+
+  @override
+  Future<AppResult<List<AircraftFlightHours>>> getFlightHours({String? unitId}) async {
+    try {
+      final response = await _client.rpc('get_aircraft_flight_hours', params: {'p_unit_id': unitId ?? ''});
+      final list = (response as List<dynamic>)
+          .map((r) => AircraftFlightHours.fromJson(Map<String, dynamic>.from(r)))
+          .toList();
+      return AppSuccess(list);
+    } catch (_) {
+      return const AppFailure(AppError(code: 'FLIGHT_HOURS_FAILED', message: 'No se pudieron cargar las horas de vuelo.', category: AppErrorCategory.data, severity: AppErrorSeverity.low));
+    }
   }
 
   @override

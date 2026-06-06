@@ -405,6 +405,41 @@ Idiomas:
 
 ---
 
+## 7. Changelog 2026-06-05 a 2026-06-06
+
+### Aeronaves v2
+- 2 estados (Operativo/Inoperativo, mantenimiento unificado con inoperativo)
+- Chips de unidad con `NotifierProvider` (solo roles globales)
+- Model cards agrupadas por modelo con dots de estado (verde/rojo)
+- Modal de detalle centrado con horas reales vs programadas (RPC `get_aircraft_flight_hours`)
+- BarChart de horas por modelo + curva de operatividad (fl_chart)
+- `listItemsByAircraft` en repositorio para historial de OVs por aeronave
+- Auto-selección inicial de unidad (primera disponible con aeronaves)
+
+### Dashboard Fleet
+- Fleet status widget con agrupación por unidad y modelo
+- Aircraft KPIs por unidad (`aircraftKpiProvider`, `DashboardAircraftKpiStats`)
+- `dashboardFleetProvider` para agrupación jerárquica unidad→modelo
+
+### METAR Widget
+- Mejorado con más aeropuertos y datos históricos
+- Selector de aeródromo con scroll horizontal
+
+### Airports Dataset
+- Expandido con ~50 aeropuertos internacionales adicionales
+
+### Notificaciones
+- Campana con badge en AppBar, dropdown de no leídas
+- Página completa con filtro leídas/no leídas
+- Realtime vía Supabase stream en `notifications`
+
+### Menú
+- Dashboard > Vuelos > OV > Aeronaves > Tripulación > Unidades > Rutas > Mensajes > Usuarios
+- Cierres eliminado, Auditoría en dropdown del avatar
+- Usuarios al final con ícono `admin_panel_settings`
+
+---
+
 ## 6. Changelog 2026-06-01 a 2026-06-04
 
 ### Dashboard Modular v2

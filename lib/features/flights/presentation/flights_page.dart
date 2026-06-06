@@ -95,7 +95,6 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
   };
 
   DateTime get _today {
-    final tz = ref.read(timezoneProvider);
     final now = DateTime.now();
     return DateTime(now.year, now.month, now.day);
   }
@@ -107,7 +106,10 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
     });
   }
 
-  bool get _isToday => _selectedDate == _today;
+  bool get _isToday {
+    final now = DateTime.now();
+    return _selectedDate.year == now.year && _selectedDate.month == now.month && _selectedDate.day == now.day;
+  }
 
   String _dateLabel(DateTime d) {
     const months = [
@@ -279,7 +281,15 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
               builder: (context, constraints) {
                 final wide = constraints.maxWidth >= 1100;
                 final board = _buildBoard(flightsAsync, l10n, theme, tz);
-                if (!wide) return board;
+                if (!wide) {
+                  // On mobile, open detail in bottom sheet when selecting a flight
+                  if (_selectedItem != null) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _showMobileDetail(context, _selectedItem!, l10n, tz);
+                    });
+                  }
+                  return board;
+                }
 
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -492,6 +502,43 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
   }
 
   // ── Advance button ──────────────────────────────────────────────────
+
+  void _showMobileDetail(BuildContext context, FlightOrderItem item, AppLocalizations l10n, int tz) {
+    // Prevent recursive calls
+    if (_selectedItem == null) return;
+    final selected = _selectedItem!;
+    _selectedItem = null; // reset to prevent loop
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.75,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (ctx, scrollController) {
+            return SingleChildScrollView(
+              controller: scrollController,
+              padding: const EdgeInsets.all(16),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(borderRadius: BorderRadius.circular(2), color: Colors.grey.shade300))),
+                const SizedBox(height: 16),
+                FlightDetailPanel(key: ValueKey(selected.id), item: selected, onChanged: () => ref.invalidate(_flightsProvider(_selectedDate))),
+                const SizedBox(height: 16),
+                _advanceButton(selected, l10n),
+                const SizedBox(height: 24),
+              ]),
+            );
+          },
+        );
+      },
+    ).then((_) {
+      // Restore selection after sheet closes
+      if (mounted) setState(() {});
+    });
+  }
 
   Widget _advanceButton(FlightOrderItem item, AppLocalizations l10n) {
     final next = _nextState[item.status];

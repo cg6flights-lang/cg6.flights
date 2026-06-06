@@ -62,11 +62,13 @@ class FlightOrder {
       itemsCount: json['items_count'] is int
           ? json['items_count'] as int
           : json['items_count'] != null
-              ? int.tryParse(json['items_count'].toString())
-              : null,
-      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+          ? int.tryParse(json['items_count'].toString())
+          : null,
+      createdAt:
+          DateTime.tryParse(json['created_at']?.toString() ?? '') ??
           DateTime.now(),
-      updatedAt: DateTime.tryParse(json['updated_at']?.toString() ?? '') ??
+      updatedAt:
+          DateTime.tryParse(json['updated_at']?.toString() ?? '') ??
           DateTime.now(),
     );
   }
@@ -102,6 +104,7 @@ class FlightOrderItem {
     this.aircraftRegistration,
     this.aircraftModel,
     this.orderNumber,
+    this.operationDate,
     this.unitName,
     this.unitId,
     this.orderStatus,
@@ -133,6 +136,7 @@ class FlightOrderItem {
   final String? aircraftRegistration;
   final String? aircraftModel;
   final String? orderNumber;
+  final DateTime? operationDate;
   final String? unitName;
   final String? unitId;
   final String? orderStatus;
@@ -176,6 +180,7 @@ class FlightOrderItem {
     String? aircraftRegistration,
     String? aircraftModel,
     String? orderNumber,
+    DateTime? operationDate,
     String? unitName,
     String? unitId,
     String? orderStatus,
@@ -203,10 +208,10 @@ class FlightOrderItem {
       cancelReason: cancelReason ?? this.cancelReason,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      aircraftRegistration:
-          aircraftRegistration ?? this.aircraftRegistration,
+      aircraftRegistration: aircraftRegistration ?? this.aircraftRegistration,
       aircraftModel: aircraftModel ?? this.aircraftModel,
       orderNumber: orderNumber ?? this.orderNumber,
+      operationDate: operationDate ?? this.operationDate,
       unitName: unitName ?? this.unitName,
       unitId: unitId ?? this.unitId,
       orderStatus: orderStatus ?? this.orderStatus,
@@ -247,18 +252,23 @@ class FlightOrderItem {
           : null,
       cancelledBy: json['cancelled_by']?.toString(),
       cancelReason: json['cancel_reason']?.toString(),
-      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+      createdAt:
+          DateTime.tryParse(json['created_at']?.toString() ?? '') ??
           DateTime.now(),
-      updatedAt: DateTime.tryParse(json['updated_at']?.toString() ?? '') ??
+      updatedAt:
+          DateTime.tryParse(json['updated_at']?.toString() ?? '') ??
           DateTime.now(),
       aircraftRegistration: json['aircraft'] is Map
           ? ((json['aircraft'] as Map)['registration']?.toString() ??
-              (json['aircraft'] as Map)['tail_number']?.toString())
+                (json['aircraft'] as Map)['tail_number']?.toString())
           : json['aircraft_registration']?.toString(),
       aircraftModel: json['aircraft'] is Map
           ? (json['aircraft'] as Map)['model']?.toString()
           : null,
       orderNumber: json['order_number']?.toString(),
+      operationDate: json['operation_date'] != null
+          ? DateTime.tryParse(json['operation_date'].toString())
+          : null,
       unitName: json['unit_name']?.toString(),
       unitId: json['unit_id']?.toString(),
       orderStatus: json['order_status']?.toString(),
@@ -335,7 +345,9 @@ class FlightOrderRoute {
   final double? destinationRouteLng;
 
   String get originDisplay {
-    if (originType == 'airport' && originRouteName != null) return originRouteName!;
+    if (originType == 'airport' && originRouteName != null) {
+      return originRouteName!;
+    }
     return originLabel ?? '--';
   }
 
@@ -352,19 +364,23 @@ class FlightOrderRoute {
     // Coordinates from linked master route (fallback)
     final orLat = json['origin_route'] is Map
         ? double.tryParse(
-            (json['origin_route'] as Map)['latitude']?.toString() ?? '')
+            (json['origin_route'] as Map)['latitude']?.toString() ?? '',
+          )
         : null;
     final orLng = json['origin_route'] is Map
         ? double.tryParse(
-            (json['origin_route'] as Map)['longitude']?.toString() ?? '')
+            (json['origin_route'] as Map)['longitude']?.toString() ?? '',
+          )
         : null;
     final destLat = json['destination_route'] is Map
         ? double.tryParse(
-            (json['destination_route'] as Map)['latitude']?.toString() ?? '')
+            (json['destination_route'] as Map)['latitude']?.toString() ?? '',
+          )
         : null;
     final destLng = json['destination_route'] is Map
         ? double.tryParse(
-            (json['destination_route'] as Map)['longitude']?.toString() ?? '')
+            (json['destination_route'] as Map)['longitude']?.toString() ?? '',
+          )
         : null;
 
     return FlightOrderRoute(
@@ -459,7 +475,9 @@ class FlightOrderCrew {
           ? _fullName(Map<String, dynamic>.from(json['crew_member'] as Map))
           : null,
       crewMemberCallsign: json['crew_member'] is Map
-          ? (Map<String, dynamic>.from(json['crew_member'] as Map))['callsign']?.toString()
+          ? (Map<String, dynamic>.from(
+              json['crew_member'] as Map,
+            ))['callsign']?.toString()
           : null,
       functionCode: json['function_code']?.toString(),
     );
@@ -499,8 +517,26 @@ class FlightOrderProfile {
   /// Roman numeral label: I, II, III, IV...
   String get profileLabel {
     const roman = [
-      'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X',
-      'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX',
+      'I',
+      'II',
+      'III',
+      'IV',
+      'V',
+      'VI',
+      'VII',
+      'VIII',
+      'IX',
+      'X',
+      'XI',
+      'XII',
+      'XIII',
+      'XIV',
+      'XV',
+      'XVI',
+      'XVII',
+      'XVIII',
+      'XIX',
+      'XX',
     ];
     final n = profileNumber;
     if (n >= 1 && n <= roman.length) return roman[n - 1];
@@ -547,7 +583,8 @@ class FlightOrderStateEvent {
       id: json['id'].toString(),
       flightOrderItemId: json['flight_order_item_id'].toString(),
       status: json['status']?.toString() ?? '',
-      occurredAt: DateTime.tryParse(json['occurred_at']?.toString() ?? '') ??
+      occurredAt:
+          DateTime.tryParse(json['occurred_at']?.toString() ?? '') ??
           DateTime.now(),
       recordedBy: json['recorded_by']?.toString() ?? '',
     );

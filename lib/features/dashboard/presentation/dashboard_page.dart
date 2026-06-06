@@ -3,6 +3,7 @@ import 'package:cg6_flights/features/auth/application/session_controller.dart';
 import 'package:cg6_flights/features/dashboard/application/dashboard_preferences.dart';
 import 'package:cg6_flights/features/dashboard/domain/dashboard_widget_config.dart';
 import 'package:cg6_flights/features/dashboard/presentation/widgets/activity_widget.dart';
+import 'package:cg6_flights/features/dashboard/presentation/widgets/aviation_clock_widget.dart';
 import 'package:cg6_flights/features/dashboard/presentation/widgets/calendar_mini_widget.dart';
 import 'package:cg6_flights/features/dashboard/presentation/widgets/fleet_status_widget.dart';
 import 'package:cg6_flights/features/dashboard/presentation/widgets/kpis_widget.dart';
@@ -26,6 +27,7 @@ class DashboardPage extends ConsumerStatefulWidget {
 
 class _DashboardPageState extends ConsumerState<DashboardPage> {
   bool _editMode = false;
+  static const _clockWidgetIds = {'zulu_clock', 'romeo_clock'};
 
   @override
   Widget build(BuildContext context) {
@@ -73,56 +75,92 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   // ═══════════════════════════════════════════════════════════════════
 
   Widget _buildGrid(List<WidgetPref> visible, ThemeData theme) {
-    return LayoutBuilder(builder: (context, constraints) {
-      final width = constraints.maxWidth;
-      final twoCols = width >= 700;
-      final leftFrac = width >= 1100 ? 2 / 3 : 1 / 2;
-      const gap = 8.0;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final twoCols = width >= 700;
+        final leftFrac = width >= 1100 ? 2 / 3 : 1 / 2;
+        const gap = 8.0;
 
-      final wide = visible.where((p) => p.span >= 2).toList();
-      final narrow = visible.where((p) => p.span == 1).toList();
+        final clocks = visible
+            .where((p) => _clockWidgetIds.contains(p.id))
+            .toList();
+        final wide = visible
+            .where((p) => p.span >= 2 && !_clockWidgetIds.contains(p.id))
+            .toList();
+        final narrow = visible
+            .where((p) => p.span == 1 && !_clockWidgetIds.contains(p.id))
+            .toList();
 
-      if (!twoCols) {
+        if (!twoCols) {
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                for (final w in visible)
+                  Padding(
+                    padding: EdgeInsets.only(bottom: gap),
+                    child: _widgetFor(w.id),
+                  ),
+              ],
+            ),
+          );
+        }
+
+        final leftW = (width - gap) * leftFrac;
+        final rightW = (width - gap) * (1 - leftFrac);
+
         return SingleChildScrollView(
-          child: Column(children: [
-            for (final w in visible)
-              Padding(
-                padding: EdgeInsets.only(bottom: gap),
-                child: _widgetFor(w.id),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: leftW,
+                child: Column(
+                  children: [
+                    if (clocks.isNotEmpty)
+                      Padding(
+                        padding: EdgeInsets.only(bottom: gap),
+                        child: _buildClockRow(clocks, gap),
+                      ),
+                    for (final w in wide)
+                      Padding(
+                        padding: EdgeInsets.only(bottom: gap),
+                        child: _widgetFor(w.id),
+                      ),
+                  ],
+                ),
               ),
-          ]),
+              SizedBox(width: gap),
+              SizedBox(
+                width: rightW,
+                child: Column(
+                  children: [
+                    for (final w in narrow)
+                      Padding(
+                        padding: EdgeInsets.only(bottom: gap),
+                        child: _widgetFor(w.id),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         );
-      }
+      },
+    );
+  }
 
-      final leftW = (width - gap) * leftFrac;
-      final rightW = (width - gap) * (1 - leftFrac);
-
-      return SingleChildScrollView(
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SizedBox(
-            width: leftW,
-            child: Column(children: [
-              for (final w in wide)
-                Padding(
-                  padding: EdgeInsets.only(bottom: gap),
-                  child: _widgetFor(w.id),
-                ),
-            ]),
-          ),
-          SizedBox(width: gap),
-          SizedBox(
-            width: rightW,
-            child: Column(children: [
-              for (final w in narrow)
-                Padding(
-                  padding: EdgeInsets.only(bottom: gap),
-                  child: _widgetFor(w.id),
-                ),
-            ]),
-          ),
-        ]),
-      );
-    });
+  Widget _buildClockRow(List<WidgetPref> clocks, double gap) {
+    if (clocks.length == 1) return _widgetFor(clocks.first.id);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < clocks.length; i++) ...[
+          if (i > 0) SizedBox(width: gap),
+          Expanded(child: _widgetFor(clocks[i].id)),
+        ],
+      ],
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -276,6 +314,8 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   Widget _widgetFor(String id) {
     return switch (id) {
       'map' => const MapWidget(),
+      'zulu_clock' => const ZuluClockWidget(),
+      'romeo_clock' => const RomeoClockWidget(),
       'kpis' => const KpisWidget(),
       'timeline' => const TimelineWidget(),
       'upcoming' => const UpcomingFlightsWidget(),

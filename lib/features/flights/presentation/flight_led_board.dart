@@ -28,7 +28,7 @@ class FlightLedBoard extends ConsumerStatefulWidget {
 class _FlightLedBoardState extends ConsumerState<FlightLedBoard> {
   DateTime _selectedDate = DateTime.now();
 
-  DateTime get _today { final tz = ref.read(timezoneProvider);
+  DateTime get _today {
     final now = DateTime.now();
     return DateTime(now.year, now.month, now.day);
   }

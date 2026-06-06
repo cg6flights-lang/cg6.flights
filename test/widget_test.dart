@@ -31,6 +31,9 @@ void main() {
     await _pumpRouteChange(tester);
 
     expect(find.text('Dashboard operacional'), findsOneWidget);
+    expect(find.text('Reloj Zulu'), findsWidgets);
+    expect(find.text('Reloj Romeo'), findsWidgets);
+    expect(find.text('EN'), findsOneWidget);
     expect(find.text('Lider'), findsWidgets);
   });
 

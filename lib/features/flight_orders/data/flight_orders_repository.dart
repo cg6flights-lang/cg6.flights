@@ -45,6 +45,11 @@ abstract class FlightOrdersRepository {
     required DateTime date,
     String? unitId,
   });
+  Future<AppResult<List<FlightOrderItem>>> listItemsByAircraft({
+    required String aircraftId,
+    required DateTime from,
+    required DateTime to,
+  });
 }
 
 class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
@@ -210,7 +215,9 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
       // 1. Get flight orders for the date (only approved/closed/reopened)
       var query = _client
           .from('flight_orders')
-          .select('id, order_number, unit_id, status, units(name, code, acronym)')
+          .select(
+            'id, order_number, unit_id, status, units(name, code, acronym)',
+          )
           .eq('operation_date', dateStr)
           .inFilter('status', ['approved', 'closed', 'reopened']);
 
@@ -341,6 +348,110 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
         ),
       );
     }
+  }
+
+  @override
+  Future<AppResult<List<FlightOrderItem>>> listItemsByAircraft({
+    required String aircraftId,
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    try {
+      final fromStr = _dateOnly(from);
+      final toStr = _dateOnly(to);
+
+      final orderRows = await _client
+          .from('flight_orders')
+          .select(
+            'id, order_number, unit_id, status, operation_date, units(name, code, acronym)',
+          )
+          .gte('operation_date', fromStr)
+          .lte('operation_date', toStr)
+          .order('operation_date', ascending: false);
+
+      if (orderRows.isEmpty) return const AppSuccess([]);
+
+      final orders = <String, Map<String, dynamic>>{};
+      for (final o in orderRows) {
+        final m = Map<String, dynamic>.from(o);
+        orders[m['id'].toString()] = m;
+      }
+
+      final itemRows = await _client
+          .from('flight_order_items')
+          .select('*')
+          .eq('aircraft_id', aircraftId)
+          .inFilter('flight_order_id', orders.keys.toList())
+          .order('created_at');
+
+      final baseItems = (itemRows as List)
+          .map((r) => FlightOrderItem.fromJson(r as Map<String, dynamic>))
+          .toList();
+
+      if (baseItems.isEmpty) return const AppSuccess([]);
+
+      final itemIds = baseItems.map((i) => i.id).toList();
+      final routeRows = await _client
+          .from('flight_order_routes')
+          .select(
+            '*, origin_route:origin_route_id(airport_name, icao_code, latitude, longitude), destination_route:destination_route_id(airport_name, icao_code, latitude, longitude)',
+          )
+          .inFilter('flight_order_item_id', itemIds);
+
+      final items =
+          baseItems.map((item) {
+            final order = orders[item.flightOrderId];
+            final itemRoutes = (routeRows as List)
+                .where(
+                  (r) =>
+                      (r as Map<String, dynamic>)['flight_order_item_id']
+                          .toString() ==
+                      item.id,
+                )
+                .map(
+                  (r) => FlightOrderRoute.fromJson(r as Map<String, dynamic>),
+                )
+                .toList();
+
+            return item.copyWith(
+              orderNumber: order?['order_number']?.toString(),
+              operationDate: order?['operation_date'] != null
+                  ? DateTime.tryParse(order!['operation_date'].toString())
+                  : null,
+              unitId: order?['unit_id']?.toString(),
+              unitName: (order?['units'] is Map)
+                  ? ((order!['units'] as Map)['acronym']?.toString() ??
+                        (order['units'] as Map)['code']?.toString() ??
+                        (order['units'] as Map)['name']?.toString())
+                  : null,
+              orderStatus: order?['status']?.toString(),
+              routes: itemRoutes,
+            );
+          }).toList()..sort((a, b) {
+            final aDate =
+                a.operationDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+            final bDate =
+                b.operationDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+            return bDate.compareTo(aDate);
+          });
+
+      return AppSuccess(items);
+    } on FunctionException catch (e) {
+      return AppFailure(_errorFromBody(e.details));
+    } catch (_) {
+      return const AppFailure(
+        AppError(
+          code: 'SYSTEM_UNEXPECTED',
+          message: 'No se pudieron cargar las órdenes relacionadas.',
+          category: AppErrorCategory.system,
+          severity: AppErrorSeverity.high,
+        ),
+      );
+    }
+  }
+
+  String _dateOnly(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
   FlightOrderItem _parseItem(Map<String, dynamic> json) {
