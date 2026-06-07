@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cg6_flights/app/i18n/app_localizations.dart';
+import 'package:go_router/go_router.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/core/security/app_permission.dart';
 import 'package:cg6_flights/features/auth/application/session_controller.dart';
@@ -185,6 +186,16 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
                     onPressed: () => _openForm(),
                     icon: const Icon(Icons.add, size: 20),
                     label: Text(l10n.t('flightOrders.add')),
+                  ),
+                if (session.can(AppPermission.closuresRequest))
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: FilledButton.icon(
+                      onPressed: () => context.go('/closures'),
+                      icon: const Icon(Icons.task_alt, size: 20),
+                      label: const Text('Cierres'),
+                      style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.tertiary),
+                    ),
                   ),
               ],
             ),

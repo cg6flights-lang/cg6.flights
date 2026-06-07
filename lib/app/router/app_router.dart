@@ -9,6 +9,7 @@ import 'package:cg6_flights/features/auth/presentation/pending_access_page.dart'
 import 'package:cg6_flights/features/auth/presentation/permission_denied_page.dart';
 import 'package:cg6_flights/features/auth/presentation/register_page.dart';
 import 'package:cg6_flights/features/calendar/presentation/calendar_page.dart';
+import 'package:cg6_flights/features/closures/presentation/closures_page.dart';
 import 'package:cg6_flights/features/crew/presentation/crew_page.dart';
 import 'package:cg6_flights/features/dashboard/presentation/dashboard_page.dart';
 import 'package:cg6_flights/features/flight_orders/presentation/flight_orders_page.dart';
@@ -95,6 +96,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/calendar',
             builder: (context, state) => const CalendarPage(),
+          ),
+          GoRoute(
+            path: '/closures',
+            builder: (context, state) => const ClosuresPage(),
           ),
           GoRoute(
             path: '/profile',
