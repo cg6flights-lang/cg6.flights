@@ -1,3 +1,4 @@
+import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/features/auth/domain/app_user.dart';
 import 'package:flutter/material.dart';
 
@@ -199,7 +200,7 @@ class _WelcomeSplashState extends State<WelcomeSplash>
               children: [
                 // "Bienvenido/a"
                 Text(
-                  'Bienvenido/a',
+                  AppLocalizations.of(context).t('welcome.greeting'),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 15,

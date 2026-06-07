@@ -37,22 +37,22 @@ class SettingsPage extends ConsumerWidget {
                       Icon(Icons.schedule, size: 20,
                           color: theme.colorScheme.primary),
                       const SizedBox(width: 8),
-                      Text('Zona horaria',
+                      Text(l10n.t('settings.timezone'),
                           style: theme.textTheme.titleMedium),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Define la hora local para el control de vuelos.',
+                    l10n.t('settings.timezoneDesc'),
                     style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant),
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<int>(
                     initialValue: safeIndex,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Zona horaria',
+                    decoration: InputDecoration(
+                      border: const OutlineInputBorder(),
+                      labelText: l10n.t('settings.timezone'),
                     ),
                     items: List.generate(availableTimezones.length, (i) {
                       return DropdownMenuItem<int>(
@@ -87,26 +87,26 @@ class SettingsPage extends ConsumerWidget {
                       Icon(Icons.brightness_6, size: 20,
                           color: theme.colorScheme.primary),
                       const SizedBox(width: 8),
-                      Text('Tema', style: theme.textTheme.titleMedium),
+                      Text(l10n.t('settings.theme'), style: theme.textTheme.titleMedium),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Alterna entre modo claro y oscuro.',
+                    l10n.t('settings.themeDesc'),
                     style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant),
                   ),
                   const SizedBox(height: 16),
                   SegmentedButton<ThemeMode>(
-                    segments: const [
+                    segments: [
                       ButtonSegment(
                           value: ThemeMode.light,
-                          icon: Icon(Icons.light_mode),
-                          label: Text('Claro')),
+                          icon: const Icon(Icons.light_mode),
+                          label: Text(l10n.t('settings.light'))),
                       ButtonSegment(
                           value: ThemeMode.dark,
-                          icon: Icon(Icons.dark_mode),
-                          label: Text('Oscuro')),
+                          icon: const Icon(Icons.dark_mode),
+                          label: Text(l10n.t('settings.dark'))),
                     ],
                     selected: {themeMode},
                     onSelectionChanged: (v) {

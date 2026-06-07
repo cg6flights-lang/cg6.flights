@@ -1,3 +1,4 @@
+import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/core/security/app_role.dart';
 import 'package:cg6_flights/features/auth/domain/app_user.dart';
 import 'package:cg6_flights/features/units/domain/unit_option.dart';
@@ -98,10 +99,11 @@ class _UserFormDialogState extends State<UserFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context).t;
     final viewport = MediaQuery.of(context).size;
 
     return AlertDialog(
-      title: const Text('Crear Usuario'),
+      title: Text(t('users.createTitle')),
       contentPadding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
       content: ConstrainedBox(
         constraints: BoxConstraints(
@@ -121,8 +123,8 @@ class _UserFormDialogState extends State<UserFormDialog> {
                   // Email
                   TextFormField(
                     controller: _emailController,
-                    decoration: const InputDecoration(
-                      labelText: 'Correo',
+                    decoration: InputDecoration(
+              labelText: t('common.email'),
                       hintText: 'usuario@ejemplo.com',
                       border: OutlineInputBorder(),
                       isDense: true,
@@ -134,9 +136,9 @@ class _UserFormDialogState extends State<UserFormDialog> {
                     keyboardType: TextInputType.emailAddress,
                     validator: (v) {
                       final value = v?.trim() ?? '';
-                      if (value.isEmpty) return 'El correo es obligatorio.';
+                      if (value.isEmpty) return t('users.emailRequired');
                       if (!value.contains('@') || !value.contains('.')) {
-                        return 'Ingresa un correo válido.';
+                        return t('users.emailInvalid');
                       }
                       return null;
                     },
@@ -146,8 +148,8 @@ class _UserFormDialogState extends State<UserFormDialog> {
                   _responsivePair(
                     first: TextFormField(
                       controller: _firstNameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Nombres',
+                      decoration: InputDecoration(
+              labelText: t('common.firstName'),
                         border: OutlineInputBorder(),
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(
@@ -162,12 +164,12 @@ class _UserFormDialogState extends State<UserFormDialog> {
                         ),
                       ],
                       validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+                          (v == null || v.trim().isEmpty) ? t('users.required') : null,
                     ),
                     second: TextFormField(
                       controller: _lastNameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Apellidos',
+                      decoration: InputDecoration(
+              labelText: t('common.lastName'),
                         border: OutlineInputBorder(),
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(
@@ -182,7 +184,7 @@ class _UserFormDialogState extends State<UserFormDialog> {
                         ),
                       ],
                       validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+                          (v == null || v.trim().isEmpty) ? t('users.required') : null,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -191,7 +193,7 @@ class _UserFormDialogState extends State<UserFormDialog> {
                   TextFormField(
                     controller: _passwordController,
                     decoration: InputDecoration(
-                      labelText: 'Contraseña',
+                      labelText: t('common.password'),
                       border: const OutlineInputBorder(),
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(
@@ -213,9 +215,9 @@ class _UserFormDialogState extends State<UserFormDialog> {
                     obscureText: _obscurePassword,
                     validator: (v) {
                       final value = v?.trim() ?? '';
-                      if (value.isEmpty) return 'La contraseña es obligatoria.';
+                      if (value.isEmpty) return t('users.passwordRequired');
                       if (value.length < 6) {
-                        return 'La contraseña debe tener al menos 6 caracteres.';
+                        return t('users.passwordMinLength');
                       }
                       return null;
                     },
@@ -230,8 +232,8 @@ class _UserFormDialogState extends State<UserFormDialog> {
                         ? _grade
                         : null,
                     isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Grado',
+                    decoration: InputDecoration(
+              labelText: t('common.grade'),
                       border: OutlineInputBorder(),
                       isDense: true,
                       contentPadding: EdgeInsets.symmetric(
@@ -260,8 +262,8 @@ class _UserFormDialogState extends State<UserFormDialog> {
                     first: DropdownButtonFormField<String>(
                       initialValue: _documentType,
                       isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Documento',
+                      decoration: InputDecoration(
+              labelText: t('common.document'),
                         border: OutlineInputBorder(),
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(
@@ -280,8 +282,8 @@ class _UserFormDialogState extends State<UserFormDialog> {
                     ),
                     second: TextFormField(
                       controller: _documentIdController,
-                      decoration: const InputDecoration(
-                        labelText: 'N° Documento',
+                      decoration: InputDecoration(
+              labelText: t('common.documentNumber'),
                         border: OutlineInputBorder(),
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(
@@ -304,8 +306,8 @@ class _UserFormDialogState extends State<UserFormDialog> {
                     first: DropdownButtonFormField<String>(
                       initialValue: _phoneCountryCode,
                       isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Código',
+                      decoration: InputDecoration(
+              labelText: t('common.code'),
                         border: OutlineInputBorder(),
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(
@@ -329,8 +331,8 @@ class _UserFormDialogState extends State<UserFormDialog> {
                     ),
                     second: TextFormField(
                       controller: _phoneController,
-                      decoration: const InputDecoration(
-                        labelText: 'Celular',
+                      decoration: InputDecoration(
+              labelText: t('common.phone'),
                         border: OutlineInputBorder(),
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(
@@ -348,8 +350,8 @@ class _UserFormDialogState extends State<UserFormDialog> {
                   InkWell(
                     onTap: _pickBirthDate,
                     child: InputDecorator(
-                      decoration: const InputDecoration(
-                        labelText: 'Fecha de Nacimiento',
+                      decoration: InputDecoration(
+              labelText: t('common.birthDate'),
                         border: OutlineInputBorder(),
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(
@@ -361,7 +363,7 @@ class _UserFormDialogState extends State<UserFormDialog> {
                       child: Text(
                         _birthDate != null
                             ? '${_birthDate!.day.toString().padLeft(2, '0')}/${_birthDate!.month.toString().padLeft(2, '0')}/${_birthDate!.year}'
-                            : 'Seleccionar fecha',
+                            : t('common.selectDate'),
                         style: TextStyle(
                           color: _birthDate != null
                               ? null
@@ -377,8 +379,8 @@ class _UserFormDialogState extends State<UserFormDialog> {
                   DropdownButtonFormField<AppRole?>(
                     initialValue: _role,
                     isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Rol',
+                    decoration: InputDecoration(
+              labelText: t('common.role'),
                       border: OutlineInputBorder(),
                       isDense: true,
                       contentPadding: EdgeInsets.symmetric(
@@ -409,8 +411,8 @@ class _UserFormDialogState extends State<UserFormDialog> {
                     DropdownButtonFormField<String>(
                       initialValue: _unitId,
                       isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Unidad',
+                      decoration: InputDecoration(
+              labelText: t('common.unit'),
                         border: OutlineInputBorder(),
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(
@@ -429,7 +431,7 @@ class _UserFormDialogState extends State<UserFormDialog> {
                       validator: (v) {
                         if (_role?.requiresUnit == true &&
                             (v == null || v.isEmpty)) {
-                          return 'El rol seleccionado requiere una unidad.';
+                          return t('users.roleRequiredUnit');
                         }
                         return null;
                       },
@@ -441,8 +443,8 @@ class _UserFormDialogState extends State<UserFormDialog> {
                   DropdownButtonFormField<ProfileStatus>(
                     initialValue: _status,
                     isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Estado',
+                    decoration: InputDecoration(
+              labelText: t('common.status'),
                       border: OutlineInputBorder(),
                       isDense: true,
                       contentPadding: EdgeInsets.symmetric(
@@ -470,9 +472,9 @@ class _UserFormDialogState extends State<UserFormDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancelar'),
+          child: Text(t('common.cancel')),
         ),
-        FilledButton(onPressed: _submit, child: const Text('Crear Usuario')),
+        FilledButton(onPressed: _submit, child: Text(t('users.createButton'))),
       ],
     );
   }
@@ -514,7 +516,7 @@ class _UserFormDialogState extends State<UserFormDialog> {
       initialDate: _birthDate ?? DateTime(1990),
       firstDate: DateTime(1930),
       lastDate: DateTime.now(),
-      helpText: 'Seleccionar fecha de nacimiento',
+      helpText: AppLocalizations.of(context).t('common.birthDate'),
     );
     if (picked != null) {
       setState(() => _birthDate = picked);
@@ -556,9 +558,9 @@ class _UserFormDialogState extends State<UserFormDialog> {
   }
 
   String _statusLabel(ProfileStatus s) => switch (s) {
-    ProfileStatus.pending => 'Pendiente',
-    ProfileStatus.active => 'Activo',
-    ProfileStatus.inactive => 'Inactivo',
-    ProfileStatus.rejected => 'Rechazado',
+    ProfileStatus.pending => AppLocalizations.of(context).t('common.pending'),
+    ProfileStatus.active => AppLocalizations.of(context).t('common.active'),
+    ProfileStatus.inactive => AppLocalizations.of(context).t('common.inactive'),
+    ProfileStatus.rejected => AppLocalizations.of(context).t('common.rejected'),
   };
 }

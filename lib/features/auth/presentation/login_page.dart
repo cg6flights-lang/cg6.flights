@@ -1,4 +1,5 @@
 import 'package:cg6_flights/app/i18n/app_localizations.dart';
+import 'package:cg6_flights/core/state/locale_controller.dart';
 import 'package:cg6_flights/core/state/theme_mode_controller.dart';
 import 'package:cg6_flights/features/auth/application/session_controller.dart';
 import 'package:flutter/material.dart';
@@ -123,6 +124,10 @@ class _AuthScaffold extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
+    final langCode = ref.watch(localeControllerProvider).languageCode;
+    final theme = Theme.of(context);
+    final nextLang = langCode == 'es' ? 'EN' : 'ES';
+
     return Scaffold(
       body: SafeArea(
         child: Stack(
@@ -142,17 +147,45 @@ class _AuthScaffold extends ConsumerWidget {
             Positioned(
               top: 4,
               right: 4,
-              child: IconButton(
-                tooltip: themeMode == ThemeMode.dark
-                    ? 'Modo claro'
-                    : 'Modo oscuro',
-                onPressed: () =>
-                    ref.read(themeModeProvider.notifier).toggle(),
-                icon: Icon(
-                  themeMode == ThemeMode.dark
-                      ? Icons.light_mode_outlined
-                      : Icons.dark_mode_outlined,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Language toggle
+                  Material(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(999),
+                    child: InkWell(
+                      onTap: () => ref.read(localeControllerProvider.notifier).toggle(),
+                      borderRadius: BorderRadius.circular(999),
+                      child: Container(
+                        height: 36,
+                        constraints: const BoxConstraints(minWidth: 58),
+                        padding: const EdgeInsets.symmetric(horizontal: 9),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: theme.colorScheme.outlineVariant),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.language, size: 17, color: theme.colorScheme.primary),
+                            const SizedBox(width: 5),
+                            Text(nextLang, style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSurface, fontWeight: FontWeight.w900, letterSpacing: 0)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  // Theme toggle
+                  IconButton(
+                    tooltip: themeMode == ThemeMode.dark ? 'Modo claro' : 'Modo oscuro',
+                    onPressed: () => ref.read(themeModeProvider.notifier).toggle(),
+                    icon: Icon(themeMode == ThemeMode.dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
+                  ),
+                ],
               ),
             ),
           ],

@@ -93,7 +93,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          tooltip: 'Volver',
+          tooltip: t('auth.back'),
           onPressed: () => context.go('/login'),
           icon: const Icon(Icons.arrow_back),
         ),
@@ -117,15 +117,15 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                         ? _grade
                         : null,
                     isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Grado',
+                    decoration: InputDecoration(
+              labelText: t('common.grade'),
                       prefixIcon: Icon(Icons.military_tech_outlined),
                       border: OutlineInputBorder(),
                     ),
                     items: [
-                      const DropdownMenuItem(
+                      DropdownMenuItem(
                         value: null,
-                        child: Text('Sin grado'),
+                        child: Text(t('common.noGrade')),
                       ),
                       for (final g in _grades)
                         DropdownMenuItem(
@@ -141,7 +141,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   TextFormField(
                     controller: _firstNameController,
                     decoration: InputDecoration(
-                      labelText: 'Nombres',
+                      labelText: t('common.firstName'),
                       prefixIcon: const Icon(Icons.person_outline),
                       border: const OutlineInputBorder(),
                     ),
@@ -159,7 +159,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   TextFormField(
                     controller: _lastNameController,
                     decoration: InputDecoration(
-                      labelText: 'Apellidos',
+                      labelText: t('common.lastName'),
                       prefixIcon: const Icon(Icons.person_outline),
                       border: const OutlineInputBorder(),
                     ),
@@ -184,9 +184,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     ),
                     validator: (v) {
                       final value = v?.trim() ?? '';
-                      if (value.isEmpty) return 'Campo requerido';
+                      if (value.isEmpty) return t('common.required');
                       if (!value.contains('@') || !value.contains('.')) {
-                        return 'Ingresa un correo válido';
+                        return t('users.emailInvalid');
                       }
                       return null;
                     },
@@ -201,13 +201,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       labelText: t('auth.password'),
                       prefixIcon: const Icon(Icons.lock_outline),
                       border: const OutlineInputBorder(),
-                      hintText: 'Mín. 6 caracteres',
+                      hintText: t('common.minChars6'),
                     ),
                     validator: (v) {
                       if (v == null || v.trim().isEmpty) {
-                        return 'Campo requerido';
+                        return t('common.required');
                       }
-                      if (v.length < 6) return 'Mínimo 6 caracteres';
+                      if (v.length < 6) return t('common.minChars6');
                       return null;
                     },
                   ),
@@ -221,8 +221,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                         child: DropdownButtonFormField<String>(
                           initialValue: _documentType,
                           isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Documento',
+                          decoration: InputDecoration(
+              labelText: t('common.document'),
                             border: OutlineInputBorder(),
                             isDense: true,
                           ),
@@ -240,8 +240,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       Expanded(
                         child: TextFormField(
                           controller: _documentIdController,
-                          decoration: const InputDecoration(
-                            labelText: 'N° Documento',
+                          decoration: InputDecoration(
+              labelText: t('common.documentNumber'),
                             border: OutlineInputBorder(),
                           ),
                           inputFormatters: [
@@ -263,8 +263,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                         child: DropdownButtonFormField<String>(
                           initialValue: _phoneCountryCode,
                           isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Código',
+                          decoration: InputDecoration(
+              labelText: t('common.code'),
                             border: OutlineInputBorder(),
                             isDense: true,
                           ),
@@ -287,8 +287,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       Expanded(
                         child: TextFormField(
                           controller: _phoneController,
-                          decoration: const InputDecoration(
-                            labelText: 'Celular',
+                          decoration: InputDecoration(
+              labelText: t('common.phone'),
                             border: OutlineInputBorder(),
                           ),
                           keyboardType: TextInputType.phone,
@@ -305,15 +305,15 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   InkWell(
                     onTap: _pickBirthDate,
                     child: InputDecorator(
-                      decoration: const InputDecoration(
-                        labelText: 'Fecha de Nacimiento',
+                      decoration: InputDecoration(
+              labelText: t('common.birthDate'),
                         border: OutlineInputBorder(),
                         suffixIcon: Icon(Icons.calendar_today, size: 18),
                       ),
                       child: Text(
                         _birthDate != null
                             ? '${_birthDate!.day.toString().padLeft(2, '0')}/${_birthDate!.month.toString().padLeft(2, '0')}/${_birthDate!.year}'
-                            : 'Seleccionar fecha',
+                            : t('common.selectDate'),
                         style: TextStyle(
                           color: _birthDate != null
                               ? null
@@ -341,7 +341,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   }
 
   String? _required(String? value) {
-    if (value == null || value.trim().isEmpty) return 'Campo requerido';
+    if (value == null || value.trim().isEmpty) return AppLocalizations.of(context).t('common.required');
     return null;
   }
 
@@ -351,7 +351,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       initialDate: _birthDate ?? DateTime(1990),
       firstDate: DateTime(1930),
       lastDate: DateTime.now(),
-      helpText: 'Seleccionar fecha de nacimiento',
+      helpText: AppLocalizations.of(context).t('common.selectDate'),
     );
     if (picked != null) {
       setState(() => _birthDate = picked);

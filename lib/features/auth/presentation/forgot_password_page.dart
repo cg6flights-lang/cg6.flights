@@ -1,3 +1,4 @@
+import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -6,14 +7,16 @@ class ForgotPasswordPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context).t;
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          tooltip: 'Volver',
+          tooltip: t('auth.back'),
           onPressed: () => context.go('/login'),
           icon: const Icon(Icons.arrow_back),
         ),
-        title: const Text('Recuperar acceso'),
+        title: Text(t('auth.recover')),
       ),
       body: Center(
         child: ConstrainedBox(
@@ -24,18 +27,18 @@ class ForgotPasswordPage extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const TextField(
+                TextFormField(
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
-                    labelText: 'Correo',
-                    prefixIcon: Icon(Icons.mail_outline),
+                    labelText: t('auth.email'),
+                    prefixIcon: const Icon(Icons.mail_outline),
                   ),
                 ),
                 const SizedBox(height: 18),
                 FilledButton.icon(
                   onPressed: null,
                   icon: const Icon(Icons.mark_email_read_outlined),
-                  label: const Text('Enviar enlace'),
+                  label: Text(t('auth.recover')),
                 ),
               ],
             ),

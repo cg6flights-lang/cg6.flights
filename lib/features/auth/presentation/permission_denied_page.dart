@@ -1,3 +1,4 @@
+import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/shared/widgets/data_state_view.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -7,11 +8,13 @@ class PermissionDeniedPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context).t;
+
     return Scaffold(
       body: DataStateView(
         kind: DataStateKind.permissionDenied,
-        title: 'Permiso denegado',
-        message: 'La ruta solicitada requiere un permiso que tu rol no tiene.',
+        title: t('auth.denied'),
+        message: t('auth.deniedBody'),
         onRetry: () => context.go('/dashboard'),
       ),
     );

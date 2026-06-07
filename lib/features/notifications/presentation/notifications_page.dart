@@ -1,3 +1,4 @@
+import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/features/notifications/application/notification_providers.dart';
 import 'package:cg6_flights/features/notifications/data/notification_repository.dart';
@@ -17,6 +18,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context).t;
     final theme = Theme.of(context);
     final notifAsync = ref.watch(notificationsProvider);
     final repo = ref.read(notificationRepositoryProvider);
@@ -31,7 +33,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notificaciones'),
+        title: Text(AppLocalizations.of(context).t('notifications.title')),
         actions: [
           if (hasUnread)
             TextButton(
@@ -43,7 +45,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
             ),
           IconButton(
             icon: Icon(_showAll ? Icons.filter_list : Icons.filter_list_off, size: 20),
-            tooltip: _showAll ? 'Mostrar solo no leídas' : 'Mostrar todas',
+            tooltip: _showAll ? AppLocalizations.of(context).t('notifications.filterUnread') : AppLocalizations.of(context).t('notifications.filterAll'),
             onPressed: () => setState(() => _showAll = !_showAll),
           ),
         ],
@@ -54,7 +56,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
               ? Center(
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
                     Icon(Icons.notifications_off_outlined, size: 48, color: theme.colorScheme.onSurfaceVariant),
-                    const SizedBox(height: 12),
+                    SizedBox(height: 12),
                     Text(_showAll ? 'Sin notificaciones' : 'Sin notificaciones no leídas',
                       style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
                   ]),
@@ -78,9 +80,9 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                       ),
                       title: Text(n.title, style: TextStyle(fontWeight: n.isRead ? FontWeight.normal : FontWeight.w600, fontSize: 14)),
                       subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        const SizedBox(height: 2),
+                        SizedBox(height: 2),
                         Text(n.body, style: TextStyle(fontSize: 13, color: theme.colorScheme.onSurfaceVariant), maxLines: 2, overflow: TextOverflow.ellipsis),
-                        const SizedBox(height: 2),
+                        SizedBox(height: 2),
                         Text(_timeFormat(n.createdAt), style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6))),
                       ]),
                       onTap: () {

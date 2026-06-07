@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class CrewFormResult {
-  const CrewFormResult({
+  CrewFormResult({
     required this.unitId,
     required this.grade,
     required this.firstName,
@@ -97,6 +97,7 @@ class _CrewFormDialogState extends State<CrewFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context).t;
     final l10n = AppLocalizations.of(context);
     final isGlobal = widget.units.length > 1;
 
@@ -156,7 +157,7 @@ class _CrewFormDialogState extends State<CrewFormDialog> {
                     });
                   },
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   initialValue: _assignmentType,
                   decoration: InputDecoration(
@@ -176,7 +177,7 @@ class _CrewFormDialogState extends State<CrewFormDialog> {
                   onChanged: (v) =>
                       setState(() => _assignmentType = v ?? 'nato'),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   key: ValueKey('grade_$_crewCategory'),
                   initialValue: _filteredGrades.any((g) => g.code == _grade)
@@ -199,7 +200,7 @@ class _CrewFormDialogState extends State<CrewFormDialog> {
                       ? l10n.t('validation.required')
                       : null,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 TextFormField(
                   controller: _firstNameController,
                   decoration: InputDecoration(
@@ -211,7 +212,7 @@ class _CrewFormDialogState extends State<CrewFormDialog> {
                       ? l10n.t('validation.required')
                       : null,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 TextFormField(
                   controller: _lastNameController,
                   decoration: InputDecoration(
@@ -223,7 +224,7 @@ class _CrewFormDialogState extends State<CrewFormDialog> {
                       ? l10n.t('validation.required')
                       : null,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 TextFormField(
                   controller: _nsaController,
                   decoration: InputDecoration(
@@ -239,18 +240,18 @@ class _CrewFormDialogState extends State<CrewFormDialog> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 TextFormField(
                   controller: _callsignController,
                   decoration: InputDecoration(
-                    labelText: 'Indicativo',
-                    hintText: 'Opcional',
+                    labelText: t('crew.indicative'),
+                    hintText: t('crew.optional'),
                     border: const OutlineInputBorder(),
                   ),
                   textCapitalization: TextCapitalization.characters,
                   maxLength: 20,
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 InkWell(
                   onTap: _pickDate,
                   child: InputDecorator(
@@ -265,12 +266,12 @@ class _CrewFormDialogState extends State<CrewFormDialog> {
                   ),
                 ),
                 if (_crewCategory == 'pilot') ...[
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                   Text(
                     l10n.t('crew.qualifications'),
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,

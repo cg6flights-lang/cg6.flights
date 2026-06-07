@@ -1,3 +1,4 @@
+import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 enum PasswordStrength { empty, weak, fair, good, strong }
@@ -33,12 +34,12 @@ class PasswordStrengthBar extends StatelessWidget {
         PasswordStrength.strong => const Color(0xFF2E9D57),
       };
 
-  String get _label => switch (_strength) {
+  String _label(BuildContext context) => switch (_strength) {
         PasswordStrength.empty => '',
-        PasswordStrength.weak => 'Débil',
-        PasswordStrength.fair => 'Regular',
-        PasswordStrength.good => 'Buena',
-        PasswordStrength.strong => 'Segura',
+        PasswordStrength.weak => AppLocalizations.of(context).t('profile.strengthWeak'),
+        PasswordStrength.fair => AppLocalizations.of(context).t('profile.strengthFair'),
+        PasswordStrength.good => AppLocalizations.of(context).t('profile.strengthGood'),
+        PasswordStrength.strong => AppLocalizations.of(context).t('profile.strengthStrong'),
       };
 
   double get _fill => switch (_strength) {
@@ -67,7 +68,7 @@ class PasswordStrengthBar extends StatelessWidget {
         if (_strength != PasswordStrength.empty) ...[
           const SizedBox(height: 4),
           Text(
-            _label,
+            _label(context),
             style: theme.textTheme.labelSmall?.copyWith(
               color: _color,
               fontWeight: FontWeight.w700,

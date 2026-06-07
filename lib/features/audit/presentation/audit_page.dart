@@ -237,6 +237,7 @@ class _AuditPageState extends ConsumerState<AuditPage>
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context).t;
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final auditAsync = ref.watch(_auditLogsProvider(_query));
@@ -251,20 +252,20 @@ class _AuditPageState extends ConsumerState<AuditPage>
             children: [
               Icon(Icons.fact_check_outlined,
                   color: theme.colorScheme.primary, size: 28),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Text(l10n.t('audit.title'),
                     style: theme.textTheme.headlineSmall),
               ),
               IconButton(
                 icon: const Icon(Icons.refresh, size: 20),
-                tooltip: 'Refresh',
+                tooltip: t('common.refresh'),
                 onPressed: () =>
                     ref.invalidate(_auditLogsProvider(_query)),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           // Tab bar
           TabBar(
             controller: _tabController,
@@ -280,7 +281,7 @@ class _AuditPageState extends ConsumerState<AuditPage>
             const SizedBox(height: 8),
             _buildActiveChips(l10n),
           ],
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           // Content
           Expanded(
             child: auditAsync.when(
@@ -525,6 +526,7 @@ class _FilterDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context).t;
     return PopupMenuButton<String?>(
       offset: const Offset(0, 44),
       onSelected: onChanged,
@@ -535,10 +537,10 @@ class _FilterDropdown extends StatelessWidget {
             child: Row(
               children: [
                 if (item.$1 == value)
-                  const Icon(Icons.check, size: 18)
+                  Icon(Icons.check, size: 18)
                 else
-                  const SizedBox(width: 18),
-                const SizedBox(width: 8),
+                  SizedBox(width: 18),
+                SizedBox(width: 8),
                 Text(item.$2),
               ],
             ),
@@ -577,6 +579,7 @@ class _AuditBlockCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context).t;
     final theme = Theme.of(context);
     final meta = _blockMeta[block]!;
     final totalCount = logs.length;
@@ -603,7 +606,7 @@ class _AuditBlockCard extends StatelessWidget {
             child: Row(
               children: [
                 Icon(meta.icon, color: meta.color, size: 18),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     _blockLabel(block, l10n),
@@ -682,6 +685,7 @@ class _AuditTypeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context).t;
     final theme = Theme.of(context);
     final count = logs.length;
 
@@ -702,7 +706,7 @@ class _AuditTypeCard extends StatelessWidget {
                 children: [
                   Icon(_iconForType(resourceType),
                       size: 18, color: blockColor),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Text(label,
                         style: theme.textTheme.bodyMedium

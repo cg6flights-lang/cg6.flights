@@ -1,3 +1,4 @@
+import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/core/security/app_permission.dart' show rolePermissionMatrix;
 import 'package:cg6_flights/core/security/app_role.dart';
@@ -71,7 +72,7 @@ class _UsersPageState extends ConsumerState<UsersPage> {
   Future<void> _save() async {
     if (_selected == null) return;
     if (_editRole?.requiresUnit == true && _editUnitId == null) {
-      setState(() => _saveError = 'El rol seleccionado requiere una unidad.');
+      setState(() => _saveError = AppLocalizations.of(context).t('users.roleRequiredUnit'));
       return;
     }
     setState(() { _saving = true; _saveError = null; });
@@ -184,7 +185,7 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                   const Divider(height: 1),
                   _selected != null
                       ? Expanded(child: _buildDetailPanel(theme))
-                      : const SizedBox(height: 120, child: Center(child: Text('Selecciona un usuario para ver sus permisos', style: TextStyle(color: Colors.grey)))),
+                      : SizedBox(height: 120, child: Center(child: Text(AppLocalizations.of(context).t('users.selectUser'), style: const TextStyle(color: Colors.grey)))),
                 ]),
         ),
       ),
@@ -202,7 +203,7 @@ class _UsersPageState extends ConsumerState<UsersPage> {
             const Spacer(),
             IconButton(
               icon: Icon(Icons.refresh, size: 18, color: theme.colorScheme.primary),
-              tooltip: 'Actualizar',
+              tooltip: AppLocalizations.of(context).t('common.refresh'),
               onPressed: _load,
               style: IconButton.styleFrom(
                 visualDensity: VisualDensity.compact,
@@ -213,7 +214,7 @@ class _UsersPageState extends ConsumerState<UsersPage> {
             FilledButton.icon(
               onPressed: () => _createUser(),
               icon: const Icon(Icons.person_add, size: 18),
-              label: const Text('Crear Usuario'),
+              label: Text(AppLocalizations.of(context).t('users.createButton')),
               style: FilledButton.styleFrom(
                 visualDensity: VisualDensity.compact,
                 minimumSize: const Size(36, 36),
@@ -229,10 +230,10 @@ class _UsersPageState extends ConsumerState<UsersPage> {
             // Group by role
             final grouped = <String, List<ManagedProfile>>{};
             for (final p in _profiles) {
-              final key = p.role?.labelEs ?? 'Sin rol';
+              final key = p.role?.labelEs ?? AppLocalizations.of(context).t('common.noGrade');
               grouped.putIfAbsent(key, () => []).add(p);
             }
-            final order = ['Líder', 'Administrador General', 'Comando de Unidad', 'Administrador de Unidad', 'TTAA', 'Sin rol'];
+            final order = ['Líder', 'Administrador General', 'Comando de Unidad', 'Administrador de Unidad', 'TTAA', AppLocalizations.of(context).t('common.noGrade')];
             final keys = grouped.keys.toList()..sort((a, b) => order.indexOf(a).compareTo(order.indexOf(b)));
 
             return ListView.builder(
@@ -324,7 +325,7 @@ class _UsersPageState extends ConsumerState<UsersPage> {
             label: 'Rol',
             value: _editRole,
             items: [null, ...AppRole.values],
-            itemLabel: (r) => r?.labelEs ?? 'Sin rol',
+            itemLabel: (r) => r?.labelEs ?? AppLocalizations.of(context).t('common.noGrade'),
             onChanged: (v) {
               setState(() {
                 _editRole = v;
@@ -368,7 +369,7 @@ class _UsersPageState extends ConsumerState<UsersPage> {
               icon: _saving
                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : const Icon(Icons.save, size: 18),
-              label: Text(_saving ? 'Guardando...' : 'Guardar Cambios'),
+              label: Text(_saving ? AppLocalizations.of(context).t('common.saving') : AppLocalizations.of(context).t('users.saveChanges')),
             ),
           ),
           if (_saveError != null) ...[

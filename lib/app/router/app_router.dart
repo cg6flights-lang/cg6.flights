@@ -119,10 +119,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final specialRoute =
           location == '/pending-access' || location == '/permission-denied';
 
-      if (location == '/roles' || location == '/permissions') {
-        return '/users';
-      }
-
       if (location == '/profile') {
         return '/dashboard';
       }

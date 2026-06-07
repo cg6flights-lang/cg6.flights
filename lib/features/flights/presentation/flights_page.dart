@@ -169,6 +169,7 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context).t;
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final flightsAsync = ref.watch(_flightsProvider(_selectedDate));
@@ -187,9 +188,9 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
                 size: 24,
                 color: theme.colorScheme.primary,
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Text(l10n.t('nav.flights'), style: theme.textTheme.headlineSmall),
-              const Spacer(),
+              Spacer(),
               // Unit filter
               Padding(
                 padding: const EdgeInsets.only(right: 8),
@@ -231,7 +232,7 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
                           Icon(Icons.business_outlined,
                               size: 16,
                               color: theme.colorScheme.primary),
-                          const SizedBox(width: 6),
+                          SizedBox(width: 6),
                           Text(
                             _selectedUnitId != null
                                 ? (_units
@@ -262,12 +263,12 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
                   side: const BorderSide(color: Color(0xFFFFD21A), width: 1),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               _dateNav(theme),
-              const SizedBox(width: 16),
+              SizedBox(width: 16),
               IconButton(
                 icon: const Icon(Icons.refresh, size: 20),
-                tooltip: 'Refrescar',
+                tooltip: t('flights.refresh'),
                 onPressed: () =>
                     ref.invalidate(_flightsProvider(_selectedDate)),
               ),
@@ -389,10 +390,10 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 36),
-            const SizedBox(height: 8),
-            const Text('Error al cargar vuelos'),
-            const SizedBox(height: 8),
+            Icon(Icons.error_outline, size: 36),
+            SizedBox(height: 8),
+            Text('Error al cargar vuelos'),
+            SizedBox(height: 8),
             FilledButton(
               onPressed: () => ref.invalidate(_flightsProvider(_selectedDate)),
               child: Text(l10n.t('common.retry')),
@@ -448,7 +449,7 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
                     alpha: 0.4,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Text(
                   _isToday
                       ? 'No hay vuelos programados para hoy'
@@ -495,7 +496,7 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
           height: 8,
           decoration: BoxDecoration(shape: BoxShape.circle, color: color),
         ),
-        const SizedBox(width: 6),
+        SizedBox(width: 6),
         StatusChip.fromStatus(item.cancelled ? 'cancelled' : item.status),
       ],
     );
@@ -595,7 +596,7 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               )),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
