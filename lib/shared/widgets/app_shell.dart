@@ -769,6 +769,7 @@ Color _previewStatusColor(CalendarEventStatus status, ColorScheme scheme) {
 class _NotificationBell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context).t;
     final notifAsync = ref.watch(notificationsProvider);
     final theme = Theme.of(context);
 
@@ -780,7 +781,7 @@ class _NotificationBell extends ConsumerWidget {
 
     return PopupMenuButton<String>(
       offset: const Offset(0, 48),
-      tooltip: 'Notificaciones',
+      tooltip: t('notifications.title'),
       icon: unread > 0
           ? Badge(
               label: Text(
@@ -803,7 +804,7 @@ class _NotificationBell extends ConsumerWidget {
           child: Row(
             children: [
               Text(
-                'Notificaciones',
+                t('notifications.title'),
                 style: TextStyle(fontWeight: FontWeight.w600),
               ),
               if (unread > 0) ...[
@@ -831,15 +832,15 @@ class _NotificationBell extends ConsumerWidget {
         ),
         const PopupMenuDivider(),
         if (latest.isEmpty)
-          const PopupMenuItem<String>(
+          PopupMenuItem<String>(
             enabled: false,
             child: SizedBox(
               width: 300,
               child: Column(
                 children: [
-                  Icon(Icons.notifications_off_outlined, size: 36),
-                  SizedBox(height: 8),
-                  Text('Sin notificaciones nuevas'),
+                  const Icon(Icons.notifications_off_outlined, size: 36),
+                  const SizedBox(height: 8),
+                  Text(t('notifications.empty')),
                 ],
               ),
             ),
@@ -913,13 +914,13 @@ class _NotificationBell extends ConsumerWidget {
         ],
         if (latest.isNotEmpty) ...[
           const PopupMenuDivider(),
-          const PopupMenuItem<String>(
+          PopupMenuItem<String>(
             value: 'all',
             child: Row(
               children: [
-                Icon(Icons.history, size: 18),
-                SizedBox(width: 8),
-                Text('Ver todas'),
+                const Icon(Icons.history, size: 18),
+                const SizedBox(width: 8),
+                Text(t('notifications.filterAll')),
               ],
             ),
           ),
@@ -944,6 +945,7 @@ class _UserAvatarMenu extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context).t;
     final initials = user.initials;
     final hasPasswordWarning = user.passwordChangedAt == null;
 
@@ -969,29 +971,29 @@ class _UserAvatarMenu extends ConsumerWidget {
         ),
         const PopupMenuDivider(),
         if (hasPasswordWarning)
-          const PopupMenuItem<String>(
+          PopupMenuItem<String>(
             enabled: false,
             child: Row(
               children: [
-                Icon(Icons.warning_amber_rounded, size: 18, color: Color(0xFFE65100)),
-                SizedBox(width: 8),
+                const Icon(Icons.warning_amber_rounded, size: 18, color: Color(0xFFE65100)),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Debes cambiar tu contraseña',
-                    style: TextStyle(fontSize: 12, color: Color(0xFFBF360C), fontWeight: FontWeight.w600),
+                    t('profile.passwordWarning'),
+                    style: const TextStyle(fontSize: 12, color: Color(0xFFBF360C), fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
             ),
           ),
         if (hasPasswordWarning) const PopupMenuDivider(),
-        const PopupMenuItem<String>(
+        PopupMenuItem<String>(
           value: 'profile',
           child: Row(
             children: [
-              Icon(Icons.edit_outlined, size: 20),
-              SizedBox(width: 8),
-              Text('Editar perfil'),
+              const Icon(Icons.edit_outlined, size: 20),
+              const SizedBox(width: 8),
+              Text(t('profile.title')),
             ],
           ),
         ),
@@ -1000,19 +1002,19 @@ class _UserAvatarMenu extends ConsumerWidget {
             value: 'audit',
             child: Row(
               children: [
-                Icon(Icons.fact_check_outlined, size: 20),
+                const Icon(Icons.fact_check_outlined, size: 20),
                 const SizedBox(width: 8),
-                const Text('Auditoría'),
+                Text(t('nav.audit')),
               ],
             ),
           ),
-        const PopupMenuItem<String>(
+        PopupMenuItem<String>(
           value: 'settings',
           child: Row(
             children: [
-              Icon(Icons.tune, size: 20),
-              SizedBox(width: 8),
-              Text('Configuración'),
+              const Icon(Icons.tune, size: 20),
+              const SizedBox(width: 8),
+              Text(t('nav.settings')),
             ],
           ),
         ),
@@ -1025,9 +1027,9 @@ class _UserAvatarMenu extends ConsumerWidget {
                 size: 20,
                 color: Theme.of(context).colorScheme.error,
               ),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(
-                'Cerrar sesion',
+                t('auth.logout'),
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ],

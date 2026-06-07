@@ -1,3 +1,4 @@
+import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/features/auth/application/session_controller.dart';
 import 'package:cg6_flights/features/auth/data/auth_repository.dart';
@@ -27,6 +28,8 @@ class _ProfileModal extends ConsumerStatefulWidget {
 }
 
 class _ProfileModalState extends ConsumerState<_ProfileModal> {
+  String _t(String key) => AppLocalizations.of(context).t(key);
+
   late final TextEditingController _firstNameController;
   late final TextEditingController _lastNameController;
   late final TextEditingController _documentIdController;
@@ -138,7 +141,7 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
         children: [
           Expanded(
             child: Text(
-              'Perfil',
+              _t('profile.title'),
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w800,
               ),
@@ -198,7 +201,7 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
               // ── Section 2: Personal Data ────────────────────
               _buildSectionHeader(
                 theme,
-                'Datos Personales',
+                _t('profile.personalData'),
                 Icons.person_outline,
                 _profileExpanded,
                 () => setState(() => _profileExpanded = !_profileExpanded),
@@ -213,7 +216,7 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
               // ── Section 3: Password Change ──────────────────
               _buildSectionHeader(
                 theme,
-                'Cambiar Contraseña',
+                _t('profile.changePassword'),
                 Icons.lock_outline,
                 _passwordExpanded,
                 () => setState(() => _passwordExpanded = !_passwordExpanded),
@@ -295,7 +298,7 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Foto de perfil (max 5 MB)',
+            _t('profile.photoHint'),
             style: theme.textTheme.labelSmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -415,8 +418,8 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
               ? _grade
               : null,
           isExpanded: true,
-          decoration: const InputDecoration(
-            labelText: 'Grado',
+          decoration: InputDecoration(
+            labelText: _t('common.grade'),
             border: OutlineInputBorder(),
             isDense: true,
             contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -436,8 +439,8 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
             Expanded(
               child: TextFormField(
                 controller: _firstNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Nombres',
+                decoration: InputDecoration(
+                  labelText: _t('common.firstName'),
                   border: OutlineInputBorder(),
                   isDense: true,
                   contentPadding: EdgeInsets.symmetric(
@@ -456,8 +459,8 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
             Expanded(
               child: TextFormField(
                 controller: _lastNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Apellidos',
+                decoration: InputDecoration(
+                  labelText: _t('common.lastName'),
                   border: OutlineInputBorder(),
                   isDense: true,
                   contentPadding: EdgeInsets.symmetric(
@@ -483,8 +486,8 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
               width: 140,
               child: DropdownButtonFormField<String>(
                 initialValue: _documentType,
-                decoration: const InputDecoration(
-                  labelText: 'Documento',
+                decoration: InputDecoration(
+                  labelText: _t('common.document'),
                   border: OutlineInputBorder(),
                   isDense: true,
                   contentPadding: EdgeInsets.symmetric(
@@ -503,8 +506,8 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
             Expanded(
               child: TextFormField(
                 controller: _documentIdController,
-                decoration: const InputDecoration(
-                  labelText: 'N° Documento',
+                decoration: InputDecoration(
+                  labelText: _t('common.documentNumber'),
                   border: OutlineInputBorder(),
                   isDense: true,
                   contentPadding: EdgeInsets.symmetric(
@@ -529,8 +532,8 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
               child: DropdownButtonFormField<String>(
                 initialValue: _phoneCountryCode,
                 isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Código',
+                decoration: InputDecoration(
+                  labelText: _t('common.code'),
                   border: OutlineInputBorder(),
                   isDense: true,
                   contentPadding: EdgeInsets.symmetric(
@@ -557,8 +560,8 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
             Expanded(
               child: TextFormField(
                 controller: _phoneController,
-                decoration: const InputDecoration(
-                  labelText: 'Celular',
+                decoration: InputDecoration(
+                  labelText: _t('common.phone'),
                   border: OutlineInputBorder(),
                   isDense: true,
                   contentPadding: EdgeInsets.symmetric(
@@ -578,8 +581,8 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
         InkWell(
           onTap: _pickBirthDate,
           child: InputDecorator(
-            decoration: const InputDecoration(
-              labelText: 'Fecha de Nacimiento',
+            decoration: InputDecoration(
+              labelText: _t('common.birthDate'),
               border: OutlineInputBorder(),
               isDense: true,
               contentPadding: EdgeInsets.symmetric(
@@ -591,7 +594,7 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
             child: Text(
               _birthDate != null
                   ? '${_birthDate!.day.toString().padLeft(2, '0')}/${_birthDate!.month.toString().padLeft(2, '0')}/${_birthDate!.year}'
-                  : 'Seleccionar fecha',
+                  : _t('common.selectDate'),
               style: TextStyle(
                 color: _birthDate != null
                     ? null
@@ -638,7 +641,7 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
       initialDate: _birthDate ?? DateTime(1990),
       firstDate: DateTime(1930),
       lastDate: DateTime.now(),
-      helpText: 'Seleccionar fecha de nacimiento',
+      helpText: _t('common.selectDate'),
     );
     if (picked != null) {
       setState(() => _birthDate = picked);
@@ -696,8 +699,8 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
           TextFormField(
             controller: _currentPasswordController,
             obscureText: true,
-            decoration: const InputDecoration(
-              labelText: 'Contraseña actual',
+            decoration: InputDecoration(
+              labelText: _t('profile.currentPassword'),
               border: OutlineInputBorder(),
               isDense: true,
               contentPadding: EdgeInsets.symmetric(
@@ -705,14 +708,14 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
                 vertical: 10,
               ),
             ),
-            validator: (v) => (v == null || v.isEmpty) ? 'Requerida' : null,
+            validator: (v) => (v == null || v.isEmpty) ? _t('common.required') : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
             controller: _newPasswordController,
             obscureText: true,
-            decoration: const InputDecoration(
-              labelText: 'Nueva contraseña',
+            decoration: InputDecoration(
+              labelText: _t('profile.newPassword'),
               hintText:
                   'Mín. 6 caracteres, mayúsculas, minúsculas, números y símbolos',
               border: OutlineInputBorder(),
@@ -724,8 +727,8 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
             ),
             onChanged: (_) => setState(() {}),
             validator: (v) {
-              if (v == null || v.isEmpty) return 'Requerida';
-              if (v.length < 6) return 'Mínimo 6 caracteres';
+              if (v == null || v.isEmpty) return _t('common.required');
+              if (v.length < 6) return _t('common.minChars6');
               if (!RegExp(r'[A-Z]').hasMatch(v)) return 'Falta una mayúscula';
               if (!RegExp(r'[a-z]').hasMatch(v)) return 'Falta una minúscula';
               if (!RegExp(r'[0-9]').hasMatch(v)) return 'Falta un número';
@@ -741,8 +744,8 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
           TextFormField(
             controller: _confirmPasswordController,
             obscureText: true,
-            decoration: const InputDecoration(
-              labelText: 'Confirmar nueva contraseña',
+            decoration: InputDecoration(
+              labelText: _t('profile.confirmPassword'),
               border: OutlineInputBorder(),
               isDense: true,
               contentPadding: EdgeInsets.symmetric(
@@ -751,9 +754,9 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
               ),
             ),
             validator: (v) {
-              if (v == null || v.isEmpty) return 'Requerida';
+              if (v == null || v.isEmpty) return _t('common.required');
               if (v != _newPasswordController.text) {
-                return 'Las contraseñas no coinciden';
+                return _t('validation.required');
               }
               return null;
             },
@@ -794,7 +797,7 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
                     )
                   : const Icon(Icons.lock_reset, size: 18),
               label: Text(
-                _changingPassword ? 'Cambiando...' : 'Cambiar Contraseña',
+                _changingPassword ? 'Cambiando...' : _t('profile.changePassword'),
               ),
             ),
           ),
@@ -895,6 +898,8 @@ class _ImagePreviewDialog extends StatefulWidget {
 }
 
 class _ImagePreviewDialogState extends State<_ImagePreviewDialog> {
+  String _t(String key) => AppLocalizations.of(context).t(key);
+
   final TransformationController _transformController =
       TransformationController();
   bool _processing = false;
@@ -915,7 +920,7 @@ class _ImagePreviewDialogState extends State<_ImagePreviewDialog> {
 
     return AlertDialog(
       title: Text(
-        'Ajustar foto',
+        _t('profile.adjustPhoto'),
         style: theme.textTheme.titleMedium?.copyWith(
           fontWeight: FontWeight.w800,
         ),
@@ -1001,13 +1006,13 @@ class _ImagePreviewDialogState extends State<_ImagePreviewDialog> {
       actions: [
         TextButton(
           onPressed: _processing ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancelar'),
+          child: Text(_t('common.cancel')),
         ),
         TextButton(
           onPressed: _processing
               ? null
               : () => _transformController.value = Matrix4.identity(),
-          child: const Text('Restablecer'),
+          child: Text(_t('common.reset')),
         ),
         FilledButton(
           onPressed: _processing ? null : _confirmCrop,
@@ -1017,7 +1022,7 @@ class _ImagePreviewDialogState extends State<_ImagePreviewDialog> {
                   height: 16,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Usar esta foto'),
+              : Text(_t('profile.useThisPhoto')),
         ),
       ],
     );

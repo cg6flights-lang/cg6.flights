@@ -20,6 +20,8 @@ class MetarWidget extends ConsumerStatefulWidget {
 }
 
 class _MetarWidgetState extends ConsumerState<MetarWidget> {
+  String _t(String key) => AppLocalizations.of(context).t(key);
+
   String? _selectedIcao = 'SPJC';
   Timer? _refreshTimer;
 
@@ -88,7 +90,7 @@ class _MetarWidgetState extends ConsumerState<MetarWidget> {
     return IconButton(
       onPressed: () => _openWeatherMap(context),
       icon: const Icon(Icons.map_outlined, size: 17),
-      tooltip: 'Mapa weather',
+      tooltip: _t('metar.weatherMap'),
       visualDensity: VisualDensity.compact,
       constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
       padding: EdgeInsets.zero,
@@ -156,7 +158,7 @@ class _MetarWidgetState extends ConsumerState<MetarWidget> {
                 ),
                 decoration: InputDecoration(
                   isDense: true,
-                  hintText: 'ICAO',
+                  hintText: _t('metar.searchIcao'),
                   prefixIcon: Icon(
                     Icons.search,
                     size: 15,
@@ -491,6 +493,8 @@ class _WeatherMapDialog extends ConsumerStatefulWidget {
 }
 
 class _WeatherMapDialogState extends ConsumerState<_WeatherMapDialog> {
+  String _t(String key) => AppLocalizations.of(context).t(key);
+
   AirportData? _selectedAirport;
 
   List<AirportData> get _peruvianAirports =>

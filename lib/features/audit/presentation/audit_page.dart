@@ -190,7 +190,7 @@ IconData _iconForType(String resourceType) {
 // ── Page ──────────────────────────────────────────────────────────
 
 class AuditPage extends ConsumerStatefulWidget {
-  const AuditPage({super.key});
+  AuditPage({super.key});
 
   @override
   ConsumerState<AuditPage> createState() => _AuditPageState();

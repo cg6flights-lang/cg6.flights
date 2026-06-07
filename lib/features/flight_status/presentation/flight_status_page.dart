@@ -1,3 +1,4 @@
+import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/shared/widgets/module_page.dart';
 import 'package:flutter/material.dart';
 
@@ -6,8 +7,9 @@ class FlightStatusPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ModulePage(
-      title: 'Estados de Vuelo',
+    final t = AppLocalizations.of(context).t;
+    return ModulePage(
+      title: t('nav.flightStatus'),
       icon: Icons.timeline_outlined,
       summary:
           'Eventos secuenciales: motor, taxeo, despegue, aterrizaje y apagado.',

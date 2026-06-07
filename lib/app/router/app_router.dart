@@ -73,7 +73,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/flights',
-            builder: (context, state) => const FlightsPage(),
+            builder: (context, state) => FlightsPage(),
           ),
           GoRoute(
             path: '/routes',
@@ -81,7 +81,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/audit',
-            builder: (context, state) => const AuditPage(),
+            builder: (context, state) => AuditPage(),
           ),
           GoRoute(
             path: '/notifications',
