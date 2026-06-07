@@ -2,6 +2,7 @@ import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/core/security/app_permission.dart' show rolePermissionMatrix;
 import 'package:cg6_flights/core/security/app_role.dart';
 import 'package:cg6_flights/features/auth/domain/app_user.dart';
+import 'package:cg6_flights/features/crew/data/grades_repository.dart';
 import 'package:cg6_flights/features/units/domain/unit_option.dart';
 import 'package:cg6_flights/features/users/data/users_repository.dart';
 import 'package:cg6_flights/features/users/domain/managed_profile.dart';
@@ -10,6 +11,8 @@ import 'package:cg6_flights/shared/widgets/app_badges.dart';
 import 'package:cg6_flights/shared/widgets/data_state_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'user_form_dialog.dart';
 
 class UsersPage extends ConsumerStatefulWidget {
   const UsersPage({super.key});
@@ -86,6 +89,65 @@ class _UsersPageState extends ConsumerState<UsersPage> {
     }
   }
 
+  Future<void> _createUser() async {
+    final repo = ref.read(usersRepositoryProvider);
+    final unitsResult = await repo.listUnits();
+    final List<UnitOption> activeUnits;
+    switch (unitsResult) {
+      case AppSuccess(data: final u):
+        activeUnits = u;
+      case AppFailure(error: final e):
+        if (!mounted) return;
+        setState(() => _saveError = e.message);
+        return;
+    }
+
+    // Load grades for the dialog
+    final gradesResult = await ref.read(gradesRepositoryProvider).listGrades();
+    final List<Map<String, String>> grades;
+    switch (gradesResult) {
+      case AppSuccess(data: final list):
+        grades = list.map((g) => {'code': g.code, 'name': g.code}).toList();
+      case AppFailure():
+        grades = [];
+    }
+
+    if (!mounted) return;
+
+    final result = await showDialog<UserFormResult>(
+      context: context,
+      builder: (_) => UserFormDialog(units: activeUnits, grades: grades),
+    );
+
+    if (result != null && mounted) {
+      setState(() { _saving = true; _saveError = null; });
+      final createResult = await repo.createUser(
+        email: result.email,
+        password: result.password,
+        displayName: result.displayName,
+        role: result.role,
+        unitId: result.unitId,
+        status: result.status,
+        firstName: result.firstName,
+        lastName: result.lastName,
+        documentType: result.documentType,
+        documentId: result.documentId,
+        phoneCountryCode: result.phoneCountryCode,
+        phone: result.phone,
+        birthDate: result.birthDate,
+        grade: result.grade,
+      );
+      if (!mounted) return;
+      setState(() => _saving = false);
+      switch (createResult) {
+        case AppSuccess():
+          _load();
+        case AppFailure(error: final e):
+          setState(() => _saveError = e.message);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -145,6 +207,18 @@ class _UsersPageState extends ConsumerState<UsersPage> {
               style: IconButton.styleFrom(
                 visualDensity: VisualDensity.compact,
                 minimumSize: const Size(36, 36),
+              ),
+            ),
+            const SizedBox(width: 4),
+            FilledButton.icon(
+              onPressed: () => _createUser(),
+              icon: const Icon(Icons.person_add, size: 18),
+              label: const Text('Crear Usuario'),
+              style: FilledButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                minimumSize: const Size(36, 36),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                textStyle: const TextStyle(fontSize: 12),
               ),
             ),
           ]),

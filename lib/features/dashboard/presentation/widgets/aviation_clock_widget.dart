@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/core/state/timezone_provider.dart';
 import 'package:cg6_flights/features/dashboard/domain/dashboard_widget_config.dart';
 import 'package:cg6_flights/features/dashboard/presentation/widgets/dashboard_widget_base.dart';
@@ -82,20 +81,13 @@ class _AviationClockWidgetState extends ConsumerState<AviationClockWidget> {
     final clockTime = widget.mode == AviationClockMode.zulu
         ? _nowUtc
         : _nowUtc.add(Duration(hours: widget.offsetHours));
-    final l10n = AppLocalizations.of(context);
-    final title = widget.mode == AviationClockMode.zulu
-        ? l10n.t('dashboard.widget.zuluClock')
-        : l10n.t('dashboard.widget.romeoClock');
     final zoneLabel = widget.mode == AviationClockMode.zulu
-        ? l10n.t('dashboard.clock.utc')
-        : (widget.offsetHours == -5
-              ? 'UTC-5'
-              : '${l10n.t('dashboard.clock.local')} · ${_offsetLabel(widget.offsetHours)}');
+        ? 'ZULU'
+        : 'PERÚ';
 
     return DashboardWidgetWrapper(
       config: config,
       child: _ClockPanel(
-        title: title,
         zoneLabel: zoneLabel,
         time: clockTime,
         palette: _ClockPalette.resolve(
@@ -110,22 +102,19 @@ class _AviationClockWidgetState extends ConsumerState<AviationClockWidget> {
 
 class _ClockPanel extends StatelessWidget {
   const _ClockPanel({
-    required this.title,
     required this.zoneLabel,
     required this.time,
     required this.palette,
   });
 
-  final String title;
   final String zoneLabel;
   final DateTime time;
   final _ClockPalette palette;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: palette.panelColor,
@@ -140,63 +129,93 @@ class _ClockPanel extends StatelessWidget {
             ),
           ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              SizedBox.square(
-                dimension: 82,
-                child: CustomPaint(
-                  painter: _AnalogClockPainter(time: time, palette: palette),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '$title · $zoneLabel',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: palette.titleColor,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0,
-                      ),
+        child: Stack(
+          children: [
+            // Main content — vertically centered
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox.square(
+                    dimension: 110,
+                    child: CustomPaint(
+                      painter: _AnalogClockPainter(time: time, palette: palette),
                     ),
-                    const SizedBox(height: 8),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        _formatTime(time),
-                        style: TextStyle(
-                          fontFamily: 'monospace',
-                          color: palette.digitalColor,
-                          fontSize: 31,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0,
-                          shadows: palette.digitalShadows,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Container(
+                      margin: const EdgeInsets.only(left: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: palette.dialColor.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: palette.borderColor.withValues(alpha: 0.6),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      _formatDate(time),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: palette.dateColor,
-                        fontWeight: FontWeight.w700,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              _formatTime(time),
+                              style: TextStyle(
+                                fontFamily: 'monospace',
+                                color: palette.digitalColor,
+                                fontSize: 76,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0,
+                                shadows: palette.digitalShadows,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            _formatDate(time),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: palette.dateColor,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
+                  ),
+                ],
+              ),
+            ),
+            // Zone pill — inside, top-right with 0.5px margin
+            Positioned(
+              top: 5,
+              right: 5,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: palette.titleColor,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  zoneLabel,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: 0.8,
+                  ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -446,11 +465,11 @@ String _formatTime(DateTime time) {
 }
 
 String _formatDate(DateTime time) {
-  return '${time.day.toString().padLeft(2, '0')}.${time.month.toString().padLeft(2, '0')}.${time.year}';
-}
-
-String _offsetLabel(int offsetHours) {
-  if (offsetHours == 0) return 'UTC';
-  final sign = offsetHours > 0 ? '+' : '-';
-  return 'UTC$sign${offsetHours.abs()}';
+  const days = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
+  const months = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+  final dayName = days[time.weekday % 7];
+  final day = time.day.toString().padLeft(2, '0');
+  final month = months[time.month - 1];
+  final year = time.year.toString();
+  return '$dayName $day $month $year';
 }

@@ -29,6 +29,11 @@ final _calendarPreviewProvider =
           .listEvents(from: from, to: to);
     });
 
+bool _isValidUrl(String? url) {
+  if (url == null || url.isEmpty) return false;
+  return url.startsWith('http://') || url.startsWith('https://');
+}
+
 class NavigationItem {
   const NavigationItem({
     required this.path,
@@ -939,13 +944,12 @@ class _UserAvatarMenu extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final initial = user.displayName.isNotEmpty
-        ? user.displayName[0].toUpperCase()
-        : '?';
+    final initials = user.initials;
+    final hasPasswordWarning = user.passwordChangedAt == null;
 
     return PopupMenuButton<String>(
       offset: const Offset(0, 48),
-      tooltip: user.displayName,
+      tooltip: user.fullName,
       onSelected: (value) {
         switch (value) {
           case 'profile':
@@ -964,6 +968,23 @@ class _UserAvatarMenu extends ConsumerWidget {
           child: _UserInfoHeader(user: user),
         ),
         const PopupMenuDivider(),
+        if (hasPasswordWarning)
+          const PopupMenuItem<String>(
+            enabled: false,
+            child: Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, size: 18, color: Color(0xFFE65100)),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Debes cambiar tu contraseña',
+                    style: TextStyle(fontSize: 12, color: Color(0xFFBF360C), fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (hasPasswordWarning) const PopupMenuDivider(),
         const PopupMenuItem<String>(
           value: 'profile',
           child: Row(
@@ -1013,9 +1034,32 @@ class _UserAvatarMenu extends ConsumerWidget {
           ),
         ),
       ],
-      child: CircleAvatar(
-        radius: 16,
-        child: Text(initial, style: const TextStyle(fontSize: 14)),
+      child: Stack(
+        children: [
+          CircleAvatar(
+            radius: 16,
+            backgroundImage: _isValidUrl(user.avatarPath)
+                ? NetworkImage(user.avatarPath!)
+                : null,
+            child: !_isValidUrl(user.avatarPath)
+                ? Text(initials, style: const TextStyle(fontSize: 12))
+                : null,
+          ),
+          if (hasPasswordWarning)
+            Positioned(
+              top: -2,
+              right: -2,
+              child: Container(
+                width: 12,
+                height: 12,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE65100),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.warning, size: 8, color: Colors.white),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -1095,20 +1139,36 @@ class _UserInfoHeader extends StatelessWidget {
           Row(
             children: [
               CircleAvatar(
-                radius: 16,
-                child: Text(
-                  user.displayName.isNotEmpty
-                      ? user.displayName[0].toUpperCase()
-                      : '?',
-                  style: const TextStyle(fontSize: 14),
-                ),
+                radius: 22,
+                backgroundImage: _isValidUrl(user.avatarPath)
+                    ? NetworkImage(user.avatarPath!)
+                    : null,
+                child: !_isValidUrl(user.avatarPath)
+                    ? Text(
+                        user.initials,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      )
+                    : null,
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  user.displayName,
-                  style: Theme.of(context).textTheme.titleSmall,
-                  overflow: TextOverflow.ellipsis,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (user.grade != null)
+                      Text(
+                        user.grade!,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: Theme.of(context).colorScheme.primary,
+                              fontWeight: FontWeight.w800,
+                            ),
+                      ),
+                    Text(
+                      user.fullName,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
               ),
             ],

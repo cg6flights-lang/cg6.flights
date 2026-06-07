@@ -1,3 +1,4 @@
+import 'package:cg6_flights/core/config/supabase_config.dart';
 import 'package:cg6_flights/core/errors/app_error.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/features/crew/domain/grade_option.dart';
@@ -5,11 +6,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 final gradesRepositoryProvider = Provider<GradesRepository>((ref) {
+  if (!SupabaseConfig.isConfigured) return DemoGradesRepository();
   return SupabaseGradesRepository(Supabase.instance.client);
 });
 
 abstract class GradesRepository {
   Future<AppResult<List<GradeOption>>> listGrades({String? category});
+}
+
+class DemoGradesRepository implements GradesRepository {
+  @override
+  Future<AppResult<List<GradeOption>>> listGrades({String? category}) async {
+    return const AppSuccess([]);
+  }
 }
 
 class SupabaseGradesRepository implements GradesRepository {

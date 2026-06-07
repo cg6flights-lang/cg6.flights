@@ -10,13 +10,14 @@ final sessionControllerProvider =
 enum SessionStatus { initial, loading, unauthenticated, authenticated, blocked }
 
 class SessionState {
-  const SessionState({required this.status, this.user, this.error});
+  const SessionState({required this.status, this.user, this.error, this.justLoggedIn = false});
 
   const SessionState.initial() : this(status: SessionStatus.initial);
 
   final SessionStatus status;
   final AppUser? user;
   final AppError? error;
+  final bool justLoggedIn;
 
   bool get isLoading =>
       status == SessionStatus.loading || status == SessionStatus.initial;
@@ -28,6 +29,15 @@ class SessionState {
       status == SessionStatus.authenticated && (user?.canOperate ?? false);
 
   bool can(String permission) => user?.can(permission) ?? false;
+
+  SessionState copyWith({bool? justLoggedIn}) {
+    return SessionState(
+      status: status,
+      user: user,
+      error: error,
+      justLoggedIn: justLoggedIn ?? this.justLoggedIn,
+    );
+  }
 }
 
 class SessionController extends Notifier<SessionState> {
@@ -45,7 +55,7 @@ class SessionController extends Notifier<SessionState> {
     final result = await _repository.currentUser();
     switch (result) {
       case AppSuccess<AppUser?>(data: final user):
-        _setUser(user);
+        _setUser(user, justLoggedIn: false);
       case AppFailure<AppUser?>(error: final error):
         state = SessionState(
           status: SessionStatus.unauthenticated,
@@ -59,7 +69,7 @@ class SessionController extends Notifier<SessionState> {
     final result = await _repository.signIn(email: email, password: password);
     switch (result) {
       case AppSuccess<AppUser>(data: final user):
-        _setUser(user);
+        _setUser(user, justLoggedIn: true);
       case AppFailure<AppUser>(error: final error):
         state = SessionState(
           status: SessionStatus.unauthenticated,
@@ -72,16 +82,32 @@ class SessionController extends Notifier<SessionState> {
     required String email,
     required String password,
     required String displayName,
+    String? firstName,
+    String? lastName,
+    String? documentType,
+    String? documentId,
+    String? phoneCountryCode,
+    String? phone,
+    DateTime? birthDate,
+    String? grade,
   }) async {
     state = const SessionState(status: SessionStatus.loading);
     final result = await _repository.register(
       email: email,
       password: password,
       displayName: displayName,
+      firstName: firstName,
+      lastName: lastName,
+      documentType: documentType,
+      documentId: documentId,
+      phoneCountryCode: phoneCountryCode,
+      phone: phone,
+      birthDate: birthDate,
+      grade: grade,
     );
     switch (result) {
       case AppSuccess<AppUser>(data: final user):
-        _setUser(user);
+        _setUser(user, justLoggedIn: true);
       case AppFailure<AppUser>(error: final error):
         state = SessionState(
           status: SessionStatus.unauthenticated,
@@ -95,7 +121,7 @@ class SessionController extends Notifier<SessionState> {
     final result = await _repository.claimFirstLeader();
     switch (result) {
       case AppSuccess<AppUser>(data: final user):
-        _setUser(user);
+        _setUser(user, justLoggedIn: true);
       case AppFailure<AppUser>(error: final error):
         state = SessionState(
           status: SessionStatus.blocked,
@@ -110,7 +136,21 @@ class SessionController extends Notifier<SessionState> {
     state = const SessionState(status: SessionStatus.unauthenticated);
   }
 
-  void _setUser(AppUser? user) {
+  void dismissWelcome() {
+    if (state.justLoggedIn) {
+      state = state.copyWith(justLoggedIn: false);
+    }
+  }
+
+  void updateUser(AppUser user) {
+    state = SessionState(
+      status: state.status,
+      user: user,
+      justLoggedIn: state.justLoggedIn,
+    );
+  }
+
+  void _setUser(AppUser? user, {bool justLoggedIn = false}) {
     if (user == null) {
       state = const SessionState(status: SessionStatus.unauthenticated);
       return;
@@ -121,6 +161,7 @@ class SessionController extends Notifier<SessionState> {
           ? SessionStatus.authenticated
           : SessionStatus.blocked,
       user: user,
+      justLoggedIn: justLoggedIn,
     );
   }
 }

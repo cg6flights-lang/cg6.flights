@@ -22,6 +22,23 @@ abstract class UsersRepository {
     required String? unitId,
     required ProfileStatus status,
   });
+
+  Future<AppResult<void>> createUser({
+    required String email,
+    required String password,
+    required String displayName,
+    required AppRole? role,
+    required String? unitId,
+    required ProfileStatus status,
+    String? firstName,
+    String? lastName,
+    String? documentType,
+    String? documentId,
+    String? phoneCountryCode,
+    String? phone,
+    DateTime? birthDate,
+    String? grade,
+  });
 }
 
 class SupabaseUsersRepository implements UsersRepository {
@@ -109,6 +126,66 @@ class SupabaseUsersRepository implements UsersRepository {
         AppError(
           code: 'SYSTEM_ASSIGN_ACCESS_FAILED',
           message: 'No se pudo actualizar acceso.',
+          category: AppErrorCategory.system,
+          severity: AppErrorSeverity.high,
+        ),
+      );
+    }
+  }
+
+  @override
+  Future<AppResult<void>> createUser({
+    required String email,
+    required String password,
+    required String displayName,
+    required AppRole? role,
+    required String? unitId,
+    required ProfileStatus status,
+    String? firstName,
+    String? lastName,
+    String? documentType,
+    String? documentId,
+    String? phoneCountryCode,
+    String? phone,
+    DateTime? birthDate,
+    String? grade,
+  }) async {
+    try {
+      final bodyMap = <String, dynamic>{
+        'action': 'create',
+        'email': email,
+        'password': password,
+        'display_name': displayName,
+        'role': role?.key,
+        'unit_id': unitId,
+        'status': status.key,
+      };
+      if (firstName != null) bodyMap['first_name'] = firstName;
+      if (lastName != null) bodyMap['last_name'] = lastName;
+      if (documentType != null) bodyMap['document_type'] = documentType;
+      if (documentId != null) bodyMap['document_id'] = documentId;
+      if (phoneCountryCode != null) bodyMap['phone_country_code'] = phoneCountryCode;
+      if (phone != null) bodyMap['phone'] = phone;
+      if (birthDate != null) {
+        bodyMap['birth_date'] =
+            '${birthDate.year.toString().padLeft(4, '0')}-${birthDate.month.toString().padLeft(2, '0')}-${birthDate.day.toString().padLeft(2, '0')}';
+      }
+      if (grade != null) bodyMap['grade'] = grade;
+
+      final response = await _client.functions.invoke(
+        'manage-user',
+        body: bodyMap,
+      );
+      final body = response.data;
+      if (body is Map && body['ok'] == true) {
+        return const AppSuccess(null);
+      }
+      return AppFailure(_errorFromBody(body));
+    } catch (_) {
+      return const AppFailure(
+        AppError(
+          code: 'SYSTEM_CREATE_USER_FAILED',
+          message: 'No se pudo crear el usuario.',
           category: AppErrorCategory.system,
           severity: AppErrorSeverity.high,
         ),

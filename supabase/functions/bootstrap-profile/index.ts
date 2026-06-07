@@ -89,16 +89,37 @@ Deno.serve(async (req) => {
   const fallbackName =
     displayName || String(user.user_metadata?.display_name ?? user.email ?? "Usuario");
 
+  // New extended fields
+  const firstName = typeof payload.first_name === "string" ? payload.first_name.trim() : null;
+  const lastName = typeof payload.last_name === "string" ? payload.last_name.trim() : null;
+  const documentType = typeof payload.document_type === "string" ? payload.document_type.trim() : null;
+  const documentId = typeof payload.document_id === "string" ? payload.document_id.trim() : null;
+  const phoneCountryCode = typeof payload.phone_country_code === "string" ? payload.phone_country_code.trim() : null;
+  const phone = typeof payload.phone === "string" ? payload.phone.trim() : null;
+  const birthDate = typeof payload.birth_date === "string" ? payload.birth_date.trim() : null;
+  const grade = typeof payload.grade === "string" ? payload.grade.trim() : null;
+
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
+  const upsertData: Record<string, unknown> = {
+    id: user.id,
+    email: user.email ?? "",
+    display_name: fallbackName,
+    status: "pending",
+  };
+  if (firstName) upsertData.first_name = firstName;
+  if (lastName) upsertData.last_name = lastName;
+  if (documentType) upsertData.document_type = documentType;
+  if (documentId) upsertData.document_id = documentId;
+  if (phoneCountryCode) upsertData.phone_country_code = phoneCountryCode;
+  if (phone) upsertData.phone = phone;
+  if (birthDate) upsertData.birth_date = birthDate;
+  if (grade) upsertData.grade = grade;
+
   const { data: profile, error: profileError } = await adminClient
     .from("profiles")
-    .upsert({
-      id: user.id,
-      email: user.email ?? "",
-      display_name: fallbackName,
-      status: "pending",
-    }, { onConflict: "id", ignoreDuplicates: true })
-    .select("id,email,display_name,status,role,unit_id")
+    .upsert(upsertData, { onConflict: "id", ignoreDuplicates: true })
+    .select("id,email,display_name,status,role,unit_id,first_name,last_name,document_type,document_id,phone_country_code,phone,birth_date,grade,avatar_path,password_changed_at")
     .single();
 
   if (profileError) {
