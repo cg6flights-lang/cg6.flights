@@ -1,3 +1,4 @@
+import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/core/security/app_permission.dart';
 import 'package:cg6_flights/features/auth/application/session_controller.dart';
@@ -16,6 +17,8 @@ class UnitsPage extends ConsumerStatefulWidget {
 }
 
 class _UnitsPageState extends ConsumerState<UnitsPage> {
+  String _t(String key) => AppLocalizations.of(context).t(key);
+
   final _codeController = TextEditingController();
   final _nameController = TextEditingController();
   var _active = true;
@@ -68,16 +71,16 @@ class _UnitsPageState extends ConsumerState<UnitsPage> {
         .can(AppPermission.unitsManage);
 
     if (_loading) {
-      return const DataStateView(
+      return DataStateView(
         kind: DataStateKind.loading,
-        title: 'Cargando unidades',
+        title: _t('misc.loadingUnits'),
       );
     }
 
     if (_error != null) {
       return DataStateView(
         kind: DataStateKind.systemError,
-        title: 'No se pudo cargar unidades',
+        title: _t('misc.routeNotFound'),
         message: _error,
         onRetry: _load,
       );
@@ -97,7 +100,7 @@ class _UnitsPageState extends ConsumerState<UnitsPage> {
               ),
             ),
             IconButton(
-              tooltip: 'Actualizar',
+              tooltip: _t('common.refresh'),
               onPressed: _load,
               icon: const Icon(Icons.refresh),
             ),
@@ -121,17 +124,17 @@ class _UnitsPageState extends ConsumerState<UnitsPage> {
             onSave: _save,
           )
         else
-          const DataStateView(
+          DataStateView(
             kind: DataStateKind.permissionDenied,
-            title: 'Sin permiso para administrar unidades',
-            message: 'Puedes consultar unidades, pero no modificarlas.',
+            title: _t('units.noPermissionTitle'),
+            message: _t('units.noPermissionMsg'),
           ),
         const SizedBox(height: 20),
         if (_units.isEmpty)
-          const DataStateView(
+          DataStateView(
             kind: DataStateKind.empty,
-            title: 'Sin unidades',
-            message: 'Crea la primera unidad para asignar usuarios operativos.',
+            title: _t('units.emptyTitle'),
+            message: _t('units.emptyMsg'),
           )
         else
           for (final unit in _units) ...[
@@ -249,6 +252,7 @@ class _UnitFormCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context).t;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -256,7 +260,7 @@ class _UnitFormCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              editing == null ? 'Nueva unidad' : 'Editar unidad',
+              editing == null ? t('units.create') : t('units.edit'),
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 14),
@@ -270,9 +274,9 @@ class _UnitFormCard extends StatelessWidget {
                   child: TextField(
                     controller: codeController,
                     textCapitalization: TextCapitalization.characters,
-                    decoration: const InputDecoration(
-                      labelText: 'Codigo',
-                      prefixIcon: Icon(Icons.tag),
+                    decoration: InputDecoration(
+                      labelText: t('units.code'),
+                      prefixIcon: const Icon(Icons.tag),
                     ),
                   ),
                 ),
@@ -280,9 +284,9 @@ class _UnitFormCard extends StatelessWidget {
                   width: 340,
                   child: TextField(
                     controller: nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Nombre',
-                      prefixIcon: Icon(Icons.flag_outlined),
+                    decoration: InputDecoration(
+                      labelText: t('units.name'),
+                      prefixIcon: const Icon(Icons.flag_outlined),
                     ),
                   ),
                 ),
@@ -366,12 +370,12 @@ class _UnitCard extends StatelessWidget {
             ),
             if (canManage) ...[
               IconButton(
-                tooltip: 'Editar',
+                tooltip: AppLocalizations.of(context).t('units.edit'),
                 onPressed: onEdit,
                 icon: const Icon(Icons.edit_outlined),
               ),
               IconButton(
-                tooltip: 'Desactivar',
+                tooltip: AppLocalizations.of(context).t('units.deactivate'),
                 onPressed: onDeactivate,
                 icon: const Icon(Icons.block),
               ),
