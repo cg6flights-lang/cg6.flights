@@ -1,4 +1,3 @@
-import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/features/audit/domain/audit_log.dart';
 import 'package:cg6_flights/features/dashboard/application/dashboard_providers.dart';
@@ -14,7 +13,6 @@ class ActivityWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = AppLocalizations.of(context).t;
     final activityAsync = ref.watch(recentActivityProvider);
     final tz = ref.watch(timezoneProvider);
 
@@ -35,7 +33,7 @@ class ActivityWidget extends ConsumerWidget {
 }
 
 class _ActivityContent extends StatelessWidget {
-  _ActivityContent({required this.logs, required this.tz});
+  const _ActivityContent({required this.logs, required this.tz});
   final List<AuditLog> logs;
   final int tz;
 
@@ -44,7 +42,7 @@ class _ActivityContent extends StatelessWidget {
     final theme = Theme.of(context);
     final recent = logs.take(8).toList();
     if (recent.isEmpty) {
-      return Padding(
+      return const Padding(
         padding: EdgeInsets.all(16),
         child: Center(child: Text('Sin actividad reciente', style: TextStyle(fontSize: 12))),
       );
@@ -53,26 +51,26 @@ class _ActivityContent extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         ...recent.map((log) => Padding(
-          padding: EdgeInsets.only(bottom: 2),
+          padding: const EdgeInsets.only(bottom: 2),
           child: Row(children: [
             Text(
               formatTimeWithOffset(log.createdAt, tz),
               style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontSize: 10),
             ),
-            SizedBox(width: 4),
+            const SizedBox(width: 4),
             _dot(log.result),
-            SizedBox(width: 4),
+            const SizedBox(width: 4),
             Expanded(child: Text('${log.action} ${log.resourceType}', style: theme.textTheme.labelSmall?.copyWith(fontSize: 11), overflow: TextOverflow.ellipsis)),
           ]),
         )),
-        SizedBox(height: 4),
+        const SizedBox(height: 4),
         Align(
           alignment: Alignment.centerRight,
           child: InkWell(
             onTap: () => context.go('/audit'),
             borderRadius: BorderRadius.circular(4),
             child: Padding(
-              padding: EdgeInsets.all(2),
+              padding: const EdgeInsets.all(2),
               child: Text('Ver más →', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w600)),
             ),
           ),

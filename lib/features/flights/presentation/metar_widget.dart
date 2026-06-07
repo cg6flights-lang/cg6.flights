@@ -493,8 +493,6 @@ class _WeatherMapDialog extends ConsumerStatefulWidget {
 }
 
 class _WeatherMapDialogState extends ConsumerState<_WeatherMapDialog> {
-  String _t(String key) => AppLocalizations.of(context).t(key);
-
   AirportData? _selectedAirport;
 
   List<AirportData> get _peruvianAirports =>

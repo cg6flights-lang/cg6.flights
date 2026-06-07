@@ -1,4 +1,3 @@
-import 'package:cg6_flights/app/i18n/app_localizations.dart';
 // ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
 
 import 'dart:async';

@@ -190,7 +190,7 @@ IconData _iconForType(String resourceType) {
 // ── Page ──────────────────────────────────────────────────────────
 
 class AuditPage extends ConsumerStatefulWidget {
-  AuditPage({super.key});
+  const AuditPage({super.key});
 
   @override
   ConsumerState<AuditPage> createState() => _AuditPageState();
@@ -237,7 +237,6 @@ class _AuditPageState extends ConsumerState<AuditPage>
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context).t;
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final auditAsync = ref.watch(_auditLogsProvider(_query));
@@ -259,7 +258,7 @@ class _AuditPageState extends ConsumerState<AuditPage>
               ),
               IconButton(
                 icon: const Icon(Icons.refresh, size: 20),
-                tooltip: t('common.refresh'),
+                tooltip: AppLocalizations.of(context).t('common.refresh'),
                 onPressed: () =>
                     ref.invalidate(_auditLogsProvider(_query)),
               ),
@@ -526,7 +525,6 @@ class _FilterDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context).t;
     return PopupMenuButton<String?>(
       offset: const Offset(0, 44),
       onSelected: onChanged,
@@ -579,7 +577,6 @@ class _AuditBlockCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context).t;
     final theme = Theme.of(context);
     final meta = _blockMeta[block]!;
     final totalCount = logs.length;
@@ -685,7 +682,6 @@ class _AuditTypeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context).t;
     final theme = Theme.of(context);
     final count = logs.length;
 

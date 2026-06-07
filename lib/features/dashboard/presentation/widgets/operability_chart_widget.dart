@@ -1,4 +1,3 @@
-import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/features/aircraft/domain/operational_data_point.dart';
 import 'package:cg6_flights/features/dashboard/application/dashboard_providers.dart';
@@ -13,7 +12,6 @@ class OperabilityChartWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = AppLocalizations.of(context).t;
     final curveAsync = ref.watch(operationalCurveProvider);
 
     final child = curveAsync.when(

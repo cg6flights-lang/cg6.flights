@@ -1,4 +1,3 @@
-import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/features/dashboard/application/dashboard_providers.dart';
 import 'package:cg6_flights/features/dashboard/domain/dashboard_widget_config.dart';
@@ -13,7 +12,6 @@ class NotificationsWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final t = AppLocalizations.of(context).t;
     final postsAsync = ref.watch(recentPostsProvider);
 
     final child = postsAsync.when(
@@ -33,7 +31,7 @@ class NotificationsWidget extends ConsumerWidget {
 }
 
 class _NotificationsContent extends StatelessWidget {
-  _NotificationsContent({required this.posts});
+  const _NotificationsContent({required this.posts});
   final List<MessagePost> posts;
 
   @override
@@ -42,24 +40,24 @@ class _NotificationsContent extends StatelessWidget {
     final recent = posts.take(5).toList();
 
     if (recent.isEmpty) {
-      return Padding(
+      return const Padding(
         padding: EdgeInsets.all(16),
         child: Center(child: Text('Sin notificaciones', style: TextStyle(fontSize: 12))),
       );
     }
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(10, 0, 10, 8),
+      padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         ...recent.map((post) => _PostRow(post: post, theme: theme)),
-        SizedBox(height: 4),
+        const SizedBox(height: 4),
         Align(
           alignment: Alignment.centerRight,
           child: InkWell(
             onTap: () => context.go('/messages'),
             borderRadius: BorderRadius.circular(4),
             child: Padding(
-              padding: EdgeInsets.all(2),
+              padding: const EdgeInsets.all(2),
               child: Text('Ver más →', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w600)),
             ),
           ),

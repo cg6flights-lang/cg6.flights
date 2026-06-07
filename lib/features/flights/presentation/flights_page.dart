@@ -40,7 +40,7 @@ final _routeIcaosProvider = FutureProvider<Set<String>>((ref) async {
 });
 
 class FlightsPage extends ConsumerStatefulWidget {
-  FlightsPage({super.key});
+  const FlightsPage({super.key});
 
   @override
   ConsumerState<FlightsPage> createState() => _FlightsPageState();

@@ -18,7 +18,6 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context).t;
     final theme = Theme.of(context);
     final notifAsync = ref.watch(notificationsProvider);
     final repo = ref.read(notificationRepositoryProvider);

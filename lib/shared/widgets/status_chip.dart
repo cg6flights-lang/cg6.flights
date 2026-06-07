@@ -1,4 +1,3 @@
-import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/app/theme/status_colors.dart';
 import 'package:flutter/material.dart';
 
@@ -43,7 +42,6 @@ class StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context).t;
     final isSmall = size == StatusChipSize.small;
 
     return Container(
