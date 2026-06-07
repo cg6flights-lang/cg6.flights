@@ -1,3 +1,4 @@
+import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/shared/widgets/data_state_view.dart';
 import 'package:flutter/material.dart';
 
@@ -19,6 +20,7 @@ class ModulePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context).t;
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
@@ -44,17 +46,17 @@ class ModulePage extends StatelessWidget {
             for (final action in actions)
               OutlinedButton.icon(
                 onPressed: null,
-                icon: const Icon(Icons.lock_clock),
+                icon: Icon(Icons.lock_clock),
                 label: Text(action),
               ),
           ],
         ),
-        const SizedBox(height: 32),
+        SizedBox(height: 32),
         SizedBox(
           height: 320,
           child: DataStateView(
             kind: stateKind,
-            title: 'Modulo listo para conectar datos',
+            title: t('misc.moduleReady'),
             message:
                 'La estructura respeta SDD; las operaciones criticas quedan detras de permisos, repositories, RLS y auditoria.',
           ),

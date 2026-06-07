@@ -1,3 +1,4 @@
+import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/app/theme/status_colors.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/core/state/timezone_provider.dart';
@@ -16,6 +17,7 @@ class UpcomingFlightsWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context).t;
     final flightsAsync = ref.watch(todayFlightsProvider);
     final tz = ref.watch(timezoneProvider);
 
@@ -45,22 +47,22 @@ class _UpcomingContent extends StatelessWidget {
     final upcoming = sorted.take(6).toList();
 
     if (upcoming.isEmpty) {
-      return const Padding(
+      return Padding(
         padding: EdgeInsets.all(16),
         child: Center(child: Text('Sin vuelos programados', style: TextStyle(fontSize: 12))),
       );
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+      padding: EdgeInsets.fromLTRB(10, 0, 10, 8),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         ...upcoming.map((f) => _FlightRow(flight: f, theme: theme, tz: tz)),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Align(
           alignment: Alignment.centerRight,
           child: InkWell(
             onTap: () => context.go('/flights'), borderRadius: BorderRadius.circular(4),
-            child: Padding(padding: const EdgeInsets.all(2),
+            child: Padding(padding: EdgeInsets.all(2),
               child: Text('Ver todos →', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w600))),
           ),
         ),

@@ -1,3 +1,4 @@
+import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/app/theme/status_colors.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/core/state/timezone_provider.dart';
@@ -13,6 +14,7 @@ class TimelineWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context).t;
     final flightsAsync = ref.watch(todayFlightsProvider);
     final tz = ref.watch(timezoneProvider);
 

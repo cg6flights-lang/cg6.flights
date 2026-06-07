@@ -1,3 +1,4 @@
+import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/core/security/app_permission.dart';
 import 'package:cg6_flights/features/aircraft/presentation/aircraft_page.dart';
 import 'package:cg6_flights/features/audit/presentation/audit_page.dart';
@@ -101,15 +102,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/settings',
-            builder: (context, state) => const SettingsPage(),
+            builder: (context, state) => SettingsPage(),
           ),
         ],
       ),
     ],
-    errorBuilder: (context, state) => const Scaffold(
+    errorBuilder: (context, state) => Scaffold(
       body: DataStateView(
         kind: DataStateKind.empty,
-        title: 'Ruta no encontrada',
+        title: AppLocalizations.of(context).t('misc.routeNotFound'),
       ),
     ),
     redirect: (context, state) {

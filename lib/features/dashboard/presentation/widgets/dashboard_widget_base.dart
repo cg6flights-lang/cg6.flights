@@ -1,3 +1,4 @@
+import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/features/dashboard/domain/dashboard_widget_config.dart';
 import 'package:flutter/material.dart';
 
@@ -23,6 +24,7 @@ class DashboardWidgetWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context).t;
     final theme = Theme.of(context);
 
     return AnimatedOpacity(
@@ -47,7 +49,7 @@ class DashboardWidgetWrapper extends StatelessWidget {
                   Icon(config.icon, size: 16, color: theme.colorScheme.primary),
                   const SizedBox(width: 6),
                   Text(
-                    _titleFor(config.id),
+                    _titleFor(config.id, context),
                     style: theme.textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -77,22 +79,23 @@ class DashboardWidgetWrapper extends StatelessWidget {
     );
   }
 
-  String _titleFor(String id) {
+  String _titleFor(String id, BuildContext context) {
+    final t = AppLocalizations.of(context).t;
     return switch (id) {
-      'map' => 'Mapa de Operaciones',
-      'zulu_clock' => 'Reloj Zulu',
-      'romeo_clock' => 'Reloj Romeo',
-      'kpis' => 'KPIs',
-      'timeline' => 'Timeline de Vuelos',
-      'upcoming' => 'Próximos Vuelos',
-      'metar' => 'METAR',
-      'operability' => 'Operatividad',
-      'notifications' => 'Notificaciones',
-      'activity' => 'Actividad',
-      'fleet' => 'Flota',
-      'resumen' => 'Resumen del Día',
-      'quick_actions' => 'Acciones Rápidas',
-      'calendar_mini' => 'Calendario',
+      'map' => t('dashboard.widget.map'),
+      'zulu_clock' => t('dashboard.widget.zuluClock'),
+      'romeo_clock' => t('dashboard.widget.romeoClock'),
+      'kpis' => t('dashboard.widget.kpis'),
+      'timeline' => t('dashboard.widget.timeline'),
+      'upcoming' => t('dashboard.widget.upcoming'),
+      'metar' => t('dashboard.widget.metar'),
+      'operability' => t('dashboard.widget.operability'),
+      'notifications' => t('dashboard.widget.notifications'),
+      'activity' => t('dashboard.widget.activity'),
+      'fleet' => t('dashboard.widget.fleet'),
+      'resumen' => t('dashboard.widget.resumen'),
+      'quick_actions' => t('dashboard.widget.quickActions'),
+      'calendar_mini' => t('dashboard.widget.calendarMini'),
       _ => id,
     };
   }

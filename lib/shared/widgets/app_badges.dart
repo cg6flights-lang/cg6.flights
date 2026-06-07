@@ -1,3 +1,4 @@
+import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/core/security/app_role.dart';
 import 'package:flutter/material.dart';
 
@@ -8,6 +9,7 @@ class RoleBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context).t;
     return _Badge(
       icon: Icons.admin_panel_settings_outlined,
       text: role?.labelEs ?? 'Sin rol',

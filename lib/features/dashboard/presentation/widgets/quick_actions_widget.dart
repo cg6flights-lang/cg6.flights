@@ -1,3 +1,4 @@
+import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/features/dashboard/domain/dashboard_widget_config.dart';
 import 'package:cg6_flights/features/dashboard/presentation/widgets/dashboard_widget_base.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ class QuickActionsWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context).t;
     final theme = Theme.of(context);
 
     return DashboardWidgetWrapper(

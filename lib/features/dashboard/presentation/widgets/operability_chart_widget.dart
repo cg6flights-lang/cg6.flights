@@ -1,3 +1,4 @@
+import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/features/aircraft/domain/operational_data_point.dart';
 import 'package:cg6_flights/features/dashboard/application/dashboard_providers.dart';
@@ -12,14 +13,15 @@ class OperabilityChartWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context).t;
     final curveAsync = ref.watch(operationalCurveProvider);
 
     final child = curveAsync.when(
-      loading: () => const _Centered(height: 180, child: CircularProgressIndicator(strokeWidth: 2)),
-      error: (_, _) => const _Centered(height: 180, child: Icon(Icons.error_outline, size: 20)),
+      loading: () => _Centered(height: 180, child: CircularProgressIndicator(strokeWidth: 2)),
+      error: (_, _) => _Centered(height: 180, child: Icon(Icons.error_outline, size: 20)),
       data: (result) => switch (result) {
         AppSuccess(data: final points) => points.isEmpty
-            ? const _Centered(height: 180, child: Text('Sin datos históricos', style: TextStyle(fontSize: 12)))
+            ? _Centered(height: 180, child: Text('Sin datos históricos', style: TextStyle(fontSize: 12)))
             : _ChartContent(points: points),
         AppFailure() => const _Centered(height: 180, child: Icon(Icons.error_outline, size: 20)),
       },
@@ -42,7 +44,7 @@ class _ChartContent extends StatelessWidget {
     final showDots = points.length <= 12;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
+      padding: EdgeInsets.fromLTRB(10, 0, 10, 8),
       child: SizedBox(
         height: 180,
         child: LineChart(LineChartData(
