@@ -66,7 +66,9 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
           .order('operation_date', ascending: false)
           .limit(100);
 
-      final orders = (rows as List<dynamic>).map((r) {
+      final orders = (rows as List<dynamic>)
+          .where((r) => (r as Map<String, dynamic>)['deleted_at'] == null)
+          .map((r) {
         final json = r as Map<String, dynamic>;
         final itemsData = json['flight_order_items'] as List<dynamic>?;
         if (itemsData != null && itemsData.isNotEmpty) {
@@ -721,18 +723,11 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
   @override
   Future<AppResult<void>> removeOrderProfile(String profileId) async {
     try {
-      final response = await _client.functions.invoke(
-        'manage-flight-order',
-        body: {'action': 'remove_profile', 'profile_id': profileId},
-      );
-
-      if (response.data is Map && (response.data as Map)['ok'] == true) {
-        return const AppSuccess(null);
-      }
-
-      return AppFailure(_errorFromBody(response.data));
-    } on FunctionException catch (e) {
-      return AppFailure(_errorFromBody(e.details));
+      await _client
+          .from('flight_order_profiles')
+          .update({'deleted_at': DateTime.now().toIso8601String()})
+          .eq('id', profileId);
+      return const AppSuccess(null);
     } catch (_) {
       return const AppFailure(
         AppError(
@@ -757,6 +752,7 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
           .order('profile_number');
 
       final profiles = (rows as List<dynamic>)
+          .where((r) => (r as Map<String, dynamic>)['deleted_at'] == null)
           .map((r) => FlightOrderProfile.fromJson(r as Map<String, dynamic>))
           .toList();
 
@@ -778,18 +774,11 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
   @override
   Future<AppResult<void>> deleteFlightOrder(String flightOrderId) async {
     try {
-      final response = await _client.functions.invoke(
-        'manage-flight-order',
-        body: {'action': 'delete', 'flight_order_id': flightOrderId},
-      );
-
-      if (response.data is Map && (response.data as Map)['ok'] == true) {
-        return const AppSuccess(null);
-      }
-
-      return AppFailure(_errorFromBody(response.data));
-    } on FunctionException catch (e) {
-      return AppFailure(_errorFromBody(e.details));
+      await _client
+          .from('flight_orders')
+          .update({'deleted_at': DateTime.now().toIso8601String()})
+          .eq('id', flightOrderId);
+      return const AppSuccess(null);
     } catch (_) {
       return const AppFailure(
         AppError(

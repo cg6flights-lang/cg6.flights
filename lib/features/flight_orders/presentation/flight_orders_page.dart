@@ -368,19 +368,6 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
     'reopened',
   ];
 
-  bool get _hasActiveFilters =>
-      _selectedUnitId != null ||
-      _selectedDate != null ||
-      _statusFilters.isNotEmpty;
-
-  void _clearAllFilters() {
-    setState(() {
-      _selectedUnitId = null;
-      _selectedDate = null;
-      _statusFilters.clear();
-    });
-  }
-
   Widget _buildFilterBar(AppLocalizations l10n) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -439,13 +426,6 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
                 }),
               ),
             ),
-            if (_hasActiveFilters)
-              IconButton(
-                icon: const Icon(Icons.clear_all, size: 18),
-                tooltip: 'Limpiar filtros',
-                visualDensity: VisualDensity.compact,
-                onPressed: _clearAllFilters,
-              ),
           ],
         ),
       ],

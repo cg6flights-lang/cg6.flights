@@ -120,18 +120,6 @@ class FlightOrderDetailPanel extends ConsumerWidget {
                           label: Text(l10n.t('flightOrders.observe')),
                           onPressed: () => _confirmOrderAction(context, ref, 'observe', l10n),
                         ),
-                      if ((order.status == 'approved' || order.status == 'reopened') && canReview)
-                        ActionChip(
-                          avatar: const Icon(Icons.lock_outlined, size: 16),
-                          label: Text(l10n.t('flightOrders.close')),
-                          onPressed: () => _confirmOrderAction(context, ref, 'close', l10n),
-                        ),
-                      if (order.status == 'closed' && canReview)
-                        ActionChip(
-                          avatar: const Icon(Icons.lock_open_outlined, size: 16),
-                          label: Text(l10n.t('flightOrders.reopen')),
-                          onPressed: () => _confirmOrderAction(context, ref, 'reopen', l10n),
-                        ),
                     ],
                   ),
                 ],

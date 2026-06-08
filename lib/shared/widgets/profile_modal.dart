@@ -135,8 +135,14 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
     final theme = Theme.of(context);
     final u = widget.user;
     final needsPasswordChange = u.passwordChangedAt == null;
+    final screenSize = MediaQuery.sizeOf(context);
+    final dialogWidth = (screenSize.width - 80).clamp(240.0, 540.0).toDouble();
+    final dialogMaxHeight = (screenSize.height - 96)
+        .clamp(320.0, 720.0)
+        .toDouble();
 
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       title: Row(
         children: [
           Expanded(
@@ -153,79 +159,82 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
           ),
         ],
       ),
-      content: SizedBox(
-        width: 540,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ── Password Change Warning ─────────────────────
-              if (needsPasswordChange)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF3E0),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0xFFFF9800).withValues(alpha: 0.5),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.warning_amber_rounded,
-                        color: Color(0xFFE65100),
-                        size: 22,
+      content: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 540, maxHeight: dialogMaxHeight),
+        child: SizedBox(
+          width: dialogWidth,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ── Password Change Warning ─────────────────────
+                if (needsPasswordChange)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF3E0),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFFFF9800).withValues(alpha: 0.5),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Debes cambiar tu contraseña asignada por una propia.',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: const Color(0xFFBF360C),
-                            fontWeight: FontWeight.w600,
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          color: Color(0xFFE65100),
+                          size: 22,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Debes cambiar tu contraseña asignada por una propia.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: const Color(0xFFBF360C),
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+
+                // ── Section 1: Photo ────────────────────────────
+                _buildPhotoSection(theme),
+
+                const SizedBox(height: 20),
+
+                // ── Section 2: Personal Data ────────────────────
+                _buildSectionHeader(
+                  theme,
+                  _t('profile.personalData'),
+                  Icons.person_outline,
+                  _profileExpanded,
+                  () => setState(() => _profileExpanded = !_profileExpanded),
                 ),
+                if (_profileExpanded) ...[
+                  const SizedBox(height: 12),
+                  _buildPersonalDataForm(theme),
+                ],
 
-              // ── Section 1: Photo ────────────────────────────
-              _buildPhotoSection(theme),
+                const SizedBox(height: 16),
 
-              const SizedBox(height: 20),
-
-              // ── Section 2: Personal Data ────────────────────
-              _buildSectionHeader(
-                theme,
-                _t('profile.personalData'),
-                Icons.person_outline,
-                _profileExpanded,
-                () => setState(() => _profileExpanded = !_profileExpanded),
-              ),
-              if (_profileExpanded) ...[
-                const SizedBox(height: 12),
-                _buildPersonalDataForm(theme),
+                // ── Section 3: Password Change ──────────────────
+                _buildSectionHeader(
+                  theme,
+                  _t('profile.changePassword'),
+                  Icons.lock_outline,
+                  _passwordExpanded,
+                  () => setState(() => _passwordExpanded = !_passwordExpanded),
+                ),
+                if (_passwordExpanded) ...[
+                  const SizedBox(height: 12),
+                  _buildPasswordForm(theme),
+                ],
               ],
-
-              const SizedBox(height: 16),
-
-              // ── Section 3: Password Change ──────────────────
-              _buildSectionHeader(
-                theme,
-                _t('profile.changePassword'),
-                Icons.lock_outline,
-                _passwordExpanded,
-                () => setState(() => _passwordExpanded = !_passwordExpanded),
-              ),
-              if (_passwordExpanded) ...[
-                const SizedBox(height: 12),
-                _buildPasswordForm(theme),
-              ],
-            ],
+            ),
           ),
         ),
       ),
@@ -407,6 +416,33 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
     );
   }
 
+  Widget _responsivePair({
+    required Widget first,
+    required Widget second,
+    double? firstDesktopWidth,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 430) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [first, const SizedBox(height: 12), second],
+          );
+        }
+        return Row(
+          children: [
+            if (firstDesktopWidth == null)
+              Expanded(child: first)
+            else
+              SizedBox(width: firstDesktopWidth, child: first),
+            const SizedBox(width: 12),
+            Expanded(child: second),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildPersonalDataForm(ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -434,146 +470,123 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
         const SizedBox(height: 12),
 
         // First Name + Last Name
-        Row(
-          children: [
-            Expanded(
-              child: TextFormField(
-                controller: _firstNameController,
-                decoration: InputDecoration(
-                  labelText: _t('common.firstName'),
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(
-                    RegExp(r'[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]'),
-                  ),
-                ],
+        _responsivePair(
+          first: TextFormField(
+            controller: _firstNameController,
+            decoration: InputDecoration(
+              labelText: _t('common.firstName'),
+              border: OutlineInputBorder(),
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextFormField(
-                controller: _lastNameController,
-                decoration: InputDecoration(
-                  labelText: _t('common.lastName'),
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(
-                    RegExp(r'[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]'),
-                  ),
-                ],
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(
+                RegExp(r'[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]'),
+              ),
+            ],
+          ),
+          second: TextFormField(
+            controller: _lastNameController,
+            decoration: InputDecoration(
+              labelText: _t('common.lastName'),
+              border: OutlineInputBorder(),
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
               ),
             ),
-          ],
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(
+                RegExp(r'[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]'),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 12),
 
         // Document type + ID
-        Row(
-          children: [
-            SizedBox(
-              width: 140,
-              child: DropdownButtonFormField<String>(
-                initialValue: _documentType,
-                decoration: InputDecoration(
-                  labelText: _t('common.document'),
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'dni', child: Text('DNI')),
-                  DropdownMenuItem(value: 'passport', child: Text('Pasaporte')),
-                ],
-                onChanged: (v) => setState(() => _documentType = v),
+        _responsivePair(
+          firstDesktopWidth: 140,
+          first: DropdownButtonFormField<String>(
+            initialValue: _documentType,
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: _t('common.document'),
+              border: OutlineInputBorder(),
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextFormField(
-                controller: _documentIdController,
-                decoration: InputDecoration(
-                  labelText: _t('common.documentNumber'),
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
-                ],
+            items: const [
+              DropdownMenuItem(value: 'dni', child: Text('DNI')),
+              DropdownMenuItem(value: 'passport', child: Text('Pasaporte')),
+            ],
+            onChanged: (v) => setState(() => _documentType = v),
+          ),
+          second: TextFormField(
+            controller: _documentIdController,
+            decoration: InputDecoration(
+              labelText: _t('common.documentNumber'),
+              border: OutlineInputBorder(),
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
               ),
             ),
-          ],
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
+            ],
+          ),
         ),
         const SizedBox(height: 12),
 
         // Phone country code + number
-        Row(
-          children: [
-            SizedBox(
-              width: 130,
-              child: DropdownButtonFormField<String>(
-                initialValue: _phoneCountryCode,
-                isExpanded: true,
-                decoration: InputDecoration(
-                  labelText: _t('common.code'),
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 10,
+        _responsivePair(
+          firstDesktopWidth: 130,
+          first: DropdownButtonFormField<String>(
+            initialValue: _phoneCountryCode,
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: _t('common.code'),
+              border: OutlineInputBorder(),
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+            ),
+            items: _countryCodes
+                .map(
+                  (c) => DropdownMenuItem(
+                    value: c['code'],
+                    child: Text(
+                      '${c['code']} ${c['name']}',
+                      style: const TextStyle(fontSize: 12),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                ),
-                items: _countryCodes
-                    .map(
-                      (c) => DropdownMenuItem(
-                        value: c['code'],
-                        child: Text(
-                          '${c['code']} ${c['name']}',
-                          style: const TextStyle(fontSize: 12),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (v) => setState(() => _phoneCountryCode = v),
+                )
+                .toList(),
+            onChanged: (v) => setState(() => _phoneCountryCode = v),
+          ),
+          second: TextFormField(
+            controller: _phoneController,
+            decoration: InputDecoration(
+              labelText: _t('common.phone'),
+              border: OutlineInputBorder(),
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextFormField(
-                controller: _phoneController,
-                decoration: InputDecoration(
-                  labelText: _t('common.phone'),
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                ),
-                keyboardType: TextInputType.phone,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              ),
-            ),
-          ],
+            keyboardType: TextInputType.phone,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          ),
         ),
         const SizedBox(height: 12),
 
@@ -708,7 +721,8 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
                 vertical: 10,
               ),
             ),
-            validator: (v) => (v == null || v.isEmpty) ? _t('common.required') : null,
+            validator: (v) =>
+                (v == null || v.isEmpty) ? _t('common.required') : null,
           ),
           const SizedBox(height: 12),
           TextFormField(
@@ -797,7 +811,9 @@ class _ProfileModalState extends ConsumerState<_ProfileModal> {
                     )
                   : const Icon(Icons.lock_reset, size: 18),
               label: Text(
-                _changingPassword ? 'Cambiando...' : _t('profile.changePassword'),
+                _changingPassword
+                    ? 'Cambiando...'
+                    : _t('profile.changePassword'),
               ),
             ),
           ),
@@ -905,7 +921,6 @@ class _ImagePreviewDialogState extends State<_ImagePreviewDialog> {
   bool _processing = false;
   String? _error;
 
-  static const double _previewSize = 360;
   static const int _outputSize = 512;
 
   @override
@@ -917,8 +932,12 @@ class _ImagePreviewDialogState extends State<_ImagePreviewDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final screenSize = MediaQuery.sizeOf(context);
+    final dialogWidth = (screenSize.width - 80).clamp(240.0, 420.0).toDouble();
+    final previewSize = _previewSizeFor(context);
 
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       title: Text(
         _t('profile.adjustPhoto'),
         style: theme.textTheme.titleMedium?.copyWith(
@@ -926,13 +945,13 @@ class _ImagePreviewDialogState extends State<_ImagePreviewDialog> {
         ),
       ),
       content: SizedBox(
-        width: 420,
+        width: dialogWidth,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              width: _previewSize,
-              height: _previewSize,
+              width: previewSize,
+              height: previewSize,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
@@ -941,10 +960,10 @@ class _ImagePreviewDialogState extends State<_ImagePreviewDialog> {
                       transformationController: _transformController,
                       minScale: 0.7,
                       maxScale: 4.0,
-                      boundaryMargin: const EdgeInsets.all(120),
+                      boundaryMargin: EdgeInsets.all(previewSize / 3),
                       child: SizedBox(
-                        width: _previewSize,
-                        height: _previewSize,
+                        width: previewSize,
+                        height: previewSize,
                         child: Center(
                           child: Image.memory(
                             Uint8List.fromList(widget.bytes),
@@ -959,8 +978,8 @@ class _ImagePreviewDialogState extends State<_ImagePreviewDialog> {
                   ),
                   IgnorePointer(
                     child: Container(
-                      width: _previewSize,
-                      height: _previewSize,
+                      width: previewSize,
+                      height: previewSize,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
@@ -1028,6 +1047,12 @@ class _ImagePreviewDialogState extends State<_ImagePreviewDialog> {
     );
   }
 
+  double _previewSizeFor(BuildContext context) {
+    return (MediaQuery.sizeOf(context).width - 96)
+        .clamp(200.0, 360.0)
+        .toDouble();
+  }
+
   Future<void> _confirmCrop() async {
     setState(() {
       _processing = true;
@@ -1035,7 +1060,7 @@ class _ImagePreviewDialogState extends State<_ImagePreviewDialog> {
     });
 
     try {
-      final croppedBytes = await _cropToAvatarJpeg();
+      final croppedBytes = await _cropToAvatarJpeg(_previewSizeFor(context));
       if (!mounted) return;
       Navigator.of(
         context,
@@ -1049,11 +1074,11 @@ class _ImagePreviewDialogState extends State<_ImagePreviewDialog> {
     }
   }
 
-  Future<Uint8List> _cropToAvatarJpeg() async {
+  Future<Uint8List> _cropToAvatarJpeg(double previewSize) async {
     return cropAvatarJpeg(
       bytes: widget.bytes,
       transformStorage: _transformController.value.storage,
-      previewSize: _previewSize,
+      previewSize: previewSize,
       outputSize: _outputSize,
     );
   }

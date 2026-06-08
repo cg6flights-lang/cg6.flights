@@ -103,35 +103,50 @@ class _AppShellState extends ConsumerState<AppShell> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 860;
+        final compactActions = constraints.maxWidth < 620;
         return Scaffold(
           appBar: AppBar(
             titleSpacing: 12,
             title: _HeaderBrand(compact: compact),
-            actions: [
-              _CalendarIcon(),
-              const SizedBox(width: 4),
-              _NotificationBell(),
-              Tooltip(
-                message: themeMode == ThemeMode.dark
-                    ? 'Modo claro'
-                    : 'Modo oscuro',
-                child: IconButton(
-                  onPressed: () =>
-                      ref.read(themeModeProvider.notifier).toggle(),
-                  icon: Icon(
-                    themeMode == ThemeMode.dark
-                        ? Icons.light_mode_outlined
-                        : Icons.dark_mode_outlined,
-                  ),
-                ),
-              ),
-              _LanguageToggle(
-                langCode: langCode,
-                onPressed: () => localeNotifier.toggle(),
-              ),
-              if (user != null) _UserAvatarMenu(user: user),
-              const SizedBox(width: 8),
-            ],
+            actions: compactActions
+                ? [
+                    _CalendarIcon(),
+                    _NotificationBell(),
+                    _CompactHeaderActions(
+                      user: user,
+                      langCode: langCode,
+                      themeMode: themeMode,
+                      onToggleTheme: () =>
+                          ref.read(themeModeProvider.notifier).toggle(),
+                      onToggleLocale: () => localeNotifier.toggle(),
+                    ),
+                    const SizedBox(width: 4),
+                  ]
+                : [
+                    _CalendarIcon(),
+                    const SizedBox(width: 4),
+                    _NotificationBell(),
+                    Tooltip(
+                      message: themeMode == ThemeMode.dark
+                          ? 'Modo claro'
+                          : 'Modo oscuro',
+                      child: IconButton(
+                        onPressed: () =>
+                            ref.read(themeModeProvider.notifier).toggle(),
+                        icon: Icon(
+                          themeMode == ThemeMode.dark
+                              ? Icons.light_mode_outlined
+                              : Icons.dark_mode_outlined,
+                        ),
+                      ),
+                    ),
+                    _LanguageToggle(
+                      langCode: langCode,
+                      onPressed: () => localeNotifier.toggle(),
+                    ),
+                    if (user != null) _UserAvatarMenu(user: user),
+                    const SizedBox(width: 8),
+                  ],
           ),
           drawer: compact
               ? _ShellDrawer(
@@ -357,8 +372,11 @@ class _CalendarPreviewBody extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final preview = ref.watch(_calendarPreviewProvider);
+    final width = (MediaQuery.sizeOf(context).width - 48)
+        .clamp(280.0, 340.0)
+        .toDouble();
     return SizedBox(
-      width: 340,
+      width: width,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -975,12 +993,20 @@ class _UserAvatarMenu extends ConsumerWidget {
             enabled: false,
             child: Row(
               children: [
-                const Icon(Icons.warning_amber_rounded, size: 18, color: Color(0xFFE65100)),
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  size: 18,
+                  color: Color(0xFFE65100),
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     t('profile.passwordWarning'),
-                    style: const TextStyle(fontSize: 12, color: Color(0xFFBF360C), fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFFBF360C),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -1126,6 +1152,167 @@ class _LanguageToggle extends StatelessWidget {
   }
 }
 
+class _CompactHeaderActions extends ConsumerWidget {
+  const _CompactHeaderActions({
+    required this.user,
+    required this.langCode,
+    required this.themeMode,
+    required this.onToggleTheme,
+    required this.onToggleLocale,
+  });
+
+  final AppUser? user;
+  final String langCode;
+  final ThemeMode themeMode;
+  final VoidCallback onToggleTheme;
+  final VoidCallback onToggleLocale;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppLocalizations.of(context).t;
+    final theme = Theme.of(context);
+    final nextLang = langCode == 'es' ? 'EN' : 'ES';
+    final themeLabel = themeMode == ThemeMode.dark
+        ? 'Modo claro'
+        : 'Modo oscuro';
+    final hasPasswordWarning = user?.passwordChangedAt == null && user != null;
+
+    return PopupMenuButton<String>(
+      offset: const Offset(0, 48),
+      tooltip: langCode == 'es' ? 'Mas acciones' : 'More actions',
+      icon: hasPasswordWarning
+          ? Badge(
+              smallSize: 8,
+              backgroundColor: const Color(0xFFE65100),
+              child: const Icon(Icons.more_vert),
+            )
+          : const Icon(Icons.more_vert),
+      onSelected: (value) {
+        switch (value) {
+          case 'theme':
+            onToggleTheme();
+          case 'language':
+            onToggleLocale();
+          case 'profile':
+            final activeUser = user;
+            if (activeUser != null) showProfileModal(context, activeUser);
+          case 'audit':
+            context.go('/audit');
+          case 'settings':
+            context.go('/settings');
+          case 'logout':
+            ref.read(sessionControllerProvider.notifier).signOut();
+        }
+      },
+      itemBuilder: (context) => [
+        if (user != null) ...[
+          PopupMenuItem<String>(
+            enabled: false,
+            child: _UserInfoHeader(user: user!),
+          ),
+          const PopupMenuDivider(),
+          if (hasPasswordWarning)
+            PopupMenuItem<String>(
+              enabled: false,
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    size: 18,
+                    color: Color(0xFFE65100),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      t('profile.passwordWarning'),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFFBF360C),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (hasPasswordWarning) const PopupMenuDivider(),
+        ],
+        PopupMenuItem<String>(
+          value: 'theme',
+          child: Row(
+            children: [
+              Icon(
+                themeMode == ThemeMode.dark
+                    ? Icons.light_mode_outlined
+                    : Icons.dark_mode_outlined,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(themeLabel),
+            ],
+          ),
+        ),
+        PopupMenuItem<String>(
+          value: 'language',
+          child: Row(
+            children: [
+              Icon(Icons.language, size: 20, color: theme.colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(nextLang),
+            ],
+          ),
+        ),
+        if (user != null)
+          PopupMenuItem<String>(
+            value: 'profile',
+            child: Row(
+              children: [
+                const Icon(Icons.edit_outlined, size: 20),
+                const SizedBox(width: 8),
+                Text(t('profile.title')),
+              ],
+            ),
+          ),
+        if (user?.can(AppPermission.auditRead) ?? false)
+          PopupMenuItem<String>(
+            value: 'audit',
+            child: Row(
+              children: [
+                const Icon(Icons.fact_check_outlined, size: 20),
+                const SizedBox(width: 8),
+                Text(t('nav.audit')),
+              ],
+            ),
+          ),
+        PopupMenuItem<String>(
+          value: 'settings',
+          child: Row(
+            children: [
+              const Icon(Icons.tune, size: 20),
+              const SizedBox(width: 8),
+              Text(t('nav.settings')),
+            ],
+          ),
+        ),
+        if (user != null)
+          PopupMenuItem<String>(
+            value: 'logout',
+            child: Row(
+              children: [
+                Icon(Icons.logout, size: 20, color: theme.colorScheme.error),
+                const SizedBox(width: 8),
+                Text(
+                  t('auth.logout'),
+                  style: TextStyle(color: theme.colorScheme.error),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 class _UserInfoHeader extends StatelessWidget {
   const _UserInfoHeader({required this.user});
 
@@ -1148,7 +1335,10 @@ class _UserInfoHeader extends StatelessWidget {
                 child: !_isValidUrl(user.avatarPath)
                     ? Text(
                         user.initials,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
                       )
                     : null,
               ),
@@ -1161,13 +1351,15 @@ class _UserInfoHeader extends StatelessWidget {
                       Text(
                         user.grade!,
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: Theme.of(context).colorScheme.primary,
-                              fontWeight: FontWeight.w800,
-                            ),
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     Text(
                       user.fullName,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],

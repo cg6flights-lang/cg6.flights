@@ -181,129 +181,138 @@ class _CalendarEventFormDialogState
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
+    final viewport = MediaQuery.sizeOf(context);
+    final dialogWidth = (viewport.width - 80).clamp(240.0, 560.0).toDouble();
+    final dialogMaxHeight = (viewport.height * 0.76)
+        .clamp(320.0, 720.0)
+        .toDouble();
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       title: Text(
         widget.event == null
             ? l10n.t('calendar.newEvent')
             : l10n.t('calendar.editEvent'),
       ),
-      content: SizedBox(
-        width: 560,
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: _titleController,
-                  enabled: !_saving,
-                  decoration: InputDecoration(
-                    labelText: l10n.t('calendar.titleField'),
-                    prefixIcon: const Icon(Icons.event_note_outlined),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return l10n.t('validation.required');
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _descriptionController,
-                  enabled: !_saving,
-                  minLines: 2,
-                  maxLines: 4,
-                  decoration: InputDecoration(
-                    labelText: l10n.t('calendar.descriptionField'),
-                    prefixIcon: const Icon(Icons.notes_outlined),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _locationController,
-                  enabled: !_saving,
-                  decoration: InputDecoration(
-                    labelText: l10n.t('calendar.locationField'),
-                    prefixIcon: const Icon(Icons.place_outlined),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<CalendarEventType>(
-                        initialValue: _eventType,
-                        decoration: InputDecoration(
-                          labelText: l10n.t('calendar.typeField'),
-                        ),
-                        items: [
-                          for (final type in CalendarEventType.values)
-                            DropdownMenuItem(
-                              value: type,
-                              child: Text(_eventTypeLabel(type, l10n)),
-                            ),
-                        ],
-                        onChanged: _saving
-                            ? null
-                            : (value) {
-                                if (value != null) {
-                                  setState(() => _eventType = value);
-                                }
-                              },
-                      ),
+      content: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 560, maxHeight: dialogMaxHeight),
+        child: SizedBox(
+          width: dialogWidth,
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: _titleController,
+                    enabled: !_saving,
+                    decoration: InputDecoration(
+                      labelText: l10n.t('calendar.titleField'),
+                      prefixIcon: const Icon(Icons.event_note_outlined),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButtonFormField<CalendarEventStatus>(
-                        initialValue: _status,
-                        decoration: InputDecoration(
-                          labelText: l10n.t('calendar.statusField'),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return l10n.t('validation.required');
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _descriptionController,
+                    enabled: !_saving,
+                    minLines: 2,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      labelText: l10n.t('calendar.descriptionField'),
+                      prefixIcon: const Icon(Icons.notes_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _locationController,
+                    enabled: !_saving,
+                    decoration: InputDecoration(
+                      labelText: l10n.t('calendar.locationField'),
+                      prefixIcon: const Icon(Icons.place_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<CalendarEventType>(
+                          initialValue: _eventType,
+                          decoration: InputDecoration(
+                            labelText: l10n.t('calendar.typeField'),
+                          ),
+                          items: [
+                            for (final type in CalendarEventType.values)
+                              DropdownMenuItem(
+                                value: type,
+                                child: Text(_eventTypeLabel(type, l10n)),
+                              ),
+                          ],
+                          onChanged: _saving
+                              ? null
+                              : (value) {
+                                  if (value != null) {
+                                    setState(() => _eventType = value);
+                                  }
+                                },
                         ),
-                        items: [
-                          for (final status in CalendarEventStatus.values)
-                            DropdownMenuItem(
-                              value: status,
-                              child: Text(_eventStatusLabel(status, l10n)),
-                            ),
-                        ],
-                        onChanged: _saving
-                            ? null
-                            : (value) {
-                                if (value != null) {
-                                  setState(() => _status = value);
-                                }
-                              },
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: DropdownButtonFormField<CalendarEventStatus>(
+                          initialValue: _status,
+                          decoration: InputDecoration(
+                            labelText: l10n.t('calendar.statusField'),
+                          ),
+                          items: [
+                            for (final status in CalendarEventStatus.values)
+                              DropdownMenuItem(
+                                value: status,
+                                child: Text(_eventStatusLabel(status, l10n)),
+                              ),
+                          ],
+                          onChanged: _saving
+                              ? null
+                              : (value) {
+                                  if (value != null) {
+                                    setState(() => _status = value);
+                                  }
+                                },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _DateTimePickerRow(
+                    label: l10n.t('calendar.startsAt'),
+                    value: _formatDateTime(_startsAt),
+                    onPickDate: _saving ? null : _pickStartDate,
+                    onPickTime: _saving ? null : _pickStartTime,
+                  ),
+                  const SizedBox(height: 10),
+                  _DateTimePickerRow(
+                    label: l10n.t('calendar.endsAt'),
+                    value: _formatDateTime(_endsAt),
+                    onPickDate: _saving ? null : _pickEndDate,
+                    onPickTime: _saving ? null : _pickEndTime,
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      _error!,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.error,
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 16),
-                _DateTimePickerRow(
-                  label: l10n.t('calendar.startsAt'),
-                  value: _formatDateTime(_startsAt),
-                  onPickDate: _saving ? null : _pickStartDate,
-                  onPickTime: _saving ? null : _pickStartTime,
-                ),
-                const SizedBox(height: 10),
-                _DateTimePickerRow(
-                  label: l10n.t('calendar.endsAt'),
-                  value: _formatDateTime(_endsAt),
-                  onPickDate: _saving ? null : _pickEndDate,
-                  onPickTime: _saving ? null : _pickEndTime,
-                ),
-                if (_error != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    _error!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.error,
-                    ),
-                  ),
                 ],
-              ],
+              ),
             ),
           ),
         ),

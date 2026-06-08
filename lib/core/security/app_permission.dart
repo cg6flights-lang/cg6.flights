@@ -44,6 +44,7 @@ class AppPermission {
   static const mapsRead = 'maps.read';
   static const profileUpdate = 'profile.update';
   static const settingsManage = 'settings.manage';
+  static const trashRead = 'trash.read';
 
   static const all = <String>{
     usersRead,
@@ -87,6 +88,7 @@ class AppPermission {
     mapsRead,
     profileUpdate,
     settingsManage,
+    trashRead,
   };
 }
 
@@ -119,6 +121,7 @@ const rolePermissionMatrix = <AppRole, Set<String>>{
     AppPermission.calendarManage,
     AppPermission.mapsRead,
     AppPermission.profileUpdate,
+    AppPermission.trashRead,
   },
   AppRole.unitCommand: {
     AppPermission.usersRead,

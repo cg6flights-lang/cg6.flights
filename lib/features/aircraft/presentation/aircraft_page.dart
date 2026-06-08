@@ -177,9 +177,10 @@ class AircraftPage extends ConsumerWidget {
         final showUnits = effectiveSelectedUnitId != null
             ? allUnits.where((u) => u.id == effectiveSelectedUnitId).toList()
             : allUnits;
+        final compact = MediaQuery.sizeOf(context).width < 620;
 
         return ListView(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(compact ? 12 : 24),
           children: [
             Row(
               children: [

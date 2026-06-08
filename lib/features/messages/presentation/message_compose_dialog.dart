@@ -82,8 +82,14 @@ class _MessageComposeDialogState extends ConsumerState<MessageComposeDialog> {
     final scheme = theme.colorScheme;
     final usersAsync = ref.watch(_usersProvider);
     final currentUserId = ref.watch(sessionControllerProvider).user?.id;
+    final viewport = MediaQuery.sizeOf(context);
+    final dialogWidth = (viewport.width - 80).clamp(240.0, 520.0).toDouble();
+    final dialogMaxHeight = (viewport.height * 0.76)
+        .clamp(320.0, 680.0)
+        .toDouble();
 
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       title: Row(
         children: [
           Icon(Icons.chat_bubble_outline, color: scheme.primary),
@@ -91,72 +97,75 @@ class _MessageComposeDialogState extends ConsumerState<MessageComposeDialog> {
           Text(l10n.t('messages.newChat')),
         ],
       ),
-      content: SizedBox(
-        width: 520,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              usersAsync.when(
-                loading: () => const LinearProgressIndicator(),
-                error: (_, _) => Text(l10n.t('messages.loadFailed')),
-                data: (users) {
-                  final options = users
-                      .where((user) => user.id != currentUserId)
-                      .toList();
-                  return DropdownButtonFormField<String>(
-                    initialValue: _recipientId,
-                    decoration: InputDecoration(
-                      labelText: l10n.t('messages.to'),
-                      hintText: l10n.t('messages.recipientHint'),
-                    ),
-                    items: [
-                      for (final user in options)
-                        DropdownMenuItem(
-                          value: user.id,
-                          child: Text(
-                            user.label,
-                            overflow: TextOverflow.ellipsis,
+      content: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 520, maxHeight: dialogMaxHeight),
+        child: SizedBox(
+          width: dialogWidth,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                usersAsync.when(
+                  loading: () => const LinearProgressIndicator(),
+                  error: (_, _) => Text(l10n.t('messages.loadFailed')),
+                  data: (users) {
+                    final options = users
+                        .where((user) => user.id != currentUserId)
+                        .toList();
+                    return DropdownButtonFormField<String>(
+                      initialValue: _recipientId,
+                      decoration: InputDecoration(
+                        labelText: l10n.t('messages.to'),
+                        hintText: l10n.t('messages.recipientHint'),
+                      ),
+                      items: [
+                        for (final user in options)
+                          DropdownMenuItem(
+                            value: user.id,
+                            child: Text(
+                              user.label,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                    ],
-                    onChanged: _sending
-                        ? null
-                        : (value) => setState(() => _recipientId = value),
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _bodyCtrl,
-                enabled: !_sending,
-                minLines: 3,
-                maxLines: 6,
-                decoration: InputDecoration(
-                  labelText: l10n.t('messages.body'),
-                  hintText: l10n.t('messages.replyHint'),
+                      ],
+                      onChanged: _sending
+                          ? null
+                          : (value) => setState(() => _recipientId = value),
+                    );
+                  },
                 ),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 10),
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: scheme.errorContainer,
-                    borderRadius: BorderRadius.circular(8),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _bodyCtrl,
+                  enabled: !_sending,
+                  minLines: 3,
+                  maxLines: 6,
+                  decoration: InputDecoration(
+                    labelText: l10n.t('messages.body'),
+                    hintText: l10n.t('messages.replyHint'),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(10),
-                    child: Text(
-                      _error!,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: scheme.onErrorContainer,
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: 10),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: scheme.errorContainer,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Text(
+                        _error!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onErrorContainer,
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

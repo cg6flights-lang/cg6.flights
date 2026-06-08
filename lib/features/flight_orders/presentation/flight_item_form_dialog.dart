@@ -216,7 +216,9 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
         final isLocal = item.routes.any((r) => r.segmentType == 'local');
         if (isLocal) _isLocal = true;
         for (final r in item.routes) {
-          final seg = isLocal ? _RouteSegmentData.local() : _RouteSegmentData(order: r.segmentOrder);
+          final seg = isLocal
+              ? _RouteSegmentData.local()
+              : _RouteSegmentData(order: r.segmentOrder);
           if (!isLocal) seg.segmentType = r.segmentType;
           if (r.originType == 'airport') {
             seg.originIsAirport = true;
@@ -225,8 +227,12 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
             seg.originIsAirport = false;
             seg.originAltType = r.originType;
             seg.originLabelCtrl.text = r.originLabel ?? '';
-            if (r.originLat != null) seg.originLatCtrl.text = r.originLat.toString();
-            if (r.originLng != null) seg.originLngCtrl.text = r.originLng.toString();
+            if (r.originLat != null) {
+              seg.originLatCtrl.text = r.originLat.toString();
+            }
+            if (r.originLng != null) {
+              seg.originLngCtrl.text = r.originLng.toString();
+            }
           }
           if (r.destinationType == 'airport') {
             seg.destIsAirport = true;
@@ -235,8 +241,12 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
             seg.destIsAirport = false;
             seg.destAltType = r.destinationType;
             seg.destLabelCtrl.text = r.destinationLabel ?? '';
-            if (r.destinationLat != null) seg.destLatCtrl.text = r.destinationLat.toString();
-            if (r.destinationLng != null) seg.destLngCtrl.text = r.destinationLng.toString();
+            if (r.destinationLat != null) {
+              seg.destLatCtrl.text = r.destinationLat.toString();
+            }
+            if (r.destinationLng != null) {
+              seg.destLngCtrl.text = r.destinationLng.toString();
+            }
           }
           _segments.add(seg);
         }
@@ -358,7 +368,6 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
     }
   }
 
-
   bool _canAdvance() {
     switch (_currentStep) {
       case 0:
@@ -377,27 +386,36 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final viewport = MediaQuery.sizeOf(context);
+    final dialogWidth = (viewport.width - 80).clamp(240.0, 680.0).toDouble();
+    final dialogMaxHeight = (viewport.height * 0.78)
+        .clamp(360.0, 760.0)
+        .toDouble();
 
     return AlertDialog(
-      title: Text(widget.isEditing
-          ? l10n.t('flightOrders.editItem')
-          : l10n.t('flightOrders.addItem')),
-      content: SizedBox(
-        width: 680,
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildStepHeader(),
-              const SizedBox(height: 20),
-              Flexible(
-                child: SingleChildScrollView(
-                  child: _buildStepContent(l10n),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      title: Text(
+        widget.isEditing
+            ? l10n.t('flightOrders.editItem')
+            : l10n.t('flightOrders.addItem'),
+      ),
+      content: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 680, maxHeight: dialogMaxHeight),
+        child: SizedBox(
+          width: dialogWidth,
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildStepHeader(),
+                const SizedBox(height: 20),
+                Flexible(
+                  child: SingleChildScrollView(child: _buildStepContent(l10n)),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -455,8 +473,10 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
               color: i < _currentStep
                   ? Theme.of(context).colorScheme.primary
                   : i == _currentStep
-                      ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
-                      : Colors.grey.shade100,
+                  ? Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.15)
+                  : Colors.grey.shade100,
               border: Border.all(
                 color: i <= _currentStep
                     ? Theme.of(context).colorScheme.primary
@@ -484,7 +504,9 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
             _stepLabels[i],
             style: TextStyle(
               fontSize: 12,
-              fontWeight: i == _currentStep ? FontWeight.w600 : FontWeight.normal,
+              fontWeight: i == _currentStep
+                  ? FontWeight.w600
+                  : FontWeight.normal,
               color: i <= _currentStep
                   ? Theme.of(context).colorScheme.onSurface
                   : Colors.grey,
@@ -871,71 +893,117 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          // Airport selector (required)
-          Text(l10n.t('flightOrders.airport'), style: theme.textTheme.labelSmall),
-          const SizedBox(height: 4),
-          _routesLoaded
-              ? InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Aeropuerto',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: seg.originRouteIdCtrl.text.isEmpty ? null : seg.originRouteIdCtrl.text,
-                      isExpanded: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Airport selector (required)
+            Text(
+              l10n.t('flightOrders.airport'),
+              style: theme.textTheme.labelSmall,
+            ),
+            const SizedBox(height: 4),
+            _routesLoaded
+                ? InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Aeropuerto',
+                      border: OutlineInputBorder(),
                       isDense: true,
-                      hint: const Text('Seleccionar aeropuerto', style: TextStyle(fontSize: 13)),
-                      items: [
-                        for (final r in _routesList)
-                          DropdownMenuItem<String>(
-                            value: r['id'].toString(),
-                            child: Text(
-                              '${r['icao_code'] != null ? '${r['icao_code']} - ' : ''}${r['airport_name']}',
-                              style: const TextStyle(fontSize: 13)),
-                          ),
-                      ],
-                      onChanged: (v) {
-                        setState(() => seg.originRouteIdCtrl.text = v ?? '');
-                      },
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: seg.originRouteIdCtrl.text.isEmpty
+                            ? null
+                            : seg.originRouteIdCtrl.text,
+                        isExpanded: true,
+                        isDense: true,
+                        hint: const Text(
+                          'Seleccionar aeropuerto',
+                          style: TextStyle(fontSize: 13),
+                        ),
+                        items: [
+                          for (final r in _routesList)
+                            DropdownMenuItem<String>(
+                              value: r['id'].toString(),
+                              child: Text(
+                                '${r['icao_code'] != null ? '${r['icao_code']} - ' : ''}${r['airport_name']}',
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ),
+                        ],
+                        onChanged: (v) {
+                          setState(() => seg.originRouteIdCtrl.text = v ?? '');
+                        },
+                      ),
+                    ),
+                  )
+                : const SizedBox(
+                    height: 48,
+                    child: Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
                     ),
                   ),
-                )
-              : const SizedBox(height: 48, child: Center(child: CircularProgressIndicator(strokeWidth: 2))),
-          const SizedBox(height: 12),
-          // Zone selector (optional)
-          Text('Zona de trabajo (opcional)', style: theme.textTheme.labelSmall),
-          const SizedBox(height: 4),
-          InputDecorator(
-            decoration: const InputDecoration(
-              labelText: 'Zona de trabajo (opcional)',
-              border: OutlineInputBorder(),
-              isDense: true,
-              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            const SizedBox(height: 12),
+            // Zone selector (optional)
+            Text(
+              'Zona de trabajo (opcional)',
+              style: theme.textTheme.labelSmall,
             ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: seg.originLabelCtrl.text.isEmpty ? null : seg.originLabelCtrl.text,
-                isExpanded: true,
+            const SizedBox(height: 4),
+            InputDecorator(
+              decoration: const InputDecoration(
+                labelText: 'Zona de trabajo (opcional)',
+                border: OutlineInputBorder(),
                 isDense: true,
-                hint: const Text('Ninguna (solo aeropuerto)', style: TextStyle(fontSize: 13)),
-                items: [
-                  const DropdownMenuItem<String>(value: null, child: Text('Ninguna', style: TextStyle(fontSize: 13))),
-                  const DropdownMenuItem<String>(value: 'Zona 1', child: Text('Zona 1', style: TextStyle(fontSize: 13))),
-                  const DropdownMenuItem<String>(value: 'Zona 2', child: Text('Zona 2', style: TextStyle(fontSize: 13))),
-                  const DropdownMenuItem<String>(value: 'Zona 3', child: Text('Zona 3', style: TextStyle(fontSize: 13))),
-                  const DropdownMenuItem<String>(value: 'Zona 4', child: Text('Zona 4', style: TextStyle(fontSize: 13))),
-                ],
-                onChanged: (v) {
-                  setState(() => seg.originLabelCtrl.text = v ?? '');
-                },
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: seg.originLabelCtrl.text.isEmpty
+                      ? null
+                      : seg.originLabelCtrl.text,
+                  isExpanded: true,
+                  isDense: true,
+                  hint: const Text(
+                    'Ninguna (solo aeropuerto)',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: null,
+                      child: Text('Ninguna', style: TextStyle(fontSize: 13)),
+                    ),
+                    const DropdownMenuItem<String>(
+                      value: 'Zona 1',
+                      child: Text('Zona 1', style: TextStyle(fontSize: 13)),
+                    ),
+                    const DropdownMenuItem<String>(
+                      value: 'Zona 2',
+                      child: Text('Zona 2', style: TextStyle(fontSize: 13)),
+                    ),
+                    const DropdownMenuItem<String>(
+                      value: 'Zona 3',
+                      child: Text('Zona 3', style: TextStyle(fontSize: 13)),
+                    ),
+                    const DropdownMenuItem<String>(
+                      value: 'Zona 4',
+                      child: Text('Zona 4', style: TextStyle(fontSize: 13)),
+                    ),
+                  ],
+                  onChanged: (v) {
+                    setState(() => seg.originLabelCtrl.text = v ?? '');
+                  },
+                ),
               ),
             ),
-          ),
-        ]),
+          ],
+        ),
       ),
     );
   }
@@ -1044,10 +1112,9 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
                     routeIdCtrl.text = v ?? '';
                     setState(() {});
                   },
-                  validator: (v) =>
-                      (v == null || v.isEmpty)
-                          ? l10n.t('validation.required')
-                          : null,
+                  validator: (v) => (v == null || v.isEmpty)
+                      ? l10n.t('validation.required')
+                      : null,
                 )
               : const Center(child: CircularProgressIndicator())
         else
@@ -1376,7 +1443,11 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
     if (_aircraftId == null) {
-      setState(() => _aircraftError = AppLocalizations.of(context).t('validation.required'));
+      setState(
+        () => _aircraftError = AppLocalizations.of(
+          context,
+        ).t('validation.required'),
+      );
       return;
     }
     if (_departureTime == null) {

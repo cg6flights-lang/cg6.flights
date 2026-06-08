@@ -168,9 +168,10 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
     final session = ref.watch(sessionControllerProvider);
     final canManage = session.can(AppPermission.calendarManage);
     final eventsAsync = ref.watch(_calendarEventsProvider(_range));
+    final compact = MediaQuery.sizeOf(context).width < 620;
 
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(compact ? 12 : 24),
       child: eventsAsync.when(
         loading: () => DataStateView(
           kind: DataStateKind.loading,

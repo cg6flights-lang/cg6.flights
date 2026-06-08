@@ -331,9 +331,10 @@ class _MessagesPageState extends ConsumerState<MessagesPage> {
       profilesAsync,
       unitsAsync,
     ].any((async) => async.isLoading);
+    final compact = MediaQuery.sizeOf(context).width < 760;
 
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(compact ? 8 : 24),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,

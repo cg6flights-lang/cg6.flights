@@ -103,6 +103,7 @@ class _UserFormDialogState extends State<UserFormDialog> {
     final viewport = MediaQuery.of(context).size;
 
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       title: Text(t('users.createTitle')),
       contentPadding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
       content: ConstrainedBox(
@@ -111,7 +112,7 @@ class _UserFormDialogState extends State<UserFormDialog> {
           maxHeight: viewport.height * 0.72,
         ),
         child: SizedBox(
-          width: mathMin(500, viewport.width - 64),
+          width: mathMin(500, viewport.width - 80),
           child: Form(
             key: _formKey,
             child: SingleChildScrollView(
@@ -124,7 +125,7 @@ class _UserFormDialogState extends State<UserFormDialog> {
                   TextFormField(
                     controller: _emailController,
                     decoration: InputDecoration(
-              labelText: t('common.email'),
+                      labelText: t('common.email'),
                       hintText: 'usuario@ejemplo.com',
                       border: OutlineInputBorder(),
                       isDense: true,
@@ -149,7 +150,7 @@ class _UserFormDialogState extends State<UserFormDialog> {
                     first: TextFormField(
                       controller: _firstNameController,
                       decoration: InputDecoration(
-              labelText: t('common.firstName'),
+                        labelText: t('common.firstName'),
                         border: OutlineInputBorder(),
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(
@@ -163,13 +164,14 @@ class _UserFormDialogState extends State<UserFormDialog> {
                           RegExp(r'[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]'),
                         ),
                       ],
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? t('users.required') : null,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? t('users.required')
+                          : null,
                     ),
                     second: TextFormField(
                       controller: _lastNameController,
                       decoration: InputDecoration(
-              labelText: t('common.lastName'),
+                        labelText: t('common.lastName'),
                         border: OutlineInputBorder(),
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(
@@ -183,8 +185,9 @@ class _UserFormDialogState extends State<UserFormDialog> {
                           RegExp(r'[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]'),
                         ),
                       ],
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? t('users.required') : null,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? t('users.required')
+                          : null,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -233,7 +236,7 @@ class _UserFormDialogState extends State<UserFormDialog> {
                         : null,
                     isExpanded: true,
                     decoration: InputDecoration(
-              labelText: t('common.grade'),
+                      labelText: t('common.grade'),
                       border: OutlineInputBorder(),
                       isDense: true,
                       contentPadding: EdgeInsets.symmetric(
@@ -263,7 +266,7 @@ class _UserFormDialogState extends State<UserFormDialog> {
                       initialValue: _documentType,
                       isExpanded: true,
                       decoration: InputDecoration(
-              labelText: t('common.document'),
+                        labelText: t('common.document'),
                         border: OutlineInputBorder(),
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(
@@ -283,7 +286,7 @@ class _UserFormDialogState extends State<UserFormDialog> {
                     second: TextFormField(
                       controller: _documentIdController,
                       decoration: InputDecoration(
-              labelText: t('common.documentNumber'),
+                        labelText: t('common.documentNumber'),
                         border: OutlineInputBorder(),
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(
@@ -307,7 +310,7 @@ class _UserFormDialogState extends State<UserFormDialog> {
                       initialValue: _phoneCountryCode,
                       isExpanded: true,
                       decoration: InputDecoration(
-              labelText: t('common.code'),
+                        labelText: t('common.code'),
                         border: OutlineInputBorder(),
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(
@@ -332,7 +335,7 @@ class _UserFormDialogState extends State<UserFormDialog> {
                     second: TextFormField(
                       controller: _phoneController,
                       decoration: InputDecoration(
-              labelText: t('common.phone'),
+                        labelText: t('common.phone'),
                         border: OutlineInputBorder(),
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(
@@ -351,7 +354,7 @@ class _UserFormDialogState extends State<UserFormDialog> {
                     onTap: _pickBirthDate,
                     child: InputDecorator(
                       decoration: InputDecoration(
-              labelText: t('common.birthDate'),
+                        labelText: t('common.birthDate'),
                         border: OutlineInputBorder(),
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(
@@ -380,7 +383,7 @@ class _UserFormDialogState extends State<UserFormDialog> {
                     initialValue: _role,
                     isExpanded: true,
                     decoration: InputDecoration(
-              labelText: t('common.role'),
+                      labelText: t('common.role'),
                       border: OutlineInputBorder(),
                       isDense: true,
                       contentPadding: EdgeInsets.symmetric(
@@ -412,7 +415,7 @@ class _UserFormDialogState extends State<UserFormDialog> {
                       initialValue: _unitId,
                       isExpanded: true,
                       decoration: InputDecoration(
-              labelText: t('common.unit'),
+                        labelText: t('common.unit'),
                         border: OutlineInputBorder(),
                         isDense: true,
                         contentPadding: EdgeInsets.symmetric(
@@ -444,7 +447,7 @@ class _UserFormDialogState extends State<UserFormDialog> {
                     initialValue: _status,
                     isExpanded: true,
                     decoration: InputDecoration(
-              labelText: t('common.status'),
+                      labelText: t('common.status'),
                       border: OutlineInputBorder(),
                       isDense: true,
                       contentPadding: EdgeInsets.symmetric(

@@ -85,10 +85,40 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     super.dispose();
   }
 
+  Widget _responsivePair({
+    required Widget first,
+    required Widget second,
+    double? firstDesktopWidth,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 420) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [first, const SizedBox(height: 12), second],
+          );
+        }
+        return Row(
+          children: [
+            if (firstDesktopWidth == null)
+              Expanded(child: first)
+            else
+              SizedBox(width: firstDesktopWidth, child: first),
+            const SizedBox(width: 12),
+            Expanded(child: second),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context).t;
     final session = ref.watch(sessionControllerProvider);
+    final horizontalPadding = MediaQuery.sizeOf(context).width < 420
+        ? 16.0
+        : 24.0;
 
     return Scaffold(
       appBar: AppBar(
@@ -101,7 +131,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       ),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(horizontalPadding),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 500),
             child: Form(
@@ -118,7 +148,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                         : null,
                     isExpanded: true,
                     decoration: InputDecoration(
-              labelText: t('common.grade'),
+                      labelText: t('common.grade'),
                       prefixIcon: Icon(Icons.military_tech_outlined),
                       border: OutlineInputBorder(),
                     ),
@@ -214,90 +244,74 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   const SizedBox(height: 12),
 
                   // Document type + ID
-                  Row(
-                    children: [
-                      SizedBox(
-                        width: 130,
-                        child: DropdownButtonFormField<String>(
-                          initialValue: _documentType,
-                          isExpanded: true,
-                          decoration: InputDecoration(
-              labelText: t('common.document'),
-                            border: OutlineInputBorder(),
-                            isDense: true,
-                          ),
-                          items: const [
-                            DropdownMenuItem(value: 'dni', child: Text('DNI')),
-                            DropdownMenuItem(
-                              value: 'passport',
-                              child: Text('Pasaporte'),
-                            ),
-                          ],
-                          onChanged: (v) => setState(() => _documentType = v),
-                        ),
+                  _responsivePair(
+                    firstDesktopWidth: 130,
+                    first: DropdownButtonFormField<String>(
+                      initialValue: _documentType,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: t('common.document'),
+                        border: OutlineInputBorder(),
+                        isDense: true,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _documentIdController,
-                          decoration: InputDecoration(
-              labelText: t('common.documentNumber'),
-                            border: OutlineInputBorder(),
-                          ),
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                              RegExp(r'[a-zA-Z0-9]'),
-                            ),
-                          ],
+                      items: const [
+                        DropdownMenuItem(value: 'dni', child: Text('DNI')),
+                        DropdownMenuItem(
+                          value: 'passport',
+                          child: Text('Pasaporte'),
                         ),
+                      ],
+                      onChanged: (v) => setState(() => _documentType = v),
+                    ),
+                    second: TextFormField(
+                      controller: _documentIdController,
+                      decoration: InputDecoration(
+                        labelText: t('common.documentNumber'),
+                        border: OutlineInputBorder(),
                       ),
-                    ],
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'[a-zA-Z0-9]'),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 12),
 
                   // Phone country code + number
-                  Row(
-                    children: [
-                      SizedBox(
-                        width: 120,
-                        child: DropdownButtonFormField<String>(
-                          initialValue: _phoneCountryCode,
-                          isExpanded: true,
-                          decoration: InputDecoration(
-              labelText: t('common.code'),
-                            border: OutlineInputBorder(),
-                            isDense: true,
-                          ),
-                          items: _countryCodes
-                              .map(
-                                (c) => DropdownMenuItem(
-                                  value: c['code'],
-                                  child: Text(
-                                    '${c['code']}',
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (v) =>
-                              setState(() => _phoneCountryCode = v ?? '+51'),
-                        ),
+                  _responsivePair(
+                    firstDesktopWidth: 120,
+                    first: DropdownButtonFormField<String>(
+                      initialValue: _phoneCountryCode,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: t('common.code'),
+                        border: OutlineInputBorder(),
+                        isDense: true,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _phoneController,
-                          decoration: InputDecoration(
-              labelText: t('common.phone'),
-                            border: OutlineInputBorder(),
-                          ),
-                          keyboardType: TextInputType.phone,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                          ],
-                        ),
+                      items: _countryCodes
+                          .map(
+                            (c) => DropdownMenuItem(
+                              value: c['code'],
+                              child: Text(
+                                '${c['code']}',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) =>
+                          setState(() => _phoneCountryCode = v ?? '+51'),
+                    ),
+                    second: TextFormField(
+                      controller: _phoneController,
+                      decoration: InputDecoration(
+                        labelText: t('common.phone'),
+                        border: OutlineInputBorder(),
                       ),
-                    ],
+                      keyboardType: TextInputType.phone,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    ),
                   ),
                   const SizedBox(height: 12),
 
@@ -306,7 +320,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     onTap: _pickBirthDate,
                     child: InputDecorator(
                       decoration: InputDecoration(
-              labelText: t('common.birthDate'),
+                        labelText: t('common.birthDate'),
                         border: OutlineInputBorder(),
                         suffixIcon: Icon(Icons.calendar_today, size: 18),
                       ),
@@ -341,7 +355,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   }
 
   String? _required(String? value) {
-    if (value == null || value.trim().isEmpty) return AppLocalizations.of(context).t('common.required');
+    if (value == null || value.trim().isEmpty) {
+      return AppLocalizations.of(context).t('common.required');
+    }
     return null;
   }
 

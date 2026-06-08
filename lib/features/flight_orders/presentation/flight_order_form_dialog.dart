@@ -15,8 +15,7 @@ class FlightOrderFormDialog extends ConsumerStatefulWidget {
       _FlightOrderFormDialogState();
 }
 
-class _FlightOrderFormDialogState
-    extends ConsumerState<FlightOrderFormDialog> {
+class _FlightOrderFormDialogState extends ConsumerState<FlightOrderFormDialog> {
   final _formKey = GlobalKey<FormState>();
   String? _selectedUnitId;
   DateTime _operationDate = DateTime.now();
@@ -58,9 +57,11 @@ class _FlightOrderFormDialogState
       if (!mounted) return;
       setState(() {
         _existingDates = (rows as List<dynamic>)
-            .map((r) => DateTime.tryParse(
-                    (r as Map<String, dynamic>)['operation_date'].toString())
-                .let((d) => d != null ? DateTime(d.year, d.month, d.day) : null))
+            .map(
+              (r) => DateTime.tryParse(
+                (r as Map<String, dynamic>)['operation_date'].toString(),
+              ).let((d) => d != null ? DateTime(d.year, d.month, d.day) : null),
+            )
             .whereType<DateTime>()
             .toSet();
       });
@@ -72,22 +73,31 @@ class _FlightOrderFormDialogState
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final viewport = MediaQuery.sizeOf(context);
+    final dialogWidth = (viewport.width - 80).clamp(240.0, 450.0).toDouble();
+    final dialogMaxHeight = (viewport.height * 0.76)
+        .clamp(300.0, 620.0)
+        .toDouble();
 
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       title: Text(l10n.t('flightOrders.add')),
-      content: SizedBox(
-        width: 450,
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildUnitDropdown(l10n),
-                const SizedBox(height: 16),
-                _buildDatePicker(l10n),
-              ],
+      content: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 450, maxHeight: dialogMaxHeight),
+        child: SizedBox(
+          width: dialogWidth,
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildUnitDropdown(l10n),
+                  const SizedBox(height: 16),
+                  _buildDatePicker(l10n),
+                ],
+              ),
             ),
           ),
         ),
@@ -121,8 +131,11 @@ class _FlightOrderFormDialogState
         decoration: InputDecoration(
           labelText: l10n.t('flightOrders.unit'),
           border: const OutlineInputBorder(),
-          suffixIcon:
-              const Icon(Icons.lock_outline, size: 16, color: Colors.grey),
+          suffixIcon: const Icon(
+            Icons.lock_outline,
+            size: 16,
+            color: Colors.grey,
+          ),
         ),
       );
     }
@@ -188,8 +201,18 @@ class _FlightOrderFormDialogState
 
   String _formatDate(DateTime date) {
     final months = [
-      'ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN',
-      'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC',
+      'ENE',
+      'FEB',
+      'MAR',
+      'ABR',
+      'MAY',
+      'JUN',
+      'JUL',
+      'AGO',
+      'SEP',
+      'OCT',
+      'NOV',
+      'DIC',
     ];
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }

@@ -100,202 +100,205 @@ class _CrewFormDialogState extends State<CrewFormDialog> {
     final t = AppLocalizations.of(context).t;
     final l10n = AppLocalizations.of(context);
     final isGlobal = widget.units.length > 1;
+    final viewport = MediaQuery.sizeOf(context);
+    final dialogWidth = (viewport.width - 80).clamp(240.0, 440.0).toDouble();
+    final dialogMaxHeight = (viewport.height * 0.76)
+        .clamp(320.0, 680.0)
+        .toDouble();
 
     return AlertDialog(
-      title: Text(
-        _isEditing ? l10n.t('crew.edit') : l10n.t('crew.add'),
-      ),
-      content: SizedBox(
-        width: 440,
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (isGlobal)
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      title: Text(_isEditing ? l10n.t('crew.edit') : l10n.t('crew.add')),
+      content: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 440, maxHeight: dialogMaxHeight),
+        child: SizedBox(
+          width: dialogWidth,
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (isGlobal)
+                    DropdownButtonFormField<String>(
+                      initialValue: _unitId.isNotEmpty ? _unitId : null,
+                      decoration: InputDecoration(
+                        labelText: l10n.t('aircraft.unit'),
+                        border: const OutlineInputBorder(),
+                      ),
+                      items: [
+                        for (final u in widget.units)
+                          DropdownMenuItem(
+                            value: u.id,
+                            child: Text('${u.code} — ${u.name}'),
+                          ),
+                      ],
+                      onChanged: (v) => setState(() => _unitId = v ?? ''),
+                      validator: (v) => (v == null || v.isEmpty)
+                          ? l10n.t('validation.required')
+                          : null,
+                    ),
+                  if (isGlobal) const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    initialValue: _unitId.isNotEmpty ? _unitId : null,
+                    initialValue: _crewCategory,
                     decoration: InputDecoration(
-                      labelText: l10n.t('aircraft.unit'),
+                      labelText: l10n.t('crew.type'),
                       border: const OutlineInputBorder(),
                     ),
                     items: [
-                      for (final u in widget.units)
-                        DropdownMenuItem(
-                          value: u.id,
-                          child: Text('${u.code} — ${u.name}'),
-                        ),
+                      DropdownMenuItem(
+                        value: 'pilot',
+                        child: Text(l10n.t('crew.pilot')),
+                      ),
+                      DropdownMenuItem(
+                        value: 'mechanic',
+                        child: Text(l10n.t('crew.mechanic')),
+                      ),
                     ],
-                    onChanged: (v) => setState(() => _unitId = v ?? ''),
+                    onChanged: (v) {
+                      setState(() {
+                        _crewCategory = v ?? 'pilot';
+                        _grade = '';
+                      });
+                    },
+                  ),
+                  SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    initialValue: _assignmentType,
+                    decoration: InputDecoration(
+                      labelText: l10n.t('crew.assignmentType'),
+                      border: const OutlineInputBorder(),
+                    ),
+                    items: [
+                      DropdownMenuItem(
+                        value: 'nato',
+                        child: Text(l10n.t('crew.nato')),
+                      ),
+                      DropdownMenuItem(
+                        value: 'foraneo',
+                        child: Text(l10n.t('crew.foraneo')),
+                      ),
+                    ],
+                    onChanged: (v) =>
+                        setState(() => _assignmentType = v ?? 'nato'),
+                  ),
+                  SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    key: ValueKey('grade_$_crewCategory'),
+                    initialValue: _filteredGrades.any((g) => g.code == _grade)
+                        ? _grade
+                        : null,
+                    decoration: InputDecoration(
+                      labelText: l10n.t('crew.grade'),
+                      border: const OutlineInputBorder(),
+                    ),
+                    items: [
+                      for (final g in _filteredGrades)
+                        DropdownMenuItem(value: g.code, child: Text(g.code)),
+                    ],
+                    onChanged: (v) => setState(() => _grade = v ?? ''),
                     validator: (v) => (v == null || v.isEmpty)
                         ? l10n.t('validation.required')
                         : null,
                   ),
-                if (isGlobal) const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: _crewCategory,
-                  decoration: InputDecoration(
-                    labelText: l10n.t('crew.type'),
-                    border: const OutlineInputBorder(),
-                  ),
-                  items: [
-                    DropdownMenuItem(
-                      value: 'pilot',
-                      child: Text(l10n.t('crew.pilot')),
-                    ),
-                    DropdownMenuItem(
-                      value: 'mechanic',
-                      child: Text(l10n.t('crew.mechanic')),
-                    ),
-                  ],
-                  onChanged: (v) {
-                    setState(() {
-                      _crewCategory = v ?? 'pilot';
-                      _grade = '';
-                    });
-                  },
-                ),
-                SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  initialValue: _assignmentType,
-                  decoration: InputDecoration(
-                    labelText: l10n.t('crew.assignmentType'),
-                    border: const OutlineInputBorder(),
-                  ),
-                  items: [
-                    DropdownMenuItem(
-                      value: 'nato',
-                      child: Text(l10n.t('crew.nato')),
-                    ),
-                    DropdownMenuItem(
-                      value: 'foraneo',
-                      child: Text(l10n.t('crew.foraneo')),
-                    ),
-                  ],
-                  onChanged: (v) =>
-                      setState(() => _assignmentType = v ?? 'nato'),
-                ),
-                SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  key: ValueKey('grade_$_crewCategory'),
-                  initialValue: _filteredGrades.any((g) => g.code == _grade)
-                      ? _grade
-                      : null,
-                  decoration: InputDecoration(
-                    labelText: l10n.t('crew.grade'),
-                    border: const OutlineInputBorder(),
-                  ),
-                  items: [
-                    for (final g in _filteredGrades)
-                      DropdownMenuItem(
-                        value: g.code,
-                        child: Text(g.code),
-                      ),
-                  ],
-                  onChanged: (v) =>
-                      setState(() => _grade = v ?? ''),
-                  validator: (v) => (v == null || v.isEmpty)
-                      ? l10n.t('validation.required')
-                      : null,
-                ),
-                SizedBox(height: 16),
-                TextFormField(
-                  controller: _firstNameController,
-                  decoration: InputDecoration(
-                    labelText: l10n.t('crew.firstName'),
-                    border: const OutlineInputBorder(),
-                  ),
-                  textCapitalization: TextCapitalization.characters,
-                  validator: (v) => (v == null || v.trim().isEmpty)
-                      ? l10n.t('validation.required')
-                      : null,
-                ),
-                SizedBox(height: 16),
-                TextFormField(
-                  controller: _lastNameController,
-                  decoration: InputDecoration(
-                    labelText: l10n.t('crew.lastName'),
-                    border: const OutlineInputBorder(),
-                  ),
-                  textCapitalization: TextCapitalization.characters,
-                  validator: (v) => (v == null || v.trim().isEmpty)
-                      ? l10n.t('validation.required')
-                      : null,
-                ),
-                SizedBox(height: 16),
-                TextFormField(
-                  controller: _nsaController,
-                  decoration: InputDecoration(
-                    labelText: l10n.t('crew.nsa'),
-                    border: const OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  validator: (v) {
-                    final value = v?.trim() ?? '';
-                    if (value.isEmpty) return l10n.t('validation.required');
-                    if (value.length < 3) return l10n.t('crew.nsaMinLength');
-                    return null;
-                  },
-                ),
-                SizedBox(height: 16),
-                TextFormField(
-                  controller: _callsignController,
-                  decoration: InputDecoration(
-                    labelText: t('crew.indicative'),
-                    hintText: t('crew.optional'),
-                    border: const OutlineInputBorder(),
-                  ),
-                  textCapitalization: TextCapitalization.characters,
-                  maxLength: 20,
-                ),
-                SizedBox(height: 16),
-                InkWell(
-                  onTap: _pickDate,
-                  child: InputDecorator(
+                  SizedBox(height: 16),
+                  TextFormField(
+                    controller: _firstNameController,
                     decoration: InputDecoration(
-                      labelText: l10n.t('crew.appointmentDate'),
+                      labelText: l10n.t('crew.firstName'),
                       border: const OutlineInputBorder(),
-                      suffixIcon: const Icon(Icons.calendar_today, size: 18),
                     ),
-                    child: Text(
-                      '${_appointmentDate.day.toString().padLeft(2, '0')}/${_appointmentDate.month.toString().padLeft(2, '0')}/${_appointmentDate.year}',
+                    textCapitalization: TextCapitalization.characters,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? l10n.t('validation.required')
+                        : null,
+                  ),
+                  SizedBox(height: 16),
+                  TextFormField(
+                    controller: _lastNameController,
+                    decoration: InputDecoration(
+                      labelText: l10n.t('crew.lastName'),
+                      border: const OutlineInputBorder(),
+                    ),
+                    textCapitalization: TextCapitalization.characters,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? l10n.t('validation.required')
+                        : null,
+                  ),
+                  SizedBox(height: 16),
+                  TextFormField(
+                    controller: _nsaController,
+                    decoration: InputDecoration(
+                      labelText: l10n.t('crew.nsa'),
+                      border: const OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    validator: (v) {
+                      final value = v?.trim() ?? '';
+                      if (value.isEmpty) return l10n.t('validation.required');
+                      if (value.length < 3) return l10n.t('crew.nsaMinLength');
+                      return null;
+                    },
+                  ),
+                  SizedBox(height: 16),
+                  TextFormField(
+                    controller: _callsignController,
+                    decoration: InputDecoration(
+                      labelText: t('crew.indicative'),
+                      hintText: t('crew.optional'),
+                      border: const OutlineInputBorder(),
+                    ),
+                    textCapitalization: TextCapitalization.characters,
+                    maxLength: 20,
+                  ),
+                  SizedBox(height: 16),
+                  InkWell(
+                    onTap: _pickDate,
+                    child: InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: l10n.t('crew.appointmentDate'),
+                        border: const OutlineInputBorder(),
+                        suffixIcon: const Icon(Icons.calendar_today, size: 18),
+                      ),
+                      child: Text(
+                        '${_appointmentDate.day.toString().padLeft(2, '0')}/${_appointmentDate.month.toString().padLeft(2, '0')}/${_appointmentDate.year}',
+                      ),
                     ),
                   ),
-                ),
-                if (_crewCategory == 'pilot') ...[
-                  SizedBox(height: 20),
-                  Text(
-                    l10n.t('crew.qualifications'),
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  SizedBox(height: 8),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      for (final q in CrewMember.validQualifications)
-                        FilterChip(
-                          label: Text(q),
-                          selected: _qualifications.contains(q),
-                          onSelected: (selected) {
-                            setState(() {
-                              if (selected) {
-                                _qualifications = [..._qualifications, q];
-                              } else {
-                                _qualifications = _qualifications
-                                    .where((e) => e != q)
-                                    .toList();
-                              }
-                            });
-                          },
-                        ),
-                    ],
-                  ),
+                  if (_crewCategory == 'pilot') ...[
+                    SizedBox(height: 20),
+                    Text(
+                      l10n.t('crew.qualifications'),
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final q in CrewMember.validQualifications)
+                          FilterChip(
+                            label: Text(q),
+                            selected: _qualifications.contains(q),
+                            onSelected: (selected) {
+                              setState(() {
+                                if (selected) {
+                                  _qualifications = [..._qualifications, q];
+                                } else {
+                                  _qualifications = _qualifications
+                                      .where((e) => e != q)
+                                      .toList();
+                                }
+                              });
+                            },
+                          ),
+                      ],
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -307,9 +310,7 @@ class _CrewFormDialogState extends State<CrewFormDialog> {
         ),
         FilledButton(
           onPressed: _submit,
-          child: Text(
-            _isEditing ? l10n.t('common.save') : l10n.t('crew.add'),
-          ),
+          child: Text(_isEditing ? l10n.t('common.save') : l10n.t('crew.add')),
         ),
       ],
     );

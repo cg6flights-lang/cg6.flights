@@ -92,148 +92,156 @@ class _AircraftFormDialogState extends State<AircraftFormDialog> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final isGlobal = widget.units.length > 1;
+    final viewport = MediaQuery.sizeOf(context);
+    final dialogWidth = (viewport.width - 80).clamp(240.0, 440.0).toDouble();
+    final dialogMaxHeight = (viewport.height * 0.76)
+        .clamp(320.0, 680.0)
+        .toDouble();
 
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       title: Text(
         _isEditing ? l10n.t('aircraft.edit') : l10n.t('aircraft.add'),
       ),
-      content: SizedBox(
-        width: 440,
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (isGlobal)
-                  DropdownButtonFormField<String>(
-                    initialValue: _unitId.isNotEmpty ? _unitId : null,
+      content: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 440, maxHeight: dialogMaxHeight),
+        child: SizedBox(
+          width: dialogWidth,
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (isGlobal)
+                    DropdownButtonFormField<String>(
+                      initialValue: _unitId.isNotEmpty ? _unitId : null,
+                      decoration: InputDecoration(
+                        labelText: l10n.t('aircraft.unit'),
+                        border: const OutlineInputBorder(),
+                      ),
+                      items: [
+                        for (final u in widget.units)
+                          DropdownMenuItem(
+                            value: u.id,
+                            child: Text('${u.code} — ${u.name}'),
+                          ),
+                      ],
+                      onChanged: (v) => setState(() => _unitId = v ?? ''),
+                      validator: (v) => (v == null || v.isEmpty)
+                          ? l10n.t('validation.required')
+                          : null,
+                    ),
+                  if (isGlobal) const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _tailController,
                     decoration: InputDecoration(
-                      labelText: l10n.t('aircraft.unit'),
+                      labelText: l10n.t('aircraft.tailNumber'),
                       border: const OutlineInputBorder(),
                     ),
-                    items: [
-                      for (final u in widget.units)
-                        DropdownMenuItem(
-                          value: u.id,
-                          child: Text('${u.code} — ${u.name}'),
-                        ),
-                    ],
-                    onChanged: (v) => setState(() => _unitId = v ?? ''),
-                    validator: (v) => (v == null || v.isEmpty)
+                    textCapitalization: TextCapitalization.characters,
+                    validator: (v) => (v == null || v.trim().isEmpty)
                         ? l10n.t('validation.required')
                         : null,
                   ),
-                if (isGlobal) const SizedBox(height: 16),
-                TextFormField(
-                  controller: _tailController,
-                  decoration: InputDecoration(
-                    labelText: l10n.t('aircraft.tailNumber'),
-                    border: const OutlineInputBorder(),
-                  ),
-                  textCapitalization: TextCapitalization.characters,
-                  validator: (v) => (v == null || v.trim().isEmpty)
-                      ? l10n.t('validation.required')
-                      : null,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _manufacturerController,
-                  decoration: InputDecoration(
-                    labelText: l10n.t('aircraft.manufacturer'),
-                    border: const OutlineInputBorder(),
-                  ),
-                  validator: (v) => (v == null || v.trim().isEmpty)
-                      ? l10n.t('validation.required')
-                      : null,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _modelController,
-                  decoration: InputDecoration(
-                    labelText: l10n.t('aircraft.model'),
-                    border: const OutlineInputBorder(),
-                  ),
-                  validator: (v) => (v == null || v.trim().isEmpty)
-                      ? l10n.t('validation.required')
-                      : null,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _serialController,
-                        decoration: InputDecoration(
-                          labelText: l10n.t('aircraft.serialNumber'),
-                          border: const OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    SizedBox(
-                      width: 120,
-                      child: TextFormField(
-                        controller: _yearController,
-                        decoration: InputDecoration(
-                          labelText: l10n.t('aircraft.year'),
-                          border: const OutlineInputBorder(),
-                        ),
-                        keyboardType: TextInputType.number,
-                        validator: (v) {
-                          final value = v?.trim() ?? '';
-                          if (value.isEmpty) return null;
-                          final year = int.tryParse(value);
-                          if (year == null || year < 1900 || year > 2100) {
-                            return l10n.t('validation.invalidYear');
-                          }
-                          return null;
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                DropdownButtonFormField<String>(
-                  initialValue: _status,
-                  decoration: InputDecoration(
-                    labelText: l10n.t('aircraft.status'),
-                    border: const OutlineInputBorder(),
-                  ),
-                  items: [
-                    DropdownMenuItem(
-                      value: 'operational',
-                      child: Text(l10n.t('aircraft.operational')),
-                    ),
-                    DropdownMenuItem(
-                      value: 'inoperative',
-                      child: Text(l10n.t('aircraft.inoperative')),
-                    ),
-                    DropdownMenuItem(
-                      value: 'maintenance',
-                      child: Text(l10n.t('aircraft.maintenance')),
-                    ),
-                  ],
-                  onChanged: (v) =>
-                      setState(() => _status = v ?? 'operational'),
-                ),
-                if (_status == 'inoperative') ...[
                   const SizedBox(height: 16),
                   TextFormField(
-                    controller: _inoperativeReasonController,
+                    controller: _manufacturerController,
                     decoration: InputDecoration(
-                      labelText: l10n.t('aircraft.inoperativeReason'),
+                      labelText: l10n.t('aircraft.manufacturer'),
                       border: const OutlineInputBorder(),
                     ),
-                    maxLines: 2,
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty)
-                            ? l10n.t('validation.required')
-                            : null,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? l10n.t('validation.required')
+                        : null,
                   ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _modelController,
+                    decoration: InputDecoration(
+                      labelText: l10n.t('aircraft.model'),
+                      border: const OutlineInputBorder(),
+                    ),
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? l10n.t('validation.required')
+                        : null,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _serialController,
+                          decoration: InputDecoration(
+                            labelText: l10n.t('aircraft.serialNumber'),
+                            border: const OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      SizedBox(
+                        width: 120,
+                        child: TextFormField(
+                          controller: _yearController,
+                          decoration: InputDecoration(
+                            labelText: l10n.t('aircraft.year'),
+                            border: const OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
+                          validator: (v) {
+                            final value = v?.trim() ?? '';
+                            if (value.isEmpty) return null;
+                            final year = int.tryParse(value);
+                            if (year == null || year < 1900 || year > 2100) {
+                              return l10n.t('validation.invalidYear');
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  DropdownButtonFormField<String>(
+                    initialValue: _status,
+                    decoration: InputDecoration(
+                      labelText: l10n.t('aircraft.status'),
+                      border: const OutlineInputBorder(),
+                    ),
+                    items: [
+                      DropdownMenuItem(
+                        value: 'operational',
+                        child: Text(l10n.t('aircraft.operational')),
+                      ),
+                      DropdownMenuItem(
+                        value: 'inoperative',
+                        child: Text(l10n.t('aircraft.inoperative')),
+                      ),
+                      DropdownMenuItem(
+                        value: 'maintenance',
+                        child: Text(l10n.t('aircraft.maintenance')),
+                      ),
+                    ],
+                    onChanged: (v) =>
+                        setState(() => _status = v ?? 'operational'),
+                  ),
+                  if (_status == 'inoperative') ...[
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _inoperativeReasonController,
+                      decoration: InputDecoration(
+                        labelText: l10n.t('aircraft.inoperativeReason'),
+                        border: const OutlineInputBorder(),
+                      ),
+                      maxLines: 2,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? l10n.t('validation.required')
+                          : null,
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),

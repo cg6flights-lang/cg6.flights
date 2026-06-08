@@ -6,6 +6,7 @@ import 'package:cg6_flights/core/state/timezone_provider.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/features/flight_orders/data/flight_orders_repository.dart';
 import 'package:cg6_flights/features/flight_orders/domain/flight_order.dart';
+import 'package:cg6_flights/features/flight_orders/presentation/flight_state_confirm_dialog.dart';
 import 'package:cg6_flights/features/flights/presentation/flight_detail_panel.dart';
 import 'package:cg6_flights/features/flights/presentation/flight_led_board.dart';
 import 'package:cg6_flights/features/flights/presentation/metar_widget.dart';
@@ -60,7 +61,9 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
     _selectedDate = DateTime.now();
     _loadUnits();
     _autoRefresh = Timer.periodic(const Duration(seconds: 3), (_) {
-      if (mounted) setState(() => ref.invalidate(_flightsProvider(_selectedDate)));
+      if (mounted) {
+        setState(() => ref.invalidate(_flightsProvider(_selectedDate)));
+      }
     });
   }
 
@@ -108,7 +111,9 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
 
   bool get _isToday {
     final now = DateTime.now();
-    return _selectedDate.year == now.year && _selectedDate.month == now.month && _selectedDate.day == now.day;
+    return _selectedDate.year == now.year &&
+        _selectedDate.month == now.month &&
+        _selectedDate.day == now.day;
   }
 
   String _dateLabel(DateTime d) {
@@ -132,6 +137,17 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
   Future<void> _advanceState(FlightOrderItem item) async {
     final next = _nextState[item.status];
     if (next == null) return;
+
+    // Confirmation dialog
+    final tailNumber = item.aircraftRegistration ?? item.aircraftId;
+    final confirmed = await showFlightStateConfirm(
+      context: context,
+      tailNumber: tailNumber,
+      currentState: item.status,
+      nextState: next,
+    );
+    if (confirmed != true || !mounted) return;
+
     final result = await ref
         .read(flightOrdersRepositoryProvider)
         .advanceItemState(item.id, next);
@@ -174,106 +190,81 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
     final theme = Theme.of(context);
     final flightsAsync = ref.watch(_flightsProvider(_selectedDate));
     final tz = ref.watch(timezoneProvider);
+    final compact = MediaQuery.sizeOf(context).width < 760;
 
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(compact ? 12 : 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // ── Header: title + date navigator ──────────────────────
-          Row(
-            children: [
-              Icon(
-                Icons.flight_takeoff,
-                size: 24,
-                color: theme.colorScheme.primary,
-              ),
-              SizedBox(width: 10),
-              Text(l10n.t('nav.flights'), style: theme.textTheme.headlineSmall),
-              Spacer(),
-              // Unit filter
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: PopupMenuButton<String>(
-                    offset: const Offset(0, 40),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                    onSelected: (v) => setState(() =>
-                        _selectedUnitId = v.isEmpty ? null : v),
-                    itemBuilder: (_) => [
-                      const PopupMenuItem<String>(
-                        value: '',
-                        child: Text('Unidades',
-                            style: TextStyle(fontWeight: FontWeight.w700)),
-                      ),
-                      ..._units.where((u) => u.active).map((u) =>
-                            PopupMenuItem<String>(
-                              value: u.id,
-                              child: Text(u.name,
-                                  style: TextStyle(
-                                    fontWeight: _selectedUnitId == u.id
-                                        ? FontWeight.w700
-                                        : FontWeight.normal,
-                                  )),
-                            )),
-                    ],
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                            color: theme.colorScheme.outline
-                                .withValues(alpha: 0.3)),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.business_outlined,
-                              size: 16,
-                              color: theme.colorScheme.primary),
-                          SizedBox(width: 6),
-                          Text(
-                            _selectedUnitId != null
-                                ? (_units
-                                        .where(
-                                            (u) => u.id == _selectedUnitId)
-                                        .firstOrNull
-                                        ?.name ??
-                                    'Unidades')
-                                : 'Unidades',
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.arrow_drop_down, size: 18),
-                        ],
+          if (compact)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.flight_takeoff,
+                      size: 24,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        l10n.t('nav.flights'),
+                        style: theme.textTheme.headlineSmall,
                       ),
                     ),
-                  ),
+                    IconButton(
+                      icon: const Icon(Icons.refresh, size: 20),
+                      tooltip: t('flights.refresh'),
+                      onPressed: () =>
+                          ref.invalidate(_flightsProvider(_selectedDate)),
+                    ),
+                  ],
                 ),
-              OutlinedButton.icon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const FlightLedBoard()),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.end,
+                  children: [
+                    _unitFilterButton(theme),
+                    _ledBoardButton(l10n),
+                    _dateNav(theme),
+                  ],
                 ),
-                icon: const Icon(Icons.monitor, size: 18),
-                label: Text(l10n.t('flights.ledBoard')),
-                style: OutlinedButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  foregroundColor: const Color(0xFFFFD21A),
-                  side: const BorderSide(color: Color(0xFFFFD21A), width: 1),
+              ],
+            )
+          else
+            Row(
+              children: [
+                Icon(
+                  Icons.flight_takeoff,
+                  size: 24,
+                  color: theme.colorScheme.primary,
                 ),
-              ),
-              SizedBox(width: 12),
-              _dateNav(theme),
-              SizedBox(width: 16),
-              IconButton(
-                icon: const Icon(Icons.refresh, size: 20),
-                tooltip: t('flights.refresh'),
-                onPressed: () =>
-                    ref.invalidate(_flightsProvider(_selectedDate)),
-              ),
-            ],
-          ),
+                const SizedBox(width: 10),
+                Text(
+                  l10n.t('nav.flights'),
+                  style: theme.textTheme.headlineSmall,
+                ),
+                const Spacer(),
+                _unitFilterButton(theme),
+                const SizedBox(width: 8),
+                _ledBoardButton(l10n),
+                const SizedBox(width: 12),
+                _dateNav(theme),
+                const SizedBox(width: 16),
+                IconButton(
+                  icon: const Icon(Icons.refresh, size: 20),
+                  tooltip: t('flights.refresh'),
+                  onPressed: () =>
+                      ref.invalidate(_flightsProvider(_selectedDate)),
+                ),
+              ],
+            ),
           const SizedBox(height: 16),
 
           // ── Board ───────────────────────────────────────────────
@@ -419,22 +410,21 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
         // Filter by unit if selected
         var filtered = flights;
         if (_selectedUnitId != null) {
-          filtered = flights
-              .where((f) => f.unitId == _selectedUnitId)
-              .toList();
+          filtered = flights.where((f) => f.unitId == _selectedUnitId).toList();
         }
 
         // Split flights: Departures (before landing) / Arrivals (landing+)
         final departures = filtered
-            .where((f) =>
-                f.status == 'waiting' ||
-                f.status == 'taxi' ||
-                f.status == 'takeoff' ||
-                f.cancelled)
+            .where(
+              (f) =>
+                  f.status == 'waiting' ||
+                  f.status == 'taxi' ||
+                  f.status == 'takeoff' ||
+                  f.cancelled,
+            )
             .toList();
         final arrivals = filtered
-            .where((f) =>
-                f.status == 'landing' || f.status == 'engine_off')
+            .where((f) => f.status == 'landing' || f.status == 'engine_off')
             .toList();
 
         if (flights.isEmpty) {
@@ -465,7 +455,10 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               MetarWidget(
-                icaoCodes: {..._extractIcaos(flights), ...(ref.watch(_routeIcaosProvider).value ?? const <String>{})}.toList()..sort(),
+                icaoCodes: {
+                  ..._extractIcaos(flights),
+                  ...(ref.watch(_routeIcaosProvider).value ?? const <String>{}),
+                }.toList()..sort(),
               ),
               const SizedBox(height: 12),
               _sectionHeader('🛫 Departures', departures.length, theme),
@@ -502,9 +495,95 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
     );
   }
 
+  Widget _unitFilterButton(ThemeData theme) {
+    final selectedUnitName = _selectedUnitId != null
+        ? (_units.where((u) => u.id == _selectedUnitId).firstOrNull?.name ??
+              'Unidades')
+        : 'Unidades';
+    return PopupMenuButton<String>(
+      offset: const Offset(0, 40),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      onSelected: (v) => setState(() => _selectedUnitId = v.isEmpty ? null : v),
+      itemBuilder: (_) => [
+        const PopupMenuItem<String>(
+          value: '',
+          child: Text(
+            'Unidades',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+        ..._units
+            .where((u) => u.active)
+            .map(
+              (u) => PopupMenuItem<String>(
+                value: u.id,
+                child: Text(
+                  u.name,
+                  style: TextStyle(
+                    fontWeight: _selectedUnitId == u.id
+                        ? FontWeight.w700
+                        : FontWeight.normal,
+                  ),
+                ),
+              ),
+            ),
+      ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: theme.colorScheme.outline.withValues(alpha: 0.3),
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.business_outlined,
+              size: 16,
+              color: theme.colorScheme.primary,
+            ),
+            const SizedBox(width: 6),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 140),
+              child: Text(
+                selectedUnitName,
+                style: const TextStyle(fontSize: 12),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(Icons.arrow_drop_down, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _ledBoardButton(AppLocalizations l10n) {
+    return OutlinedButton.icon(
+      onPressed: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const FlightLedBoard())),
+      icon: const Icon(Icons.monitor, size: 18),
+      label: Text(l10n.t('flights.ledBoard')),
+      style: OutlinedButton.styleFrom(
+        visualDensity: VisualDensity.compact,
+        foregroundColor: const Color(0xFFFFD21A),
+        side: const BorderSide(color: Color(0xFFFFD21A), width: 1),
+      ),
+    );
+  }
+
   // ── Advance button ──────────────────────────────────────────────────
 
-  void _showMobileDetail(BuildContext context, FlightOrderItem item, AppLocalizations l10n, int tz) {
+  void _showMobileDetail(
+    BuildContext context,
+    FlightOrderItem item,
+    AppLocalizations l10n,
+    int tz,
+  ) {
     // Prevent recursive calls
     if (_selectedItem == null) return;
     final selected = _selectedItem!;
@@ -512,7 +591,9 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
       builder: (ctx) {
         return DraggableScrollableSheet(
           initialChildSize: 0.75,
@@ -523,14 +604,31 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
             return SingleChildScrollView(
               controller: scrollController,
               padding: const EdgeInsets.all(16),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(borderRadius: BorderRadius.circular(2), color: Colors.grey.shade300))),
-                const SizedBox(height: 16),
-                FlightDetailPanel(key: ValueKey(selected.id), item: selected, onChanged: () => ref.invalidate(_flightsProvider(_selectedDate))),
-                const SizedBox(height: 16),
-                _advanceButton(selected, l10n),
-                const SizedBox(height: 24),
-              ]),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(2),
+                        color: Colors.grey.shade300,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  FlightDetailPanel(
+                    key: ValueKey(selected.id),
+                    item: selected,
+                    onChanged: () =>
+                        ref.invalidate(_flightsProvider(_selectedDate)),
+                  ),
+                  const SizedBox(height: 16),
+                  _advanceButton(selected, l10n),
+                  const SizedBox(height: 24),
+                ],
+              ),
             );
           },
         );
@@ -564,13 +662,13 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
   };
 
   List<DataColumn> _columns(AppLocalizations l10n) => [
-        DataColumn(label: Text(l10n.t('flightOrders.time'))),
-        DataColumn(label: Text(l10n.t('flightOrders.orderNumber'))),
-        DataColumn(label: Text(l10n.t('flightOrders.aircraft'))),
-        DataColumn(label: const Text('Misión')),
-        DataColumn(label: Text(l10n.t('flightOrders.status'))),
-        DataColumn(label: const Text('ETE')),
-      ];
+    DataColumn(label: Text(l10n.t('flightOrders.time'))),
+    DataColumn(label: Text(l10n.t('flightOrders.orderNumber'))),
+    DataColumn(label: Text(l10n.t('flightOrders.aircraft'))),
+    DataColumn(label: const Text('Misión')),
+    DataColumn(label: Text(l10n.t('flightOrders.status'))),
+    DataColumn(label: const Text('ETE')),
+  ];
 
   List<String> _extractIcaos(List<FlightOrderItem> flights) {
     final icaos = <String>{};
@@ -592,10 +690,12 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
       padding: const EdgeInsets.only(top: 16, bottom: 8),
       child: Row(
         children: [
-          Text(title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              )),
+          Text(
+            title,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -603,12 +703,14 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
               color: theme.colorScheme.primary.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Text('$count',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.primary,
-                )),
+            child: Text(
+              '$count',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.primary,
+              ),
+            ),
           ),
         ],
       ),
@@ -619,10 +721,12 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 24),
       child: Center(
-        child: Text(message,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            )),
+        child: Text(
+          message,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
       ),
     );
   }
@@ -664,30 +768,50 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
                   onSelectChanged: (_) => setState(() => _selectedItem = f),
                   color: _selectedItem?.id == f.id
                       ? WidgetStateProperty.all(
-                          theme.colorScheme.primary.withValues(alpha: 0.08))
+                          theme.colorScheme.primary.withValues(alpha: 0.08),
+                        )
                       : null,
                   cells: [
-                    DataCell(Text(_lastEventTime(f, tz),
+                    DataCell(
+                      Text(
+                        _lastEventTime(f, tz),
                         style: TextStyle(
                           fontSize: 12,
                           fontFamily: 'monospace',
                           fontWeight: FontWeight.w600,
                           color: theme.colorScheme.onSurface,
-                        ))),
-                    DataCell(Text(f.orderNumber ?? '--',
-                        style: const TextStyle(fontSize: 12))),
-                    DataCell(Text(f.aircraftRegistration ?? '--',
-                        style: const TextStyle(fontSize: 12))),
-                    DataCell(SizedBox(
-                      width: 140,
-                      child: Text(f.mission ?? '--',
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      Text(
+                        f.orderNumber ?? '--',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                    DataCell(
+                      Text(
+                        f.aircraftRegistration ?? '--',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                    DataCell(
+                      SizedBox(
+                        width: 140,
+                        child: Text(
+                          f.mission ?? '--',
                           style: const TextStyle(fontSize: 12),
-                          overflow: TextOverflow.ellipsis),
-                    )),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
                     DataCell(_statusCell(f)),
-                    DataCell(Text(
+                    DataCell(
+                      Text(
                         f.eteMinutes != null ? '${f.eteMinutes}m' : '--',
-                        style: const TextStyle(fontSize: 12))),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
                   ],
                 ),
             ],

@@ -363,7 +363,8 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final title = Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
           Icons.dashboard_outlined,
@@ -371,7 +372,13 @@ class _Header extends StatelessWidget {
           size: 22,
         ),
         const SizedBox(width: 8),
-        Text('Dashboard operacional', style: theme.textTheme.titleMedium),
+        Flexible(
+          child: Text(
+            'Dashboard operacional',
+            style: theme.textTheme.titleMedium,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
         if (roleLabel != null) ...[
           const SizedBox(width: 10),
           DecoratedBox(
@@ -392,47 +399,58 @@ class _Header extends StatelessWidget {
             ),
           ),
         ],
-        const SizedBox(width: 12),
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            reverse: true,
-            child: Row(
-              children: [
-                _Btn(
-                  icon: editMode ? Icons.check : Icons.edit_outlined,
-                  label: editMode ? 'Listo' : 'Editar',
-                  onTap: onEditToggle,
-                ),
-                const SizedBox(width: 6),
-                _Btn(
-                  icon: Icons.tune,
-                  label: 'Personalizar',
-                  onTap: onCustomize,
-                ),
-                const SizedBox(width: 6),
-                _Btn(
-                  icon: Icons.assignment_outlined,
-                  label: 'Nueva OV',
-                  onTap: () => context.go('/flight-orders'),
-                ),
-                const SizedBox(width: 6),
-                _Btn(
-                  icon: Icons.flight_takeoff,
-                  label: 'Vuelos',
-                  onTap: () => context.go('/flights'),
-                ),
-                const SizedBox(width: 6),
-                _Btn(
-                  icon: Icons.mark_unread_chat_alt_outlined,
-                  label: 'Mensajes',
-                  onTap: () => context.go('/messages'),
-                ),
-              ],
-            ),
-          ),
-        ),
       ],
+    );
+    final actions = SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      reverse: true,
+      child: Row(
+        children: [
+          _Btn(
+            icon: editMode ? Icons.check : Icons.edit_outlined,
+            label: editMode ? 'Listo' : 'Editar',
+            onTap: onEditToggle,
+          ),
+          const SizedBox(width: 6),
+          _Btn(icon: Icons.tune, label: 'Personalizar', onTap: onCustomize),
+          const SizedBox(width: 6),
+          _Btn(
+            icon: Icons.assignment_outlined,
+            label: 'Nueva OV',
+            onTap: () => context.go('/flight-orders'),
+          ),
+          const SizedBox(width: 6),
+          _Btn(
+            icon: Icons.flight_takeoff,
+            label: 'Vuelos',
+            onTap: () => context.go('/flights'),
+          ),
+          const SizedBox(width: 6),
+          _Btn(
+            icon: Icons.mark_unread_chat_alt_outlined,
+            label: 'Mensajes',
+            onTap: () => context.go('/messages'),
+          ),
+        ],
+      ),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 560) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [title, const SizedBox(height: 8), actions],
+          );
+        }
+        return Row(
+          children: [
+            Expanded(child: title),
+            const SizedBox(width: 12),
+            Expanded(child: actions),
+          ],
+        );
+      },
     );
   }
 }

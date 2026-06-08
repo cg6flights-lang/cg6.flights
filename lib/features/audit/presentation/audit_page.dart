@@ -4,6 +4,7 @@ import 'package:cg6_flights/features/audit/data/audit_repository.dart';
 import 'package:cg6_flights/features/audit/domain/audit_log.dart';
 import 'package:cg6_flights/features/audit/presentation/audit_performance_page.dart';
 import 'package:cg6_flights/features/auth/application/session_controller.dart';
+import 'package:cg6_flights/features/trash/presentation/trash_page.dart';
 import 'package:cg6_flights/shared/widgets/data_state_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -217,7 +218,7 @@ class _AuditPageState extends ConsumerState<AuditPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -271,6 +272,7 @@ class _AuditPageState extends ConsumerState<AuditPage>
             tabs: [
               Tab(text: l10n.t('audit.tabEvents')),
               Tab(text: l10n.t('audit.tabPerformance')),
+              Tab(text: l10n.t('audit.tabTrash')),
             ],
           ),
           const SizedBox(height: 12),
@@ -283,51 +285,72 @@ class _AuditPageState extends ConsumerState<AuditPage>
           SizedBox(height: 12),
           // Content
           Expanded(
-            child: auditAsync.when(
-              loading: () => const DataStateView(
-                  kind: DataStateKind.loading, title: ''),
-              error: (_, _) => DataStateView(
-                kind: DataStateKind.systemError,
-                title: l10n.t('audit.loadFailed'),
-                message: l10n.t('common.retry'),
-                onRetry: () =>
-                    ref.invalidate(_auditLogsProvider(_query)),
-              ),
-              data: (result) {
-                final logs = switch (result) {
-                  AppSuccess<List<AuditLog>>(data: final list) => list,
-                  AppFailure<List<AuditLog>>() => null,
-                };
-
-                if (logs == null) {
-                  final error =
-                      (result as AppFailure<List<AuditLog>>).error;
-                  return DataStateView(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                // Tab 1: Events
+                auditAsync.when(
+                  loading: () => const DataStateView(
+                      kind: DataStateKind.loading, title: ''),
+                  error: (_, _) => DataStateView(
                     kind: DataStateKind.systemError,
                     title: l10n.t('audit.loadFailed'),
-                    message: error.message,
+                    message: l10n.t('common.retry'),
                     onRetry: () =>
                         ref.invalidate(_auditLogsProvider(_query)),
-                  );
-                }
+                  ),
+                  data: (result) {
+                    final logs = switch (result) {
+                      AppSuccess<List<AuditLog>>(data: final list) => list,
+                      AppFailure<List<AuditLog>>() => null,
+                    };
 
-                if (logs.isEmpty) {
-                  return DataStateView(
-                    kind: DataStateKind.empty,
-                    title: _hasActiveFilters
-                        ? l10n.t('audit.filteredEmpty')
-                        : l10n.t('audit.empty'),
-                  );
-                }
+                    if (logs == null) {
+                      final error =
+                          (result as AppFailure<List<AuditLog>>).error;
+                      return DataStateView(
+                        kind: DataStateKind.systemError,
+                        title: l10n.t('audit.loadFailed'),
+                        message: error.message,
+                        onRetry: () =>
+                            ref.invalidate(_auditLogsProvider(_query)),
+                      );
+                    }
 
-                return TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildEventsTab(logs, theme, l10n),
-                    AuditPerformancePage(logs: logs),
-                  ],
-                );
-              },
+                    if (logs.isEmpty) {
+                      return DataStateView(
+                        kind: DataStateKind.empty,
+                        title: _hasActiveFilters
+                            ? l10n.t('audit.filteredEmpty')
+                            : l10n.t('audit.empty'),
+                      );
+                    }
+
+                    return _buildEventsTab(logs, theme, l10n);
+                  },
+                ),
+                // Tab 2: Performance
+                auditAsync.when(
+                  loading: () => const DataStateView(
+                      kind: DataStateKind.loading, title: ''),
+                  error: (_, _) => DataStateView(
+                    kind: DataStateKind.systemError,
+                    title: l10n.t('audit.loadFailed'),
+                    message: l10n.t('common.retry'),
+                    onRetry: () =>
+                        ref.invalidate(_auditLogsProvider(_query)),
+                  ),
+                  data: (result) {
+                    final logs = switch (result) {
+                      AppSuccess<List<AuditLog>>(data: final list) => list,
+                      AppFailure<List<AuditLog>>() => <AuditLog>[],
+                    };
+                    return AuditPerformancePage(logs: logs);
+                  },
+                ),
+                // Tab 3: Trash
+                const TrashPage(),
+              ],
             ),
           ),
         ],
