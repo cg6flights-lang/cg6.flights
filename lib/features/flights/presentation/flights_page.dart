@@ -52,6 +52,7 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
   FlightOrderItem? _selectedItem;
   String? _selectedUnitId;
   List<UnitOption> _units = [];
+  bool _mobileDetailOpen = false;
 
   Timer? _autoRefresh;
 
@@ -272,14 +273,14 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final wide = constraints.maxWidth >= 1100;
-                final board = _buildBoard(flightsAsync, l10n, theme, tz);
+                final board = _buildBoard(
+                  flightsAsync,
+                  l10n,
+                  theme,
+                  tz,
+                  useDesktopSelection: wide,
+                );
                 if (!wide) {
-                  // On mobile, open detail in bottom sheet when selecting a flight
-                  if (_selectedItem != null) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      _showMobileDetail(context, _selectedItem!, l10n, tz);
-                    });
-                  }
                   return board;
                 }
 
@@ -373,8 +374,9 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
     AsyncValue<AppResult<List<FlightOrderItem>>> flightsAsync,
     AppLocalizations l10n,
     ThemeData theme,
-    int tz,
-  ) {
+    int tz, {
+    required bool useDesktopSelection,
+  }) {
     return flightsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(
@@ -402,8 +404,10 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
           return Center(child: Text((result as AppFailure).error.message));
         }
 
-        // Auto-select first flight if none selected
-        if (_selectedItem == null && flights.isNotEmpty) {
+        // Desktop keeps a side detail panel. Mobile opens details only on tap.
+        if (useDesktopSelection &&
+            _selectedItem == null &&
+            flights.isNotEmpty) {
           _selectedItem = flights.first;
         }
 
@@ -465,13 +469,25 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
               if (departures.isEmpty)
                 _emptySection('Sin despegues programados', theme)
               else
-                _flightTable(departures, l10n, theme, tz),
+                _flightTable(
+                  departures,
+                  l10n,
+                  theme,
+                  tz,
+                  useDesktopSelection: useDesktopSelection,
+                ),
               const SizedBox(height: 16),
               _sectionHeader('🛬 Arrivals', arrivals.length, theme),
               if (arrivals.isEmpty)
                 _emptySection('Sin llegadas registradas', theme)
               else
-                _flightTable(arrivals, l10n, theme, tz),
+                _flightTable(
+                  arrivals,
+                  l10n,
+                  theme,
+                  tz,
+                  useDesktopSelection: useDesktopSelection,
+                ),
             ],
           ),
         );
@@ -578,19 +594,20 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
 
   // ── Advance button ──────────────────────────────────────────────────
 
-  void _showMobileDetail(
+  Future<void> _showMobileDetail(
     BuildContext context,
     FlightOrderItem item,
     AppLocalizations l10n,
     int tz,
-  ) {
-    // Prevent recursive calls
-    if (_selectedItem == null) return;
-    final selected = _selectedItem!;
-    _selectedItem = null; // reset to prevent loop
-    showModalBottomSheet(
+  ) async {
+    if (_mobileDetailOpen) return;
+    _mobileDetailOpen = true;
+    final selected = item;
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      isDismissible: true,
+      enableDrag: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
@@ -607,17 +624,29 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(2),
-                        color: Colors.grey.shade300,
+                  Row(
+                    children: [
+                      const SizedBox(width: 48),
+                      Expanded(
+                        child: Center(
+                          child: Container(
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(2),
+                              color: Colors.grey.shade300,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+                      IconButton(
+                        tooltip: l10n.t('common.close'),
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
                   FlightDetailPanel(
                     key: ValueKey(selected.id),
                     item: selected,
@@ -633,9 +662,11 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
           },
         );
       },
-    ).then((_) {
-      // Restore selection after sheet closes
-      if (mounted) setState(() {});
+    );
+    if (!mounted) return;
+    setState(() {
+      _mobileDetailOpen = false;
+      _selectedItem = null;
     });
   }
 
@@ -735,8 +766,9 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
     List<FlightOrderItem> flights,
     AppLocalizations l10n,
     ThemeData theme,
-    int tz,
-  ) {
+    int tz, {
+    required bool useDesktopSelection,
+  }) {
     return Card(
       elevation: 1,
       margin: EdgeInsets.zero,
@@ -764,9 +796,15 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
             rows: [
               for (final f in flights)
                 DataRow(
-                  selected: _selectedItem?.id == f.id,
-                  onSelectChanged: (_) => setState(() => _selectedItem = f),
-                  color: _selectedItem?.id == f.id
+                  selected: useDesktopSelection && _selectedItem?.id == f.id,
+                  onSelectChanged: (_) {
+                    if (useDesktopSelection) {
+                      setState(() => _selectedItem = f);
+                    } else {
+                      _showMobileDetail(context, f, l10n, tz);
+                    }
+                  },
+                  color: useDesktopSelection && _selectedItem?.id == f.id
                       ? WidgetStateProperty.all(
                           theme.colorScheme.primary.withValues(alpha: 0.08),
                         )
