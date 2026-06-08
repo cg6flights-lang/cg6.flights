@@ -26,9 +26,12 @@ abstract class AircraftRepository {
     String? obTailNumber,
     String displayRegistration = 'FAP',
     String? squadronId,
+    List<String> squadronIds = const [],
   });
 
   Future<AppResult<void>> deactivateAircraft(String aircraftId);
+
+  Future<AppResult<Map<String, List<String>>>> getDistinctMetadata();
 
   Future<AppResult<List<AircraftFlightHours>>> getFlightHours({String? unitId});
 
@@ -47,20 +50,21 @@ class SupabaseAircraftRepository implements AircraftRepository {
   @override
   Future<AppResult<List<Aircraft>>> listAircraft() async {
     try {
-      final rows = await _client
-          .from('aircraft')
-          .select(
-            'id,unit_id,tail_number,ob_tail_number,display_registration,model,manufacturer,serial_number,year,status,active,inoperative_reason,squadron_id,flight_squadrons(name)',
-          )
-          .eq('active', true)
-          .order('tail_number');
-      return AppSuccess(
-        rows
-            .map<Aircraft>(
-              (row) => Aircraft.fromJson(Map<String, dynamic>.from(row)),
-            )
-            .toList(),
+      final response = await _client.functions.invoke(
+        'list-aircraft',
+        body: const {},
       );
+      final body = response.data;
+      if (body is Map && body['ok'] == true && body['data'] is List) {
+        return AppSuccess(
+          (body['data'] as List<dynamic>)
+              .map((row) => Aircraft.fromJson(Map<String, dynamic>.from(row)))
+              .toList(),
+        );
+      }
+      return AppFailure(_errorFromBody(body));
+    } on FunctionException catch (e) {
+      return AppFailure(_errorFromBody(e.details));
     } catch (_) {
       return const AppFailure(
         AppError(
@@ -87,6 +91,7 @@ class SupabaseAircraftRepository implements AircraftRepository {
     String? obTailNumber,
     String displayRegistration = 'FAP',
     String? squadronId,
+    List<String> squadronIds = const [],
   }) async {
     final action = aircraftId == null ? 'create' : 'update';
     return _manageAircraft(
@@ -103,6 +108,7 @@ class SupabaseAircraftRepository implements AircraftRepository {
       displayRegistration: displayRegistration,
       inoperativeReason: inoperativeReason,
       squadronId: squadronId,
+      squadronIds: squadronIds,
     );
   }
 
@@ -112,15 +118,65 @@ class SupabaseAircraftRepository implements AircraftRepository {
   }
 
   @override
-  Future<AppResult<List<AircraftFlightHours>>> getFlightHours({String? unitId}) async {
+  Future<AppResult<Map<String, List<String>>>> getDistinctMetadata() async {
     try {
-      final response = await _client.rpc('get_aircraft_flight_hours', params: {'p_unit_id': unitId ?? ''});
+      final results = await Future.wait([
+        _client
+            .from('aircraft')
+            .select('manufacturer')
+            .eq('active', true)
+            .order('manufacturer'),
+        _client
+            .from('aircraft')
+            .select('model')
+            .eq('active', true)
+            .order('model'),
+      ]);
+      final manufacturers = <String>{};
+      final models = <String>{};
+      for (final r in results[0] as List<dynamic>) {
+        final m = (r as Map<String, dynamic>)['manufacturer']
+            ?.toString()
+            .trim();
+        if (m != null && m.isNotEmpty) manufacturers.add(m);
+      }
+      for (final r in results[1] as List<dynamic>) {
+        final m = (r as Map<String, dynamic>)['model']?.toString().trim();
+        if (m != null && m.isNotEmpty) models.add(m);
+      }
+      return AppSuccess({
+        'manufacturers': manufacturers.toList()..sort(),
+        'models': models.toList()..sort(),
+      });
+    } catch (_) {
+      return AppSuccess(const {'manufacturers': [], 'models': []});
+    }
+  }
+
+  @override
+  Future<AppResult<List<AircraftFlightHours>>> getFlightHours({
+    String? unitId,
+  }) async {
+    try {
+      final response = await _client.rpc(
+        'get_aircraft_flight_hours',
+        params: {'p_unit_id': unitId},
+      );
       final list = (response as List<dynamic>)
-          .map((r) => AircraftFlightHours.fromJson(Map<String, dynamic>.from(r)))
+          .map(
+            (r) => AircraftFlightHours.fromJson(Map<String, dynamic>.from(r)),
+          )
           .toList();
       return AppSuccess(list);
     } catch (_) {
-      return const AppFailure(AppError(code: 'FLIGHT_HOURS_FAILED', message: 'No se pudieron cargar las horas de vuelo.', category: AppErrorCategory.data, severity: AppErrorSeverity.low));
+      return const AppFailure(
+        AppError(
+          code: 'FLIGHT_HOURS_FAILED',
+          message: 'No se pudieron cargar las horas de vuelo.',
+          category: AppErrorCategory.data,
+          severity: AppErrorSeverity.low,
+        ),
+      );
     }
   }
 
@@ -131,17 +187,19 @@ class SupabaseAircraftRepository implements AircraftRepository {
     int monthsLookback = 12,
   }) async {
     try {
-      final rows = await _client.rpc('get_operational_curve', params: {
-        'p_unit_id': unitId,
-        'p_granularity': granularity,
-        'p_months_lookback': monthsLookback,
-      });
+      final rows = await _client.rpc(
+        'get_operational_curve',
+        params: {
+          'p_unit_id': unitId,
+          'p_granularity': granularity,
+          'p_months_lookback': monthsLookback,
+        },
+      );
       return AppSuccess(
         (rows as List)
             .map<OperationalDataPoint>(
-              (row) => OperationalDataPoint.fromJson(
-                Map<String, dynamic>.from(row),
-              ),
+              (row) =>
+                  OperationalDataPoint.fromJson(Map<String, dynamic>.from(row)),
             )
             .toList(),
       );
@@ -171,6 +229,7 @@ class SupabaseAircraftRepository implements AircraftRepository {
     String? obTailNumber,
     String displayRegistration = 'FAP',
     String? squadronId,
+    List<String> squadronIds = const [],
   }) async {
     try {
       final response = await _client.functions.invoke(
@@ -189,6 +248,7 @@ class SupabaseAircraftRepository implements AircraftRepository {
           'ob_tail_number': obTailNumber,
           'display_registration': displayRegistration,
           'squadron_id': squadronId,
+          'squadron_ids': squadronIds,
         },
       );
       final body = response.data;

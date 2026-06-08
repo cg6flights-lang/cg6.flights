@@ -14,6 +14,10 @@ class Aircraft {
     this.displayRegistration = 'FAP',
     this.squadronId,
     this.squadronName,
+    this.squadronIds = const [],
+    this.lastFlightAt,
+    this.lastFlightOrderNumber,
+    this.daysWithoutFlying,
   });
 
   final String id;
@@ -30,6 +34,10 @@ class Aircraft {
   final String displayRegistration; // 'FAP' or 'OB'
   final String? squadronId;
   final String? squadronName;
+  final List<String> squadronIds; // M:N junction
+  final DateTime? lastFlightAt;
+  final String? lastFlightOrderNumber;
+  final int? daysWithoutFlying;
 
   bool get isOperational => status == 'operational';
 
@@ -57,11 +65,27 @@ class Aircraft {
       year: json['year'] != null ? int.tryParse(json['year'].toString()) : null,
       inoperativeReason: json['inoperative_reason']?.toString(),
       obTailNumber: json['ob_tail_number']?.toString(),
-      displayRegistration:
-          json['display_registration']?.toString() ?? 'FAP',
+      displayRegistration: json['display_registration']?.toString() ?? 'FAP',
       squadronId: json['squadron_id']?.toString(),
       squadronName: json['flight_squadrons'] is Map
           ? (json['flight_squadrons'] as Map)['name']?.toString()
+          : null,
+      squadronIds:
+          (json['squadron_ids'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          (json['aircraft_squadrons'] is List
+              ? (json['aircraft_squadrons'] as List)
+                    .map((r) => (r as Map)['squadron_id']?.toString() ?? '')
+                    .where((id) => id.isNotEmpty)
+                    .toList()
+              : <String>[]),
+      lastFlightAt: json['last_flight_at'] != null
+          ? DateTime.tryParse(json['last_flight_at'].toString())
+          : null,
+      lastFlightOrderNumber: json['last_flight_order_number']?.toString(),
+      daysWithoutFlying: json['days_without_flying'] != null
+          ? int.tryParse(json['days_without_flying'].toString())
           : null,
     );
   }

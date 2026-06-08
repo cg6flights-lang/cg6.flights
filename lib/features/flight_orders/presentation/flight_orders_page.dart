@@ -396,13 +396,13 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
                       child: Text(u.name.isNotEmpty ? u.name : u.code, style: const TextStyle(fontSize: 13)),
                     ),
                 ],
-                onChanged: (v) => setState(() => _selectedUnitId = v),
+                onChanged: (v) => setState(() { _selectedUnitId = v; _initialSelectDone = false; }),
               ),
             ),
             _CalendarDropdown(
               selectedDate: _selectedDate,
               ovSummary: _buildOvSummary(),
-              onDateSelected: (d) => setState(() => _selectedDate = d),
+              onDateSelected: (d) => setState(() { _selectedDate = d; _initialSelectDone = false; }),
             ),
             SizedBox(
               width: 160,
@@ -423,6 +423,7 @@ class _FlightOrdersPageState extends ConsumerState<FlightOrdersPage> {
                 onChanged: (v) => setState(() {
                   _statusFilters.clear();
                   if (v != null) _statusFilters.add(v);
+                  _initialSelectDone = false;
                 }),
               ),
             ),
@@ -858,6 +859,17 @@ class _ProfilesCardState extends ConsumerState<_ProfilesCard> {
   bool _adding = false;
   List<FlightOrderProfile> _profiles = [];
   bool _loaded = false;
+
+  @override
+  void didUpdateWidget(covariant _ProfilesCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.orderId != oldWidget.orderId) {
+      setState(() {
+        _profiles = [];
+        _loaded = false;
+      });
+    }
+  }
 
   @override
   void dispose() { _descCtrl.dispose(); super.dispose(); }

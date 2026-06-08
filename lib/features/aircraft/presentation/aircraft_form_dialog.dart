@@ -16,6 +16,7 @@ class AircraftFormResult {
     this.obTailNumber,
     this.displayRegistration = 'FAP',
     this.squadronId,
+    this.squadronIds = const [],
   });
 
   final String unitId;
@@ -29,6 +30,7 @@ class AircraftFormResult {
   final String? obTailNumber;
   final String displayRegistration;
   final String? squadronId;
+  final List<String> squadronIds;
 }
 
 class AircraftFormDialog extends StatefulWidget {
@@ -38,12 +40,16 @@ class AircraftFormDialog extends StatefulWidget {
     required this.units,
     this.defaultUnitId,
     this.squadrons = const [],
+    this.manufacturers = const [],
+    this.models = const [],
   });
 
   final Aircraft? aircraft;
   final List<UnitOption> units;
   final String? defaultUnitId;
   final List<dynamic> squadrons; // FlightSquadron list
+  final List<String> manufacturers;
+  final List<String> models;
 
   @override
   State<AircraftFormDialog> createState() => _AircraftFormDialogState();
@@ -63,12 +69,15 @@ class _AircraftFormDialogState extends State<AircraftFormDialog> {
   bool _hasOb = false;
   late String _displayReg; // 'FAP' or 'OB'
   String? _squadronId;
+  final Set<String> _squadronIds = {};
 
   static const _edaciCode = 'EDACI';
   static const _gru51Id = '4317c6f3-e530-4b9c-a898-1f765ceaafb2';
 
   bool get _isEditing => widget.aircraft != null;
-  bool get _isEdaci => _unitId.isNotEmpty ? widget.units.any((u) => u.id == _unitId && u.code == _edaciCode) : false;
+  bool get _isEdaci => _unitId.isNotEmpty
+      ? widget.units.any((u) => u.id == _unitId && u.code == _edaciCode)
+      : false;
   bool get _isGru51 => _unitId == _gru51Id;
 
   @override
@@ -95,6 +104,7 @@ class _AircraftFormDialogState extends State<AircraftFormDialog> {
     _hasOb = a?.obTailNumber != null && a!.obTailNumber!.isNotEmpty;
     _displayReg = a?.displayRegistration == 'OB' ? 'OB' : 'FAP';
     _squadronId = a?.squadronId;
+    if (a?.squadronIds.isNotEmpty == true) _squadronIds.addAll(a!.squadronIds);
     _status = a?.status ?? 'operational';
   }
 
@@ -157,17 +167,40 @@ class _AircraftFormDialogState extends State<AircraftFormDialog> {
                     ),
                   if (isGlobal) const SizedBox(height: 16),
                   if (_isGru51 && widget.squadrons.isNotEmpty) ...[
-                    DropdownButtonFormField<String>(
-                      initialValue: _squadronId,
-                      decoration: InputDecoration(
-                        labelText: l10n.t('aircraft.squadron'),
-                        border: const OutlineInputBorder(),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        l10n.t('aircraft.squadron'),
+                        style: Theme.of(context).textTheme.labelMedium,
                       ),
-                      items: [
+                    ),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
                         for (final s in widget.squadrons)
-                          DropdownMenuItem(value: s.id, child: Text(s.name)),
+                          FilterChip(
+                            label: Text(
+                              s.name,
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                            selected: _squadronIds.contains(s.id),
+                            selectedColor: Theme.of(
+                              context,
+                            ).colorScheme.tertiary.withValues(alpha: 0.18),
+                            checkmarkColor: Theme.of(
+                              context,
+                            ).colorScheme.tertiary,
+                            side: BorderSide.none,
+                            onSelected: (v) => setState(() {
+                              if (v) {
+                                _squadronIds.add(s.id);
+                              } else {
+                                _squadronIds.remove(s.id);
+                              }
+                            }),
+                          ),
                       ],
-                      onChanged: (v) => setState(() => _squadronId = v),
                     ),
                     const SizedBox(height: 16),
                   ],
@@ -212,59 +245,96 @@ class _AircraftFormDialogState extends State<AircraftFormDialog> {
                             : null,
                       ),
                       const SizedBox(height: 12),
-                      Text(l10n.t('aircraft.displayRegistration'),
-                          style: Theme.of(context).textTheme.labelMedium),
+                      Text(
+                        l10n.t('aircraft.displayRegistration'),
+                        style: Theme.of(context).textTheme.labelMedium,
+                      ),
                       const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: RadioListTile<String>(
-                              title: Text(l10n.t('aircraft.registrationFAP')),
-                              value: 'FAP',
-                              groupValue: _displayReg,
-                              onChanged: (v) =>
-                                  setState(() => _displayReg = v ?? 'FAP'),
-                              dense: true,
-                              contentPadding: EdgeInsets.zero,
+                      RadioGroup<String>(
+                        groupValue: _displayReg,
+                        onChanged: (v) =>
+                            setState(() => _displayReg = v ?? 'FAP'),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: RadioListTile<String>(
+                                title: Text(l10n.t('aircraft.registrationFAP')),
+                                value: 'FAP',
+                                dense: true,
+                                contentPadding: EdgeInsets.zero,
+                              ),
                             ),
-                          ),
-                          Expanded(
-                            child: RadioListTile<String>(
-                              title: Text(l10n.t('aircraft.registrationOB')),
-                              value: 'OB',
-                              groupValue: _displayReg,
-                              onChanged: (v) =>
-                                  setState(() => _displayReg = v ?? 'OB'),
-                              dense: true,
-                              contentPadding: EdgeInsets.zero,
+                            Expanded(
+                              child: RadioListTile<String>(
+                                title: Text(l10n.t('aircraft.registrationOB')),
+                                value: 'OB',
+                                dense: true,
+                                contentPadding: EdgeInsets.zero,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 4),
                     ],
                   ],
                   const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _manufacturerController,
-                    decoration: InputDecoration(
-                      labelText: l10n.t('aircraft.manufacturer'),
-                      border: const OutlineInputBorder(),
-                    ),
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? l10n.t('validation.required')
+                  Autocomplete<String>(
+                    initialValue: _manufacturerController.text.isNotEmpty
+                        ? TextEditingValue(text: _manufacturerController.text)
                         : null,
+                    optionsBuilder: (textEditingValue) {
+                      if (textEditingValue.text.isEmpty) {
+                        return widget.manufacturers;
+                      }
+                      return widget.manufacturers.where(
+                        (m) => m.toLowerCase().contains(
+                          textEditingValue.text.toLowerCase(),
+                        ),
+                      );
+                    },
+                    onSelected: (v) => _manufacturerController.text = v,
+                    fieldViewBuilder:
+                        (context, controller, focusNode, onSubmit) =>
+                            TextFormField(
+                              controller: controller,
+                              focusNode: focusNode,
+                              decoration: InputDecoration(
+                                labelText: l10n.t('aircraft.manufacturer'),
+                                border: const OutlineInputBorder(),
+                              ),
+                              validator: (v) => (v == null || v.trim().isEmpty)
+                                  ? l10n.t('validation.required')
+                                  : null,
+                            ),
                   ),
                   const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _modelController,
-                    decoration: InputDecoration(
-                      labelText: l10n.t('aircraft.model'),
-                      border: const OutlineInputBorder(),
-                    ),
-                    validator: (v) => (v == null || v.trim().isEmpty)
-                        ? l10n.t('validation.required')
+                  Autocomplete<String>(
+                    initialValue: _modelController.text.isNotEmpty
+                        ? TextEditingValue(text: _modelController.text)
                         : null,
+                    optionsBuilder: (textEditingValue) {
+                      if (textEditingValue.text.isEmpty) return widget.models;
+                      return widget.models.where(
+                        (m) => m.toLowerCase().contains(
+                          textEditingValue.text.toLowerCase(),
+                        ),
+                      );
+                    },
+                    onSelected: (v) => _modelController.text = v,
+                    fieldViewBuilder:
+                        (context, controller, focusNode, onSubmit) =>
+                            TextFormField(
+                              controller: controller,
+                              focusNode: focusNode,
+                              decoration: InputDecoration(
+                                labelText: l10n.t('aircraft.model'),
+                                border: const OutlineInputBorder(),
+                              ),
+                              validator: (v) => (v == null || v.trim().isEmpty)
+                                  ? l10n.t('validation.required')
+                                  : null,
+                            ),
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -382,6 +452,7 @@ class _AircraftFormDialogState extends State<AircraftFormDialog> {
             : null,
         displayRegistration: _isEdaci ? _displayReg : 'FAP',
         squadronId: _isGru51 ? _squadronId : null,
+        squadronIds: _isGru51 ? _squadronIds.toList() : [],
       ),
     );
   }

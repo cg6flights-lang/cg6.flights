@@ -169,6 +169,10 @@ Deno.serve(async (req) => {
   const displayRegistration = String(payload.display_registration ?? "FAP");
   const validRegistrations = ["FAP", "OB"];
   const squadronId = payload.squadron_id ? String(payload.squadron_id) : null;
+  const hasSquadronIds = Array.isArray(payload.squadron_ids);
+  const squadronIds: string[] = hasSquadronIds
+    ? [...new Set(payload.squadron_ids.map((id: unknown) => String(id)).filter((id: string) => id.length > 0))]
+    : [];
 
   if (!actions.has(action)) {
     return errorResponse(
@@ -411,6 +415,31 @@ Deno.serve(async (req) => {
       .single();
     aircraft = result.data;
     aircraftError = result.error;
+  }
+
+  // Sync aircraft_squadrons junction table (M:N) when caller sends the field.
+  let squadronSyncError = null;
+  if (!aircraftError && aircraft && (action === "create" || action === "update") && hasSquadronIds) {
+    const deleteResult = await adminClient
+      .from("aircraft_squadrons")
+      .delete()
+      .eq("aircraft_id", aircraft.id);
+    squadronSyncError = deleteResult.error;
+
+    if (!squadronSyncError && squadronIds.length > 0) {
+      const rows = squadronIds.map((sid: string) => ({
+        aircraft_id: aircraft.id,
+        squadron_id: sid,
+      }));
+      const insertResult = await adminClient
+        .from("aircraft_squadrons")
+        .insert(rows);
+      squadronSyncError = insertResult.error;
+    }
+  }
+
+  if (!aircraftError && squadronSyncError) {
+    aircraftError = squadronSyncError;
   }
 
   if (aircraftError || !aircraft) {

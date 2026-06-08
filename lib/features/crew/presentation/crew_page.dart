@@ -53,10 +53,15 @@ class _CrewPageState extends ConsumerState<CrewPage> {
   String? _selectedSquadronId;
   List<FlightSquadron> _squadrons = [];
 
-  bool get _isGru51 => _selectedUnitId == '4317c6f3-e530-4b9c-a898-1f765ceaafb2';
+  bool get _isGru51 =>
+      _selectedUnitId == '4317c6f3-e530-4b9c-a898-1f765ceaafb2';
+
+  bool _defaultUnitSet = false;
 
   Future<void> _loadSquadrons() async {
-    final result = await ref.read(squadronRepositoryProvider).listSquadrons(unitId: _selectedUnitId);
+    final result = await ref
+        .read(squadronRepositoryProvider)
+        .listSquadrons(unitId: _selectedUnitId);
     if (mounted) {
       switch (result) {
         case AppSuccess(data: final list):
@@ -112,26 +117,50 @@ class _CrewPageState extends ConsumerState<CrewPage> {
         final units = unitsAsync.value ?? [];
         final grades = gradesAsync.value ?? [];
 
+        // Auto-select first unit by default + load squadrons if GRU51
+        if (!_defaultUnitSet && units.isNotEmpty && _selectedUnitId == null) {
+          _defaultUnitSet = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {
+                _selectedUnitId = units
+                    .firstWhere((u) => u.active, orElse: () => units.first)
+                    .id;
+              });
+              if (_isGru51) _loadSquadrons();
+            }
+          });
+        }
+
         // Apply filters
         var filtered = members;
         if (_selectedUnitId != null) {
-          filtered = filtered.where((m) => m.unitId == _selectedUnitId).toList();
+          filtered = filtered
+              .where((m) => m.unitId == _selectedUnitId)
+              .toList();
         }
         if (_selectedSquadronId != null) {
-          filtered = filtered.where((m) => m.squadronId == _selectedSquadronId).toList();
+          filtered = filtered
+              .where((m) => m.squadronId == _selectedSquadronId)
+              .toList();
         }
 
-        final pilots =
-            filtered.where((m) => m.crewCategory == 'pilot').toList();
-        final mechanics =
-            filtered.where((m) => m.crewCategory == 'mechanic').toList();
+        final pilots = filtered
+            .where((m) => m.crewCategory == 'pilot')
+            .toList();
+        final mechanics = filtered
+            .where((m) => m.crewCategory == 'mechanic')
+            .toList();
 
         return LayoutBuilder(
           builder: (context, constraints) {
             final isWide = constraints.maxWidth >= 900;
 
-            Widget buildSection(String category, String title,
-                List<CrewMember> list) {
+            Widget buildSection(
+              String category,
+              String title,
+              List<CrewMember> list,
+            ) {
               return Expanded(
                 child: _CrewSection(
                   category: category,
@@ -141,12 +170,9 @@ class _CrewPageState extends ConsumerState<CrewPage> {
                   units: units,
                   canManage: canManage,
                   isGlobal: isGlobal,
-                  onAdd: () =>
-                      _openForm(context, ref, session.user?.unitId),
-                  onEdit: (m) =>
-                      _openForm(context, ref, null, member: m),
-                  onDeactivate: (m) =>
-                      _confirmDeactivate(context, ref, m),
+                  onAdd: () => _openForm(context, ref, session.user?.unitId),
+                  onEdit: (m) => _openForm(context, ref, null, member: m),
+                  onDeactivate: (m) => _confirmDeactivate(context, ref, m),
                   onRefresh: () => ref.invalidate(_crewListProvider),
                 ),
               );
@@ -173,65 +199,94 @@ class _CrewPageState extends ConsumerState<CrewPage> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                // Filter bar
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    SizedBox(
-                      width: 200,
-                      child: DropdownButtonFormField<String>(
-                        initialValue: _selectedUnitId,
-                        isExpanded: true,
-                        decoration: InputDecoration(
-                          labelText: l10n.t('flightOrders.unit'),
-                          border: const OutlineInputBorder(),
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        ),
-                        items: [
-                          const DropdownMenuItem<String>(value: null, child: Text('Todas', style: TextStyle(fontSize: 13))),
+                // Unit + Squadron filter chips (same row)
+                if (units.length > 1)
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          // Unit chips (ChoiceChip)
                           for (final u in units.where((e) => e.active))
-                            DropdownMenuItem<String>(value: u.id, child: Text(u.name.isNotEmpty ? u.name : u.code, style: const TextStyle(fontSize: 13))),
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: ChoiceChip(
+                                label: Text(
+                                  u.code,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                selected: _selectedUnitId == u.id,
+                                onSelected: (_) => setState(() {
+                                  _selectedUnitId = _selectedUnitId == u.id
+                                      ? null
+                                      : u.id;
+                                  _selectedSquadronId = null;
+                                  _squadrons = [];
+                                  if (_isGru51) _loadSquadrons();
+                                }),
+                              ),
+                            ),
+                          // Squadron sub-filter with fade-in animation
+                          if (_isGru51 && _squadrons.isNotEmpty) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              width: 3,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.outline.withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                            AnimatedOpacity(
+                              duration: const Duration(milliseconds: 400),
+                              opacity: 1.0,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const SizedBox(width: 8),
+                                  for (final s in _squadrons)
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 8),
+                                      child: FilterChip(
+                                        label: Text(
+                                          s.name,
+                                          style: const TextStyle(fontSize: 11),
+                                        ),
+                                        selected: _selectedSquadronId == s.id,
+                                        selectedColor: Theme.of(context)
+                                            .colorScheme
+                                            .tertiary
+                                            .withValues(alpha: 0.18),
+                                        checkmarkColor: Theme.of(
+                                          context,
+                                        ).colorScheme.tertiary,
+                                        side: BorderSide.none,
+                                        onSelected: (_) => setState(() {
+                                          _selectedSquadronId =
+                                              _selectedSquadronId == s.id
+                                              ? null
+                                              : s.id;
+                                        }),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
-                        onChanged: (v) => setState(() {
-                          _selectedUnitId = v;
-                          _selectedSquadronId = null;
-                          _squadrons = [];
-                          if (_isGru51) _loadSquadrons();
-                        }),
                       ),
                     ),
-                    if (_isGru51)
-                      SizedBox(
-                        width: 200,
-                        child: DropdownButtonFormField<String>(
-                          initialValue: _selectedSquadronId,
-                          isExpanded: true,
-                          decoration: InputDecoration(
-                            labelText: l10n.t('crew.squadron'),
-                            border: const OutlineInputBorder(),
-                            isDense: true,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          ),
-                          items: [
-                            DropdownMenuItem<String>(value: null, child: Text(l10n.t('squadron.all'), style: const TextStyle(fontSize: 13))),
-                            for (final s in _squadrons)
-                              DropdownMenuItem<String>(value: s.id, child: Text(s.name, style: const TextStyle(fontSize: 13))),
-                          ],
-                          onChanged: (v) => setState(() => _selectedSquadronId = v),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 24),
+                  ),
+                const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(
-                      child: Text(
-                        l10n.t('nav.crew'),
-                      ),
-                    ),
+                    Expanded(child: Text(l10n.t('nav.crew'))),
                     if (canManage)
                       FilledButton.icon(
                         onPressed: () =>
@@ -249,16 +304,17 @@ class _CrewPageState extends ConsumerState<CrewPage> {
                       buildSection('pilot', l10n.t('crew.pilot'), pilots),
                       const SizedBox(width: 16),
                       buildSection(
-                          'mechanic', l10n.t('crew.mechanic'), mechanics),
+                        'mechanic',
+                        l10n.t('crew.mechanic'),
+                        mechanics,
+                      ),
                     ],
                   )
-                else
-                  ...[
-                    buildSection('pilot', l10n.t('crew.pilot'), pilots),
-                    const SizedBox(height: 16),
-                    buildSection(
-                        'mechanic', l10n.t('crew.mechanic'), mechanics),
-                  ],
+                else ...[
+                  buildSection('pilot', l10n.t('crew.pilot'), pilots),
+                  const SizedBox(height: 16),
+                  buildSection('mechanic', l10n.t('crew.mechanic'), mechanics),
+                ],
               ],
             );
           },
@@ -304,11 +360,15 @@ class _CrewPageState extends ConsumerState<CrewPage> {
     if (!context.mounted) return;
 
     // Load squadrons for GRU51
-    final squadronsResult = await ref.read(squadronRepositoryProvider).listSquadrons();
+    final squadronsResult = await ref
+        .read(squadronRepositoryProvider)
+        .listSquadrons();
     final squadrons = switch (squadronsResult) {
       AppSuccess<List<FlightSquadron>>(data: final list) => list,
       _ => <FlightSquadron>[],
     };
+
+    if (!context.mounted) return;
 
     final saved = await showDialog<CrewFormResult>(
       context: context,
@@ -458,10 +518,7 @@ class _CrewSectionState extends State<_CrewSection> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
 
-    final gradeOptions = widget.members
-        .map((m) => m.grade)
-        .toSet()
-        .toList()
+    final gradeOptions = widget.members.map((m) => m.grade).toSet().toList()
       ..sort();
 
     return Card(
@@ -481,14 +538,16 @@ class _CrewSectionState extends State<_CrewSection> {
                   size: 20,
                 ),
                 const SizedBox(width: 8),
-                Text(widget.title,
-                    style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  widget.title,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const Spacer(),
                 Text(
                   '${_filteredMembers.length}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -513,8 +572,10 @@ class _CrewSectionState extends State<_CrewSection> {
                     items: [
                       DropdownMenuItem(
                         value: '',
-                        child: Text(l10n.t('crew.all'),
-                            style: const TextStyle(fontSize: 13)),
+                        child: Text(
+                          l10n.t('crew.all'),
+                          style: const TextStyle(fontSize: 13),
+                        ),
                       ),
                       for (final g in gradeOptions)
                         DropdownMenuItem(
@@ -522,8 +583,7 @@ class _CrewSectionState extends State<_CrewSection> {
                           child: Text(g, style: const TextStyle(fontSize: 13)),
                         ),
                     ],
-                    onChanged: (v) =>
-                        setState(() => _gradeFilter = v ?? ''),
+                    onChanged: (v) => setState(() => _gradeFilter = v ?? ''),
                   ),
                 ),
                 SizedBox(
@@ -542,18 +602,24 @@ class _CrewSectionState extends State<_CrewSection> {
                     items: [
                       DropdownMenuItem(
                         value: '',
-                        child: Text(l10n.t('crew.all'),
-                            style: const TextStyle(fontSize: 13)),
+                        child: Text(
+                          l10n.t('crew.all'),
+                          style: const TextStyle(fontSize: 13),
+                        ),
                       ),
                       DropdownMenuItem(
                         value: 'nato',
-                        child: Text(l10n.t('crew.nato'),
-                            style: const TextStyle(fontSize: 13)),
+                        child: Text(
+                          l10n.t('crew.nato'),
+                          style: const TextStyle(fontSize: 13),
+                        ),
                       ),
                       DropdownMenuItem(
                         value: 'foraneo',
-                        child: Text(l10n.t('crew.foraneo'),
-                            style: const TextStyle(fontSize: 13)),
+                        child: Text(
+                          l10n.t('crew.foraneo'),
+                          style: const TextStyle(fontSize: 13),
+                        ),
                       ),
                     ],
                     onChanged: (v) =>
@@ -577,18 +643,21 @@ class _CrewSectionState extends State<_CrewSection> {
                       items: [
                         DropdownMenuItem(
                           value: '',
-                          child: Text(l10n.t('crew.all'),
-                              style: const TextStyle(fontSize: 13)),
+                          child: Text(
+                            l10n.t('crew.all'),
+                            style: const TextStyle(fontSize: 13),
+                          ),
                         ),
                         for (final u in widget.units)
                           DropdownMenuItem(
                             value: u.id,
-                            child: Text(u.code,
-                                style: const TextStyle(fontSize: 13)),
+                            child: Text(
+                              u.code,
+                              style: const TextStyle(fontSize: 13),
+                            ),
                           ),
                       ],
-                      onChanged: (v) =>
-                          setState(() => _unitFilter = v ?? ''),
+                      onChanged: (v) => setState(() => _unitFilter = v ?? ''),
                     ),
                   ),
               ],
@@ -601,8 +670,8 @@ class _CrewSectionState extends State<_CrewSection> {
                   child: Text(
                     l10n.t('crew.empty'),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
               )
@@ -621,25 +690,35 @@ class _CrewSectionState extends State<_CrewSection> {
                       DataColumn(label: Text(l10n.t('crew.lastName'))),
                       DataColumn(label: Text(l10n.t('crew.nsa'))),
                       DataColumn(label: Text(l10n.t('crew.assignmentType'))),
-                      DataColumn(
-                          label: Text(l10n.t('crew.qualifications'))),
-                      DataColumn(
-                          label: Text(l10n.t('crew.appointmentDate'))),
-                      if (widget.canManage)
-                        const DataColumn(label: Text('')),
+                      DataColumn(label: Text(l10n.t('crew.qualifications'))),
+                      DataColumn(label: Text(l10n.t('crew.appointmentDate'))),
+                      if (widget.canManage) const DataColumn(label: Text('')),
                     ],
                     rows: [
                       for (final m in _filteredMembers)
                         DataRow(
                           cells: [
-                            DataCell(Text(m.grade,
-                                style: const TextStyle(fontSize: 13))),
-                            DataCell(Text(m.firstName,
-                                style: const TextStyle(fontSize: 13))),
-                            DataCell(Text(m.lastName,
-                                style: const TextStyle(fontSize: 13))),
-                            DataCell(Text(m.nsa,
-                                style: const TextStyle(fontSize: 13))),
+                            DataCell(
+                              Text(
+                                m.grade,
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                m.firstName,
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ),
+                            DataCell(
+                              Text(
+                                m.lastName,
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ),
+                            DataCell(
+                              Text(m.nsa, style: const TextStyle(fontSize: 13)),
+                            ),
                             DataCell(_assignmentChip(context, m)),
                             DataCell(_qualificationChips(m)),
                             DataCell(
@@ -654,19 +733,22 @@ class _CrewSectionState extends State<_CrewSection> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     IconButton(
-                                      icon: const Icon(Icons.edit_outlined,
-                                          size: 18),
+                                      icon: const Icon(
+                                        Icons.edit_outlined,
+                                        size: 18,
+                                      ),
                                       tooltip: l10n.t('crew.edit'),
                                       visualDensity: VisualDensity.compact,
                                       onPressed: () => widget.onEdit(m),
                                     ),
                                     IconButton(
-                                      icon: const Icon(Icons.delete_outline,
-                                          size: 18),
+                                      icon: const Icon(
+                                        Icons.delete_outline,
+                                        size: 18,
+                                      ),
                                       tooltip: l10n.t('crew.deactivate'),
                                       visualDensity: VisualDensity.compact,
-                                      onPressed: () =>
-                                          widget.onDeactivate(m),
+                                      onPressed: () => widget.onDeactivate(m),
                                     ),
                                   ],
                                 ),
@@ -691,8 +773,9 @@ class _CrewSectionState extends State<_CrewSection> {
         isNato ? l10n.t('crew.nato') : l10n.t('crew.foraneo'),
         style: const TextStyle(fontSize: 12),
       ),
-      backgroundColor: (isNato ? Colors.green : Colors.amber)
-          .withValues(alpha: 0.15),
+      backgroundColor: (isNato ? Colors.green : Colors.amber).withValues(
+        alpha: 0.15,
+      ),
       side: BorderSide.none,
       padding: EdgeInsets.zero,
       visualDensity: VisualDensity.compact,

@@ -29,6 +29,8 @@ class CG6App extends ConsumerWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeMode,
+      themeAnimationDuration: const Duration(milliseconds: 80),
+      themeAnimationCurve: Curves.easeInOut,
       locale: locale,
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: const [
