@@ -1,6 +1,7 @@
 import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/features/crew/domain/crew_member.dart';
 import 'package:cg6_flights/features/crew/domain/grade_option.dart';
+import 'package:cg6_flights/features/crew/domain/squadron.dart';
 import 'package:cg6_flights/features/units/domain/unit_option.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,6 +18,7 @@ class CrewFormResult {
     required this.assignmentType,
     this.callsign,
     this.qualifications = const [],
+    this.squadronId,
   });
 
   final String unitId;
@@ -29,6 +31,7 @@ class CrewFormResult {
   final String assignmentType;
   final String? callsign;
   final List<String> qualifications;
+  final String? squadronId;
 }
 
 class CrewFormDialog extends StatefulWidget {
@@ -38,12 +41,14 @@ class CrewFormDialog extends StatefulWidget {
     required this.units,
     required this.grades,
     this.defaultUnitId,
+    this.squadrons = const [],
   });
 
   final CrewMember? member;
   final List<UnitOption> units;
   final List<GradeOption> grades;
   final String? defaultUnitId;
+  final List<FlightSquadron> squadrons;
 
   @override
   State<CrewFormDialog> createState() => _CrewFormDialogState();
@@ -61,9 +66,13 @@ class _CrewFormDialogState extends State<CrewFormDialog> {
   late DateTime _appointmentDate;
   late String _assignmentType;
   late List<String> _qualifications;
+  String? _squadronId;
 
   List<GradeOption> get _filteredGrades =>
       widget.grades.where((g) => g.category == _crewCategory).toList();
+
+  bool get _isGru51 => _unitId == '4317c6f3-e530-4b9c-a898-1f765ceaafb2';
+  bool get _showSquadron => _isGru51 && widget.squadrons.isNotEmpty;
 
   bool get _isEditing => widget.member != null;
 
@@ -84,6 +93,7 @@ class _CrewFormDialogState extends State<CrewFormDialog> {
     _appointmentDate = m?.appointmentDate ?? DateTime.now();
     _assignmentType = m?.assignmentType ?? 'nato';
     _qualifications = List<String>.from(m?.qualifications ?? []);
+    _squadronId = m?.squadronId;
   }
 
   @override
@@ -140,6 +150,21 @@ class _CrewFormDialogState extends State<CrewFormDialog> {
                           : null,
                     ),
                   if (isGlobal) const SizedBox(height: 16),
+                  if (_showSquadron) ...[
+                    DropdownButtonFormField<String>(
+                      initialValue: _squadronId,
+                      decoration: InputDecoration(
+                        labelText: l10n.t('crew.squadron'),
+                        border: const OutlineInputBorder(),
+                      ),
+                      items: [
+                        for (final s in widget.squadrons)
+                          DropdownMenuItem(value: s.id, child: Text(s.name)),
+                      ],
+                      onChanged: (v) => setState(() => _squadronId = v),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   DropdownButtonFormField<String>(
                     initialValue: _crewCategory,
                     decoration: InputDecoration(
@@ -345,6 +370,7 @@ class _CrewFormDialogState extends State<CrewFormDialog> {
         appointmentDate: _appointmentDate,
         assignmentType: _assignmentType,
         qualifications: _qualifications,
+        squadronId: _showSquadron ? _squadronId : null,
       ),
     );
   }

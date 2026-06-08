@@ -12,6 +12,8 @@ class CrewMember {
     required this.assignmentType,
     this.callsign,
     this.qualifications = const [],
+    this.squadronId,
+    this.squadronName,
   });
 
   final String id;
@@ -26,6 +28,8 @@ class CrewMember {
   final String assignmentType;
   final String? callsign;
   final List<String> qualifications;
+  final String? squadronId;
+  final String? squadronName;
 
   static const validQualifications = ['IP', 'PS', 'CO', 'PM', 'CP', 'OB'];
 
@@ -59,6 +63,10 @@ class CrewMember {
           : DateTime.now(),
       active: json['active'] == true,
       qualifications: qualList,
+      squadronId: json['squadron_id']?.toString(),
+      squadronName: json['flight_squadrons'] is Map
+          ? (json['flight_squadrons'] as Map)['name']?.toString()
+          : json['squadron_name']?.toString(),
     );
   }
 

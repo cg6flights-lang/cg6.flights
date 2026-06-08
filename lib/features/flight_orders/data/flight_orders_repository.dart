@@ -57,6 +57,17 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
 
   final SupabaseClient _client;
 
+  /// Returns the registration to display: OB tail number if selected, else FAP tail number.
+  static String? _displayTailNumber(Map<String, dynamic>? ac) {
+    if (ac == null) return null;
+    final displayReg = ac['display_registration']?.toString();
+    if (displayReg == 'OB') {
+      final ob = ac['ob_tail_number']?.toString();
+      if (ob != null && ob.isNotEmpty) return ob;
+    }
+    return ac['tail_number']?.toString();
+  }
+
   @override
   Future<AppResult<List<FlightOrder>>> listFlightOrders() async {
     try {
@@ -118,7 +129,7 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
       final results = await Future.wait([
         _client
             .from('aircraft')
-            .select('id, tail_number, model')
+            .select('id, tail_number, ob_tail_number, display_registration, model')
             .inFilter('id', baseItems.map((i) => i.aircraftId).toList()),
         _client
             .from('flight_order_routes')
@@ -182,7 +193,7 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
             .toList();
 
         return item.copyWith(
-          aircraftRegistration: ac?['tail_number']?.toString(),
+          aircraftRegistration: _displayTailNumber(ac),
           aircraftModel: ac?['model']?.toString(),
           routes: itemRoutes,
           crew: itemCrew,
@@ -256,7 +267,7 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
       final results = await Future.wait([
         _client
             .from('aircraft')
-            .select('id, tail_number, model')
+            .select('id, tail_number, ob_tail_number, display_registration, model')
             .inFilter('id', baseItems.map((i) => i.aircraftId).toList()),
         _client
             .from('flight_order_routes')
@@ -321,7 +332,7 @@ class SupabaseFlightOrdersRepository implements FlightOrdersRepository {
             .toList();
 
         return item.copyWith(
-          aircraftRegistration: ac?['tail_number']?.toString(),
+          aircraftRegistration: _displayTailNumber(ac),
           aircraftModel: ac?['model']?.toString(),
           orderNumber: order?['order_number']?.toString(),
           unitId: order?['unit_id']?.toString(),

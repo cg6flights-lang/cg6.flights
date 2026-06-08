@@ -23,6 +23,9 @@ abstract class AircraftRepository {
     int? year,
     required String status,
     String? inoperativeReason,
+    String? obTailNumber,
+    String displayRegistration = 'FAP',
+    String? squadronId,
   });
 
   Future<AppResult<void>> deactivateAircraft(String aircraftId);
@@ -47,7 +50,7 @@ class SupabaseAircraftRepository implements AircraftRepository {
       final rows = await _client
           .from('aircraft')
           .select(
-            'id,unit_id,tail_number,model,manufacturer,serial_number,year,status,active,inoperative_reason',
+            'id,unit_id,tail_number,ob_tail_number,display_registration,model,manufacturer,serial_number,year,status,active,inoperative_reason,squadron_id,flight_squadrons(name)',
           )
           .eq('active', true)
           .order('tail_number');
@@ -81,6 +84,9 @@ class SupabaseAircraftRepository implements AircraftRepository {
     int? year,
     required String status,
     String? inoperativeReason,
+    String? obTailNumber,
+    String displayRegistration = 'FAP',
+    String? squadronId,
   }) async {
     final action = aircraftId == null ? 'create' : 'update';
     return _manageAircraft(
@@ -93,7 +99,10 @@ class SupabaseAircraftRepository implements AircraftRepository {
       serialNumber: serialNumber,
       year: year,
       status: status,
+      obTailNumber: obTailNumber,
+      displayRegistration: displayRegistration,
       inoperativeReason: inoperativeReason,
+      squadronId: squadronId,
     );
   }
 
@@ -159,6 +168,9 @@ class SupabaseAircraftRepository implements AircraftRepository {
     int? year,
     String? status,
     String? inoperativeReason,
+    String? obTailNumber,
+    String displayRegistration = 'FAP',
+    String? squadronId,
   }) async {
     try {
       final response = await _client.functions.invoke(
@@ -174,6 +186,9 @@ class SupabaseAircraftRepository implements AircraftRepository {
           'year': year,
           'status': status,
           'inoperative_reason': inoperativeReason,
+          'ob_tail_number': obTailNumber,
+          'display_registration': displayRegistration,
+          'squadron_id': squadronId,
         },
       );
       final body = response.data;

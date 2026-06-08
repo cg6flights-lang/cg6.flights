@@ -9,6 +9,8 @@ import 'package:cg6_flights/features/crew/domain/crew_member.dart';
 import 'package:cg6_flights/features/crew/domain/grade_option.dart';
 import 'package:cg6_flights/features/units/data/units_repository.dart';
 import 'package:cg6_flights/features/units/domain/unit_option.dart';
+import 'package:cg6_flights/features/crew/data/squadron_repository.dart';
+import 'package:cg6_flights/features/crew/domain/squadron.dart';
 import 'package:cg6_flights/shared/widgets/data_state_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,11 +41,34 @@ final _gradesProvider = FutureProvider<List<GradeOption>>((ref) async {
   };
 });
 
-class CrewPage extends ConsumerWidget {
+class CrewPage extends ConsumerStatefulWidget {
   const CrewPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CrewPage> createState() => _CrewPageState();
+}
+
+class _CrewPageState extends ConsumerState<CrewPage> {
+  String? _selectedUnitId;
+  String? _selectedSquadronId;
+  List<FlightSquadron> _squadrons = [];
+
+  bool get _isGru51 => _selectedUnitId == '4317c6f3-e530-4b9c-a898-1f765ceaafb2';
+
+  Future<void> _loadSquadrons() async {
+    final result = await ref.read(squadronRepositoryProvider).listSquadrons(unitId: _selectedUnitId);
+    if (mounted) {
+      switch (result) {
+        case AppSuccess(data: final list):
+          setState(() => _squadrons = list);
+        case AppFailure():
+          setState(() => _squadrons = []);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final session = ref.watch(sessionControllerProvider);
     final crewAsync = ref.watch(_crewListProvider);
@@ -87,10 +112,19 @@ class CrewPage extends ConsumerWidget {
         final units = unitsAsync.value ?? [];
         final grades = gradesAsync.value ?? [];
 
+        // Apply filters
+        var filtered = members;
+        if (_selectedUnitId != null) {
+          filtered = filtered.where((m) => m.unitId == _selectedUnitId).toList();
+        }
+        if (_selectedSquadronId != null) {
+          filtered = filtered.where((m) => m.squadronId == _selectedSquadronId).toList();
+        }
+
         final pilots =
-            members.where((m) => m.crewCategory == 'pilot').toList();
+            filtered.where((m) => m.crewCategory == 'pilot').toList();
         final mechanics =
-            members.where((m) => m.crewCategory == 'mechanic').toList();
+            filtered.where((m) => m.crewCategory == 'mechanic').toList();
 
         return LayoutBuilder(
           builder: (context, constraints) {
@@ -127,6 +161,75 @@ class CrewPage extends ConsumerWidget {
                       child: Text(
                         l10n.t('nav.crew'),
                         style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                    ),
+                    if (canManage)
+                      FilledButton.icon(
+                        onPressed: () =>
+                            _openForm(context, ref, session.user?.unitId),
+                        icon: const Icon(Icons.add, size: 20),
+                        label: Text(l10n.t('crew.add')),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // Filter bar
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    SizedBox(
+                      width: 200,
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _selectedUnitId,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: l10n.t('flightOrders.unit'),
+                          border: const OutlineInputBorder(),
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        ),
+                        items: [
+                          const DropdownMenuItem<String>(value: null, child: Text('Todas', style: TextStyle(fontSize: 13))),
+                          for (final u in units.where((e) => e.active))
+                            DropdownMenuItem<String>(value: u.id, child: Text(u.name.isNotEmpty ? u.name : u.code, style: const TextStyle(fontSize: 13))),
+                        ],
+                        onChanged: (v) => setState(() {
+                          _selectedUnitId = v;
+                          _selectedSquadronId = null;
+                          _squadrons = [];
+                          if (_isGru51) _loadSquadrons();
+                        }),
+                      ),
+                    ),
+                    if (_isGru51)
+                      SizedBox(
+                        width: 200,
+                        child: DropdownButtonFormField<String>(
+                          initialValue: _selectedSquadronId,
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            labelText: l10n.t('crew.squadron'),
+                            border: const OutlineInputBorder(),
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          ),
+                          items: [
+                            DropdownMenuItem<String>(value: null, child: Text(l10n.t('squadron.all'), style: const TextStyle(fontSize: 13))),
+                            for (final s in _squadrons)
+                              DropdownMenuItem<String>(value: s.id, child: Text(s.name, style: const TextStyle(fontSize: 13))),
+                          ],
+                          onChanged: (v) => setState(() => _selectedSquadronId = v),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        l10n.t('nav.crew'),
                       ),
                     ),
                     if (canManage)
@@ -200,6 +303,13 @@ class CrewPage extends ConsumerWidget {
 
     if (!context.mounted) return;
 
+    // Load squadrons for GRU51
+    final squadronsResult = await ref.read(squadronRepositoryProvider).listSquadrons();
+    final squadrons = switch (squadronsResult) {
+      AppSuccess<List<FlightSquadron>>(data: final list) => list,
+      _ => <FlightSquadron>[],
+    };
+
     final saved = await showDialog<CrewFormResult>(
       context: context,
       builder: (_) => CrewFormDialog(
@@ -207,6 +317,7 @@ class CrewPage extends ConsumerWidget {
         units: activeUnits,
         grades: grades,
         defaultUnitId: defaultUnitId,
+        squadrons: squadrons,
       ),
     );
 
@@ -223,6 +334,7 @@ class CrewPage extends ConsumerWidget {
         appointmentDate: saved.appointmentDate,
         assignmentType: saved.assignmentType,
         qualifications: saved.qualifications,
+        squadronId: saved.squadronId,
       );
       if (!context.mounted) return;
 

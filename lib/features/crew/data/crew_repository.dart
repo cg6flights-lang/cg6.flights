@@ -9,7 +9,10 @@ final crewRepositoryProvider = Provider<CrewRepository>((ref) {
 });
 
 abstract class CrewRepository {
-  Future<AppResult<List<CrewMember>>> listCrewMembers();
+  Future<AppResult<List<CrewMember>>> listCrewMembers({
+    String? unitId,
+    String? squadronId,
+  });
 
   Future<AppResult<void>> saveCrewMember({
     String? crewMemberId,
@@ -22,9 +25,14 @@ abstract class CrewRepository {
     required DateTime appointmentDate,
     String assignmentType = 'nato',
     List<String> qualifications = const [],
+    String? squadronId,
   });
 
   Future<AppResult<void>> deactivateCrewMember(String crewMemberId);
+  Future<AppResult<void>> moveSquadron({
+    required String crewMemberId,
+    required String newSquadronId,
+  });
 }
 
 class SupabaseCrewRepository implements CrewRepository {
@@ -33,16 +41,20 @@ class SupabaseCrewRepository implements CrewRepository {
   final SupabaseClient _client;
 
   @override
-  Future<AppResult<List<CrewMember>>> listCrewMembers() async {
+  Future<AppResult<List<CrewMember>>> listCrewMembers({
+    String? unitId,
+    String? squadronId,
+  }) async {
     try {
-      final rows = await _client
+      var query = _client
           .from('crew_members')
           .select(
-            'id,unit_id,grade,first_name,last_name,nsa,crew_category,assignment_type,appointment_date,active,qualifications',
+            'id,unit_id,grade,first_name,last_name,nsa,crew_category,assignment_type,appointment_date,active,qualifications,squadron_id,flight_squadrons(name)',
           )
-          .eq('active', true)
-          .order('last_name')
-          .order('first_name');
+          .eq('active', true);
+      if (unitId != null) query = query.eq('unit_id', unitId);
+      if (squadronId != null) query = query.eq('squadron_id', squadronId);
+      final rows = await query.order('last_name').order('first_name');
       return AppSuccess(
         rows
             .map<CrewMember>(
@@ -74,6 +86,7 @@ class SupabaseCrewRepository implements CrewRepository {
     required DateTime appointmentDate,
     String assignmentType = 'nato',
     List<String> qualifications = const [],
+    String? squadronId,
   }) async {
     final action = crewMemberId == null ? 'create' : 'update';
     return _manageCrew(
@@ -88,12 +101,25 @@ class SupabaseCrewRepository implements CrewRepository {
       appointmentDate: appointmentDate,
       assignmentType: assignmentType,
       qualifications: qualifications,
+      squadronId: squadronId,
     );
   }
 
   @override
   Future<AppResult<void>> deactivateCrewMember(String crewMemberId) {
     return _manageCrew(action: 'deactivate', crewMemberId: crewMemberId);
+  }
+
+  @override
+  Future<AppResult<void>> moveSquadron({
+    required String crewMemberId,
+    required String newSquadronId,
+  }) async {
+    return _manageCrew(
+      action: 'move_squadron',
+      crewMemberId: crewMemberId,
+      squadronId: newSquadronId,
+    );
   }
 
   Future<AppResult<void>> _manageCrew({
@@ -108,6 +134,7 @@ class SupabaseCrewRepository implements CrewRepository {
     DateTime? appointmentDate,
     String? assignmentType,
     List<String>? qualifications,
+    String? squadronId,
   }) async {
     try {
       final response = await _client.functions.invoke(
@@ -126,6 +153,7 @@ class SupabaseCrewRepository implements CrewRepository {
               : null,
           'assignment_type': assignmentType,
           'qualifications': qualifications,
+          'squadron_id': squadronId,
         },
       );
       final body = response.data;

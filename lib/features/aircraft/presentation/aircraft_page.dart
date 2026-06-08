@@ -8,6 +8,8 @@ import 'package:cg6_flights/features/aircraft/domain/aircraft.dart';
 import 'package:cg6_flights/features/aircraft/domain/aircraft_flight_hours.dart';
 import 'package:cg6_flights/features/aircraft/domain/operational_data_point.dart';
 import 'package:cg6_flights/features/auth/application/session_controller.dart';
+import 'package:cg6_flights/features/crew/data/squadron_repository.dart';
+import 'package:cg6_flights/features/crew/domain/squadron.dart';
 import 'package:cg6_flights/features/flight_orders/data/flight_orders_repository.dart';
 import 'package:cg6_flights/features/flight_orders/domain/flight_order.dart';
 import 'package:cg6_flights/features/units/data/units_repository.dart';
@@ -272,12 +274,20 @@ class AircraftPage extends ConsumerWidget {
 
     if (!context.mounted) return;
 
+    // Load squadrons
+    final sqResult = await ref.read(squadronRepositoryProvider).listSquadrons();
+    final squadrons = switch (sqResult) {
+      AppSuccess<List<FlightSquadron>>(data: final list) => list,
+      _ => <FlightSquadron>[],
+    };
+
     final saved = await showDialog<AircraftFormResult>(
       context: context,
       builder: (_) => AircraftFormDialog(
         aircraft: aircraft,
         units: activeUnits,
         defaultUnitId: defaultUnitId,
+        squadrons: squadrons,
       ),
     );
 
@@ -293,6 +303,9 @@ class AircraftPage extends ConsumerWidget {
         year: saved.year,
         status: saved.status,
         inoperativeReason: saved.inoperativeReason,
+        obTailNumber: saved.obTailNumber,
+        displayRegistration: saved.displayRegistration,
+        squadronId: saved.squadronId,
       );
       if (!context.mounted) return;
 
@@ -317,7 +330,7 @@ class AircraftPage extends ConsumerWidget {
       builder: (_) => AlertDialog(
         title: Text(l10n.t('aircraft.deactivate')),
         content: Text(
-          '${l10n.t('aircraft.deactivateConfirm')} ${aircraft.tailNumber}?',
+          '${l10n.t('aircraft.deactivateConfirm')} ${aircraft.displayTailNumber}?',
         ),
         actions: [
           TextButton(
@@ -691,7 +704,7 @@ class _UnitAircraftSectionState extends ConsumerState<_UnitAircraftSection> {
     AppLocalizations l10n,
   ) {
     final sorted = [...aircraft]
-      ..sort((a, b) => a.tailNumber.compareTo(b.tailNumber));
+      ..sort((a, b) => a.displayTailNumber.compareTo(b.displayTailNumber));
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -1031,7 +1044,7 @@ class _InoperativeAircraftRow extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  aircraft.tailNumber,
+                  aircraft.displayTailNumber,
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
@@ -1184,7 +1197,7 @@ class _ModelCardGroup extends StatelessWidget {
                         ),
                         child: Center(
                           child: Text(
-                            a.tailNumber,
+                            a.displayTailNumber,
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontWeight: FontWeight.w800,
@@ -1301,7 +1314,7 @@ class _DetailContentState extends ConsumerState<_DetailContent> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        aircraft.tailNumber,
+                        aircraft.displayTailNumber,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),

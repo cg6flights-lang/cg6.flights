@@ -161,7 +161,7 @@ class _FleetAircraftCell extends StatelessWidget {
           border: Border.all(color: color.withValues(alpha: 0.28)),
         ),
         child: Text(
-          aircraft.tailNumber,
+          aircraft.displayTailNumber,
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
             color: Theme.of(context).colorScheme.onSurface,
@@ -202,7 +202,7 @@ void _showFleetAircraftDialog(
     builder: (dialogContext) => AlertDialog(
       title: Row(
         children: [
-          Expanded(child: Text(aircraft.tailNumber)),
+          Expanded(child: Text(aircraft.displayTailNumber)),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(

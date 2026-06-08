@@ -12,6 +12,7 @@ class AppUser {
     this.role,
     this.unitId,
     this.unitName,
+    this.squadronId,
     Set<String>? permissions,
     this.firstName,
     this.lastName,
@@ -32,6 +33,7 @@ class AppUser {
   final AppRole? role;
   final String? unitId;
   final String? unitName;
+  final String? squadronId;
   final Set<String> permissions;
 
   // Extended profile fields
@@ -96,6 +98,7 @@ class AppUser {
     AppRole? role,
     String? unitId,
     String? unitName,
+    String? squadronId,
     Set<String>? permissions,
     String? firstName,
     String? lastName,
@@ -116,6 +119,7 @@ class AppUser {
       role: role ?? this.role,
       unitId: unitId ?? this.unitId,
       unitName: unitName ?? this.unitName,
+      squadronId: squadronId ?? this.squadronId,
       permissions: permissions ?? this.permissions,
       firstName: firstName ?? this.firstName,
       lastName: lastName ?? this.lastName,

@@ -3,6 +3,7 @@ enum AppRole {
   generalAdmin,
   unitCommand,
   unitAdmin,
+  squadronChief,
   ttaa;
 
   String get key => switch (this) {
@@ -10,6 +11,7 @@ enum AppRole {
     AppRole.generalAdmin => 'general_admin',
     AppRole.unitCommand => 'unit_command',
     AppRole.unitAdmin => 'unit_admin',
+    AppRole.squadronChief => 'squadron_chief',
     AppRole.ttaa => 'ttaa',
   };
 
@@ -18,6 +20,7 @@ enum AppRole {
     AppRole.generalAdmin => 'Administrador General',
     AppRole.unitCommand => 'Comando de Unidad',
     AppRole.unitAdmin => 'Administrador de Unidad',
+    AppRole.squadronChief => 'Jefe de Escuadrón',
     AppRole.ttaa => 'TTAA',
   };
 

@@ -13,6 +13,9 @@ class AircraftFormResult {
     this.serialNumber,
     this.year,
     this.inoperativeReason,
+    this.obTailNumber,
+    this.displayRegistration = 'FAP',
+    this.squadronId,
   });
 
   final String unitId;
@@ -23,6 +26,9 @@ class AircraftFormResult {
   final int? year;
   final String status;
   final String? inoperativeReason;
+  final String? obTailNumber;
+  final String displayRegistration;
+  final String? squadronId;
 }
 
 class AircraftFormDialog extends StatefulWidget {
@@ -31,11 +37,13 @@ class AircraftFormDialog extends StatefulWidget {
     this.aircraft,
     required this.units,
     this.defaultUnitId,
+    this.squadrons = const [],
   });
 
   final Aircraft? aircraft;
   final List<UnitOption> units;
   final String? defaultUnitId;
+  final List<dynamic> squadrons; // FlightSquadron list
 
   @override
   State<AircraftFormDialog> createState() => _AircraftFormDialogState();
@@ -50,9 +58,18 @@ class _AircraftFormDialogState extends State<AircraftFormDialog> {
   late final TextEditingController _serialController;
   late final TextEditingController _yearController;
   late final TextEditingController _inoperativeReasonController;
+  late final TextEditingController _obController;
   late String _status;
+  bool _hasOb = false;
+  late String _displayReg; // 'FAP' or 'OB'
+  String? _squadronId;
+
+  static const _edaciCode = 'EDACI';
+  static const _gru51Id = '4317c6f3-e530-4b9c-a898-1f765ceaafb2';
 
   bool get _isEditing => widget.aircraft != null;
+  bool get _isEdaci => _unitId.isNotEmpty ? widget.units.any((u) => u.id == _unitId && u.code == _edaciCode) : false;
+  bool get _isGru51 => _unitId == _gru51Id;
 
   @override
   void initState() {
@@ -74,6 +91,10 @@ class _AircraftFormDialogState extends State<AircraftFormDialog> {
     _inoperativeReasonController = TextEditingController(
       text: a?.inoperativeReason ?? '',
     );
+    _obController = TextEditingController(text: a?.obTailNumber ?? '');
+    _hasOb = a?.obTailNumber != null && a!.obTailNumber!.isNotEmpty;
+    _displayReg = a?.displayRegistration == 'OB' ? 'OB' : 'FAP';
+    _squadronId = a?.squadronId;
     _status = a?.status ?? 'operational';
   }
 
@@ -85,6 +106,7 @@ class _AircraftFormDialogState extends State<AircraftFormDialog> {
     _serialController.dispose();
     _yearController.dispose();
     _inoperativeReasonController.dispose();
+    _obController.dispose();
     super.dispose();
   }
 
@@ -134,6 +156,21 @@ class _AircraftFormDialogState extends State<AircraftFormDialog> {
                           : null,
                     ),
                   if (isGlobal) const SizedBox(height: 16),
+                  if (_isGru51 && widget.squadrons.isNotEmpty) ...[
+                    DropdownButtonFormField<String>(
+                      initialValue: _squadronId,
+                      decoration: InputDecoration(
+                        labelText: l10n.t('aircraft.squadron'),
+                        border: const OutlineInputBorder(),
+                      ),
+                      items: [
+                        for (final s in widget.squadrons)
+                          DropdownMenuItem(value: s.id, child: Text(s.name)),
+                      ],
+                      onChanged: (v) => setState(() => _squadronId = v),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   TextFormField(
                     controller: _tailController,
                     decoration: InputDecoration(
@@ -145,6 +182,68 @@ class _AircraftFormDialogState extends State<AircraftFormDialog> {
                         ? l10n.t('validation.required')
                         : null,
                   ),
+                  // ── OB Registration section (only for EDACI) ──
+                  if (_isEdaci) ...[
+                    const SizedBox(height: 16),
+                    SwitchListTile(
+                      title: Text(l10n.t('aircraft.hasObRegistration')),
+                      value: _hasOb,
+                      onChanged: (v) => setState(() {
+                        _hasOb = v;
+                        if (!v) {
+                          _obController.clear();
+                          _displayReg = 'FAP';
+                        }
+                      }),
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    if (_hasOb) ...[
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _obController,
+                        decoration: InputDecoration(
+                          labelText: l10n.t('aircraft.obTailNumber'),
+                          border: const OutlineInputBorder(),
+                        ),
+                        textCapitalization: TextCapitalization.characters,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? l10n.t('validation.required')
+                            : null,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(l10n.t('aircraft.displayRegistration'),
+                          style: Theme.of(context).textTheme.labelMedium),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: RadioListTile<String>(
+                              title: Text(l10n.t('aircraft.registrationFAP')),
+                              value: 'FAP',
+                              groupValue: _displayReg,
+                              onChanged: (v) =>
+                                  setState(() => _displayReg = v ?? 'FAP'),
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                          Expanded(
+                            child: RadioListTile<String>(
+                              title: Text(l10n.t('aircraft.registrationOB')),
+                              value: 'OB',
+                              groupValue: _displayReg,
+                              onChanged: (v) =>
+                                  setState(() => _displayReg = v ?? 'OB'),
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                    ],
+                  ],
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _manufacturerController,
@@ -278,6 +377,11 @@ class _AircraftFormDialogState extends State<AircraftFormDialog> {
         inoperativeReason: _inoperativeReasonController.text.trim().isEmpty
             ? null
             : _inoperativeReasonController.text.trim(),
+        obTailNumber: _hasOb && _isEdaci
+            ? _obController.text.trim().toUpperCase()
+            : null,
+        displayRegistration: _isEdaci ? _displayReg : 'FAP',
+        squadronId: _isGru51 ? _squadronId : null,
       ),
     );
   }

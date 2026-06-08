@@ -323,7 +323,7 @@ class SupabaseAuthRepository implements AuthRepository {
       final row = await _client
           .from('profiles')
           .select(
-            'id,email,display_name,status,role,unit_id,units(name),first_name,last_name,document_type,document_id,phone_country_code,phone,birth_date,grade,avatar_path,password_changed_at',
+            'id,email,display_name,status,role,unit_id,squadron_id,units(name),first_name,last_name,document_type,document_id,phone_country_code,phone,birth_date,grade,avatar_path,password_changed_at',
           )
           .eq('id', authUser.id)
           .maybeSingle();
@@ -356,6 +356,7 @@ class SupabaseAuthRepository implements AuthRepository {
           role: role,
           unitId: row['unit_id']?.toString(),
           unitName: unit is Map ? unit['name']?.toString() : null,
+          squadronId: row['squadron_id']?.toString(),
           permissions: permissions,
           firstName: row['first_name']?.toString(),
           lastName: row['last_name']?.toString(),

@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const actions = new Set(["create", "update", "deactivate"]);
+const actions = new Set(["create", "update", "deactivate", "move_squadron"]);
 const globalRoles = new Set(["leader", "general_admin"]);
 const unitRoles = new Set(["unit_command", "unit_admin", "ttaa"]);
 const validCategories = ["pilot", "mechanic"];
@@ -163,6 +163,7 @@ Deno.serve(async (req) => {
     Array.isArray(payload.qualifications) ? payload.qualifications : [];
   const assignmentType = String(payload.assignment_type ?? "nato").trim();
   const callsign = String(payload.callsign ?? "").trim().toUpperCase() || null;
+  const squadronId = payload.squadron_id ? String(payload.squadron_id) : null;
 
   if (!actions.has(action)) {
     return errorResponse(
@@ -204,11 +205,21 @@ Deno.serve(async (req) => {
     );
   }
 
-  if ((action === "update" || action === "deactivate") && !crewMemberId) {
+  if ((action === "update" || action === "deactivate" || action === "move_squadron") && !crewMemberId) {
     return errorResponse(
       400,
       "VALIDATION_INVALID_INPUT",
       "El tripulante es obligatorio.",
+      "VALIDATION",
+      "medium",
+    );
+  }
+
+  if (action === "move_squadron" && !squadronId) {
+    return errorResponse(
+      400,
+      "VALIDATION_INVALID_INPUT",
+      "El escuadron de destino es obligatorio.",
       "VALIDATION",
       "medium",
     );
@@ -365,22 +376,24 @@ Deno.serve(async (req) => {
   let memberError;
 
   if (action === "create") {
+    const insertData: Record<string, unknown> = {
+      unit_id: unitId,
+      grade,
+      first_name: firstName,
+      last_name: lastName,
+      nsa,
+      crew_category: crewCategory,
+      appointment_date: appointmentDate,
+      qualifications,
+      assignment_type: assignmentType,
+      ...(callsign ? { callsign } : {}),
+      ...(squadronId ? { squadron_id: squadronId } : {}),
+    };
     const result = await adminClient
       .from("crew_members")
-      .insert({
-        unit_id: unitId,
-        grade,
-        first_name: firstName,
-        last_name: lastName,
-        nsa,
-        crew_category: crewCategory,
-        appointment_date: appointmentDate,
-        qualifications,
-        assignment_type: assignmentType,
-        ...(callsign ? { callsign } : {}),
-      })
+      .insert(insertData)
       .select(
-        "id,unit_id,grade,first_name,last_name,nsa,callsign,crew_category,assignment_type,appointment_date,active,qualifications",
+        "id,unit_id,grade,first_name,last_name,nsa,callsign,crew_category,assignment_type,appointment_date,active,qualifications,squadron_id",
       )
       .single();
     member = result.data;
@@ -398,6 +411,7 @@ Deno.serve(async (req) => {
     if (appointmentDate) updateData.appointment_date = appointmentDate;
     if (assignmentType) updateData.assignment_type = assignmentType;
     if (callsign) updateData.callsign = callsign;
+    if (squadronId !== undefined) updateData.squadron_id = squadronId;
     updateData.qualifications = qualifications;
 
     const result = await adminClient
@@ -405,8 +419,19 @@ Deno.serve(async (req) => {
       .update(updateData)
       .eq("id", crewMemberId)
       .select(
-        "id,unit_id,grade,first_name,last_name,nsa,callsign,crew_category,assignment_type,appointment_date,active,qualifications",
+        "id,unit_id,grade,first_name,last_name,nsa,callsign,crew_category,assignment_type,appointment_date,active,qualifications,squadron_id",
       )
+      .single();
+    member = result.data;
+    memberError = result.error;
+  }
+
+  if (action === "move_squadron") {
+    const result = await adminClient
+      .from("crew_members")
+      .update({ squadron_id: squadronId, updated_at: new Date().toISOString() })
+      .eq("id", crewMemberId)
+      .select("id,squadron_id")
       .single();
     member = result.data;
     memberError = result.error;

@@ -75,7 +75,7 @@ class SupabaseClosuresRepository implements ClosuresRepository {
       // Get flights with their items
       final flights = await _client.from('flights').select(
         'id,aircraft_id,route_id,actual_total_minutes,actual_air_minutes,'
-        'aircraft(tail_number,model),routes(origin,destination)'
+        'aircraft(tail_number,ob_tail_number,display_registration,model),routes(origin,destination)'
       ).eq('flight_order_id', orderId).eq('closed', false);
 
       // Get status events per flight
@@ -90,7 +90,16 @@ class SupabaseClosuresRepository implements ClosuresRepository {
 
       for (final f in flights) {
         final flightId = f['id'];
-        final tailNumber = f['aircraft']?['tail_number']?.toString() ?? 'N/A';
+        final ac = f['aircraft'] as Map<String, dynamic>?;
+        final displayReg = ac?['display_registration']?.toString();
+        String? tn;
+        if (displayReg == 'OB') {
+          tn = ac?['ob_tail_number']?.toString();
+          if (tn == null || tn.isEmpty) tn = ac?['tail_number']?.toString();
+        } else {
+          tn = ac?['tail_number']?.toString();
+        }
+        final tailNumber = (tn != null && tn.isNotEmpty) ? tn : 'N/A';
         final model = f['aircraft']?['model']?.toString() ?? 'N/A';
         final origin = f['routes']?['origin']?.toString() ?? '';
         final dest = f['routes']?['destination']?.toString() ?? '';

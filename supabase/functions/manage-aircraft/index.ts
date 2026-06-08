@@ -163,6 +163,12 @@ Deno.serve(async (req) => {
   const inoperativeReason = payload.inoperative_reason
     ? String(payload.inoperative_reason).trim()
     : null;
+  const obTailNumber = payload.ob_tail_number
+    ? String(payload.ob_tail_number).trim().toUpperCase()
+    : null;
+  const displayRegistration = String(payload.display_registration ?? "FAP");
+  const validRegistrations = ["FAP", "OB"];
+  const squadronId = payload.squadron_id ? String(payload.squadron_id) : null;
 
   if (!actions.has(action)) {
     return errorResponse(
@@ -229,6 +235,16 @@ Deno.serve(async (req) => {
       400,
       "VALIDATION_INVALID_INPUT",
       "El año de aeronave es invalido.",
+      "VALIDATION",
+      "medium",
+    );
+  }
+
+  if (!validRegistrations.includes(displayRegistration)) {
+    return errorResponse(
+      400,
+      "VALIDATION_INVALID_INPUT",
+      "Tipo de matricula a mostrar invalido.",
       "VALIDATION",
       "medium",
     );
@@ -313,20 +329,24 @@ Deno.serve(async (req) => {
   let aircraftError;
 
   if (action === "create") {
+    const insertData: Record<string, unknown> = {
+      unit_id: unitId,
+      tail_number: tailNumber,
+      model,
+      manufacturer,
+      serial_number: serialNumber,
+      year,
+      status,
+      inoperative_reason: inoperativeReason,
+      ob_tail_number: obTailNumber,
+      display_registration: displayRegistration,
+      squadron_id: squadronId,
+    };
     const result = await adminClient
       .from("aircraft")
-      .insert({
-        unit_id: unitId,
-        tail_number: tailNumber,
-        model,
-        manufacturer,
-        serial_number: serialNumber,
-        year,
-        status,
-        inoperative_reason: inoperativeReason,
-      })
+      .insert(insertData)
       .select(
-        "id,tail_number,model,manufacturer,serial_number,year,status,unit_id,inoperative_reason",
+        "id,tail_number,ob_tail_number,display_registration,model,manufacturer,serial_number,year,status,unit_id,inoperative_reason,squadron_id",
       )
       .single();
     aircraft = result.data;
@@ -350,6 +370,9 @@ Deno.serve(async (req) => {
       year,
       status,
       inoperative_reason: inoperativeReason,
+      ob_tail_number: obTailNumber,
+      display_registration: displayRegistration,
+      squadron_id: squadronId,
     };
     if (unitId) updateData.unit_id = unitId;
 
@@ -362,7 +385,7 @@ Deno.serve(async (req) => {
       .update(updateData)
       .eq("id", aircraftId)
       .select(
-        "id,tail_number,model,manufacturer,serial_number,year,status,unit_id,inoperative_reason",
+        "id,tail_number,ob_tail_number,display_registration,model,manufacturer,serial_number,year,status,unit_id,inoperative_reason,squadron_id",
       )
       .single();
     aircraft = result.data;
