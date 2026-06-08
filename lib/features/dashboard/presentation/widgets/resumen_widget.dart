@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class ResumenWidget extends ConsumerWidget {
-  const ResumenWidget({super.key});
+  const ResumenWidget({super.key, this.unitId, this.squadronId});
+  final String? unitId;
+  final String? squadronId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

@@ -7,7 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class KpisWidget extends ConsumerWidget {
-  const KpisWidget({super.key});
+  const KpisWidget({super.key, this.unitId, this.squadronId});
+  final String? unitId;
+  final String? squadronId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

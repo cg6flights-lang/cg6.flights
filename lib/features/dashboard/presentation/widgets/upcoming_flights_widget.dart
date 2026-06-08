@@ -12,7 +12,9 @@ import 'package:go_router/go_router.dart';
 const _statusOrder = ['waiting', 'taxi', 'takeoff', 'landing', 'engine_off'];
 
 class UpcomingFlightsWidget extends ConsumerWidget {
-  const UpcomingFlightsWidget({super.key});
+  const UpcomingFlightsWidget({super.key, this.unitId, this.squadronId});
+  final String? unitId;
+  final String? squadronId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

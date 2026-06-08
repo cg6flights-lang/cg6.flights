@@ -312,19 +312,24 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   // ═══════════════════════════════════════════════════════════════════
 
   Widget _widgetFor(String id) {
+    final session = ref.watch(sessionControllerProvider);
+    final unitId = session.user?.unitId;
+    final squadronId = session.user?.squadronId;
+    final isGlobal = session.user?.role?.isGlobal ?? false;
+
     return switch (id) {
       'map' => const MapWidget(),
       'zulu_clock' => const ZuluClockWidget(),
       'romeo_clock' => const RomeoClockWidget(),
-      'kpis' => const KpisWidget(),
-      'timeline' => const TimelineWidget(),
-      'upcoming' => const UpcomingFlightsWidget(),
+      'kpis' => KpisWidget(unitId: isGlobal ? null : unitId, squadronId: isGlobal ? null : squadronId),
+      'timeline' => TimelineWidget(unitId: isGlobal ? null : unitId, squadronId: isGlobal ? null : squadronId),
+      'upcoming' => UpcomingFlightsWidget(unitId: isGlobal ? null : unitId, squadronId: isGlobal ? null : squadronId),
       'metar' => const MetarDashboardWidget(),
       'operability' => const OperabilityChartWidget(),
       'notifications' => const NotificationsWidget(),
-      'activity' => const ActivityWidget(),
-      'fleet' => const FleetStatusWidget(),
-      'resumen' => const ResumenWidget(),
+      'activity' => ActivityWidget(unitId: isGlobal ? null : unitId, squadronId: isGlobal ? null : squadronId),
+      'fleet' => FleetStatusWidget(unitId: isGlobal ? null : unitId, squadronId: isGlobal ? null : squadronId),
+      'resumen' => ResumenWidget(unitId: isGlobal ? null : unitId, squadronId: isGlobal ? null : squadronId),
       'quick_actions' => const QuickActionsWidget(),
       'calendar_mini' => const CalendarMiniWidget(),
       _ => const SizedBox.shrink(),

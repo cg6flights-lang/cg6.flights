@@ -9,7 +9,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class TimelineWidget extends ConsumerWidget {
-  const TimelineWidget({super.key});
+  const TimelineWidget({super.key, this.unitId, this.squadronId});
+  final String? unitId;
+  final String? squadronId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
