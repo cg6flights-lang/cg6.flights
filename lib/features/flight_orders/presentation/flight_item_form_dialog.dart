@@ -153,6 +153,7 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
   final _flMinCtrl = TextEditingController();
   final _flMaxCtrl = TextEditingController();
 
+  String? _shift;
   int _eteMinutes = 0;
 
   String _fuelType = 'Jet A1';
@@ -205,6 +206,7 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
       }
       _flMinCtrl.text = item.flightLevelMin?.toString() ?? '';
       _flMaxCtrl.text = item.flightLevelMax?.toString() ?? '';
+      _shift = item.shift;
       _eteMinutes = item.eteMinutes ?? 0;
       _fuelType = item.fuelType ?? 'Jet A1';
       _fuelLbsCtrl.text = item.fuelAmount?.toString() ?? '';
@@ -538,6 +540,8 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildAircraftSection(l10n),
+        const SizedBox(height: 12),
+        _buildShiftDropdown(l10n),
         const SizedBox(height: 16),
         _buildMissionSection(l10n),
         const SizedBox(height: 16),
@@ -564,6 +568,22 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
   }
 
   // Step 3: Crew + Profiles
+  Widget _buildShiftDropdown(AppLocalizations l10n) {
+    return DropdownButtonFormField<String>(
+      initialValue: _shift,
+      decoration: const InputDecoration(labelText: 'Turno', border: OutlineInputBorder()),
+      isExpanded: true,
+      items: const [
+        DropdownMenuItem(value: null, child: Text('Sin turno')),
+        DropdownMenuItem(value: 'I', child: Text('TURNO I')),
+        DropdownMenuItem(value: 'II', child: Text('TURNO II')),
+        DropdownMenuItem(value: 'III', child: Text('TURNO III')),
+        DropdownMenuItem(value: 'IV', child: Text('TURNO IV')),
+      ],
+      onChanged: (v) => setState(() => _shift = v),
+    );
+  }
+
   Widget _buildAircraftSection(AppLocalizations l10n) {
     if (!_aircraftLoaded) {
       return const Center(child: CircularProgressIndicator());
@@ -1479,6 +1499,7 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
       'flight_level_max': _flMaxCtrl.text.trim().isNotEmpty
           ? int.tryParse(_flMaxCtrl.text.trim())
           : null,
+      'shift': _shift,
       'ete_minutes': _eteMinutes > 0 ? _eteMinutes : null,
       'fuel_type': _fuelType,
       'fuel_amount': double.tryParse(_fuelLbsCtrl.text.trim()),

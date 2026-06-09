@@ -793,69 +793,58 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
             horizontalMargin: 12,
             columnSpacing: 16,
             columns: _columns(l10n),
-            rows: [
-              for (final f in flights)
-                DataRow(
-                  selected: useDesktopSelection && _selectedItem?.id == f.id,
-                  onSelectChanged: (_) {
-                    if (useDesktopSelection) {
-                      setState(() => _selectedItem = f);
-                    } else {
-                      _showMobileDetail(context, f, l10n, tz);
-                    }
-                  },
-                  color: useDesktopSelection && _selectedItem?.id == f.id
-                      ? WidgetStateProperty.all(
-                          theme.colorScheme.primary.withValues(alpha: 0.08),
-                        )
-                      : null,
-                  cells: [
-                    DataCell(
-                      Text(
-                        _lastEventTime(f, tz),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontFamily: 'monospace',
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                    ),
-                    DataCell(
-                      Text(
-                        f.orderNumber ?? '--',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ),
-                    DataCell(
-                      Text(
-                        f.aircraftRegistration ?? '--',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ),
-                    DataCell(
-                      SizedBox(
-                        width: 140,
-                        child: Text(
-                          f.mission ?? '--',
-                          style: const TextStyle(fontSize: 12),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ),
-                    DataCell(_statusCell(f)),
-                    DataCell(
-                      Text(
-                        f.eteMinutes != null ? '${f.eteMinutes}m' : '--',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  ],
-                ),
-            ],
+            rows: _buildFlightRows(flights, l10n, theme, tz, useDesktopSelection),
           ),
         ),
       ),
+    );
+  }
+
+  List<DataRow> _buildFlightRows(
+    List<FlightOrderItem> flights,
+    AppLocalizations l10n,
+    ThemeData theme,
+    int tz,
+    bool useDesktopSelection,
+  ) {
+    final hasShifts = flights.any((f) => f.shift != null && f.shift!.isNotEmpty);
+    if (!hasShifts) {
+      return flights.map((f) => _flightDataRow(f, theme, tz, useDesktopSelection)).toList();
+    }
+    final shiftOrder = ['I', 'II', 'III', 'IV'];
+    final byShift = <String, List<FlightOrderItem>>{};
+    for (final f in flights) {
+      byShift.putIfAbsent(f.shift ?? '', () => []).add(f);
+    }
+    final rows = <DataRow>[];
+    final sorted = byShift.keys.toList()..sort((a, b) => shiftOrder.indexOf(a).compareTo(shiftOrder.indexOf(b)));
+    for (final s in sorted) {
+      rows.add(DataRow(
+        color: WidgetStateProperty.all(theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6)),
+        cells: [DataCell(SizedBox(width: 700, child: Text('TURNO $s', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: theme.colorScheme.primary))))],
+      ));
+      for (final f in byShift[s]!) {
+        rows.add(_flightDataRow(f, theme, tz, useDesktopSelection));
+      }
+    }
+    return rows;
+  }
+
+  DataRow _flightDataRow(FlightOrderItem f, ThemeData theme, int tz, bool useDesktopSelection) {
+    return DataRow(
+      selected: useDesktopSelection && _selectedItem?.id == f.id,
+      onSelectChanged: (_) {
+        if (useDesktopSelection) { setState(() => _selectedItem = f); } else { _showMobileDetail(context, f, AppLocalizations.of(context), tz); }
+      },
+      color: useDesktopSelection && _selectedItem?.id == f.id ? WidgetStateProperty.all(theme.colorScheme.primary.withValues(alpha: 0.08)) : null,
+      cells: [
+        DataCell(Text(_lastEventTime(f, tz), style: TextStyle(fontSize: 12, fontFamily: 'monospace', fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface))),
+        DataCell(Text(f.orderNumber ?? '--', style: const TextStyle(fontSize: 12))),
+        DataCell(Text(f.aircraftRegistration ?? '--', style: const TextStyle(fontSize: 12))),
+        DataCell(SizedBox(width: 140, child: Text(f.mission ?? '--', style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis))),
+        DataCell(_statusCell(f)),
+        DataCell(Text(f.eteMinutes != null ? '${f.eteMinutes}m' : '--', style: const TextStyle(fontSize: 12))),
+      ],
     );
   }
 }

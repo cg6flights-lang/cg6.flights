@@ -19,6 +19,9 @@ class CrewFormResult {
     this.callsign,
     this.qualifications = const [],
     this.squadronId,
+    this.trainingStart,
+    this.trainingEnd,
+    this.courseGroup,
   });
 
   final String unitId;
@@ -32,6 +35,9 @@ class CrewFormResult {
   final String? callsign;
   final List<String> qualifications;
   final String? squadronId;
+  final DateTime? trainingStart;
+  final DateTime? trainingEnd;
+  final String? courseGroup;
 }
 
 class CrewFormDialog extends StatefulWidget {
@@ -71,6 +77,11 @@ class _CrewFormDialogState extends State<CrewFormDialog> {
   late String _assignmentType;
   late List<String> _qualifications;
   String? _squadronId;
+  DateTime? _trainingStart;
+  DateTime? _trainingEnd;
+  final _courseGroupCtrl = TextEditingController();
+
+  bool get _isEdaci => _unitId == 'c95a95da-81a9-420e-b574-db15f56c5d9f';
 
   List<GradeOption> get _filteredGrades =>
       widget.grades.where((g) => g.category == _crewCategory).toList();
@@ -99,6 +110,9 @@ class _CrewFormDialogState extends State<CrewFormDialog> {
     _assignmentType = m?.assignmentType ?? 'nato';
     _qualifications = List<String>.from(m?.qualifications ?? []);
     _squadronId = m?.squadronId ?? (_isSquadronChief ? widget.userSquadronId : null);
+    _trainingStart = m?.trainingStart;
+    _trainingEnd = m?.trainingEnd;
+    _courseGroupCtrl.text = m?.courseGroup ?? '';
   }
 
   @override
@@ -107,7 +121,51 @@ class _CrewFormDialogState extends State<CrewFormDialog> {
     _lastNameController.dispose();
     _nsaController.dispose();
     _callsignController.dispose();
+    _courseGroupCtrl.dispose();
     super.dispose();
+  }
+
+  Widget _buildTrainingSection(AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Divider(),
+        Text('Periodo de Instrucción (EDACI)', style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: 8),
+        Row(children: [
+          Expanded(
+            child: InkWell(
+              onTap: () async {
+                final d = await showDatePicker(context: context, initialDate: _trainingStart ?? DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2030));
+                if (d != null) setState(() => _trainingStart = d);
+              },
+              child: InputDecorator(
+                decoration: const InputDecoration(labelText: 'Inicio', border: OutlineInputBorder(), isDense: true),
+                child: Text(_trainingStart != null ? '${_trainingStart!.day}/${_trainingStart!.month}/${_trainingStart!.year}' : 'Seleccionar'),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: InkWell(
+              onTap: () async {
+                final d = await showDatePicker(context: context, initialDate: _trainingEnd ?? DateTime.now(), firstDate: DateTime(2020), lastDate: DateTime(2030));
+                if (d != null) setState(() => _trainingEnd = d);
+              },
+              child: InputDecorator(
+                decoration: const InputDecoration(labelText: 'Fin', border: OutlineInputBorder(), isDense: true),
+                child: Text(_trainingEnd != null ? '${_trainingEnd!.day}/${_trainingEnd!.month}/${_trainingEnd!.year}' : 'Seleccionar'),
+              ),
+            ),
+          ),
+        ]),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _courseGroupCtrl,
+          decoration: const InputDecoration(labelText: 'Grupo / Curso', border: OutlineInputBorder(), hintText: 'Ej: CURSO BÁSICO 2026-I'),
+        ),
+      ],
+    );
   }
 
   @override
@@ -168,6 +226,10 @@ class _CrewFormDialogState extends State<CrewFormDialog> {
                       ],
                       onChanged: (v) => setState(() => _squadronId = v),
                     ),
+                    const SizedBox(height: 16),
+                  ],
+                  if (_isEdaci) ...[
+                    _buildTrainingSection(l10n),
                     const SizedBox(height: 16),
                   ],
                   DropdownButtonFormField<String>(
@@ -376,6 +438,9 @@ class _CrewFormDialogState extends State<CrewFormDialog> {
         assignmentType: _assignmentType,
         qualifications: _qualifications,
         squadronId: _showSquadron ? _squadronId : null,
+        trainingStart: _isEdaci ? _trainingStart : null,
+        trainingEnd: _isEdaci ? _trainingEnd : null,
+        courseGroup: _isEdaci ? _courseGroupCtrl.text.trim() : null,
       ),
     );
   }

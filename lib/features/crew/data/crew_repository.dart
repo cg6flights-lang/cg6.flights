@@ -12,6 +12,7 @@ abstract class CrewRepository {
   Future<AppResult<List<CrewMember>>> listCrewMembers({
     String? unitId,
     String? squadronId,
+    String? cadetCourseId,
   });
 
   Future<AppResult<void>> saveCrewMember({
@@ -26,6 +27,9 @@ abstract class CrewRepository {
     String assignmentType = 'nato',
     List<String> qualifications = const [],
     String? squadronId,
+    DateTime? trainingStart,
+    DateTime? trainingEnd,
+    String? courseGroup,
   });
 
   Future<AppResult<void>> deactivateCrewMember(String crewMemberId);
@@ -44,14 +48,19 @@ class SupabaseCrewRepository implements CrewRepository {
   Future<AppResult<List<CrewMember>>> listCrewMembers({
     String? unitId,
     String? squadronId,
+    String? cadetCourseId,
   }) async {
     try {
       var query = _client
           .from('crew_members')
           .select(
-            'id,unit_id,grade,first_name,last_name,nsa,crew_category,assignment_type,appointment_date,active,qualifications,squadron_id,flight_squadrons(name),training_start,training_end,course_group',
-          )
-          .eq('active', true);
+            'id,unit_id,grade,first_name,last_name,nsa,crew_category,assignment_type,appointment_date,active,qualifications,squadron_id,flight_squadrons(name),training_start,training_end,course_group,cadet_course_id,cadet_courses(name)',
+          );
+      if (cadetCourseId != null) {
+        query = query.eq('cadet_course_id', cadetCourseId);
+      } else {
+        query = query.eq('active', true);
+      }
       if (unitId != null) query = query.eq('unit_id', unitId);
       if (squadronId != null) query = query.eq('squadron_id', squadronId);
       final rows = await query.order('last_name').order('first_name');
@@ -87,6 +96,9 @@ class SupabaseCrewRepository implements CrewRepository {
     String assignmentType = 'nato',
     List<String> qualifications = const [],
     String? squadronId,
+    DateTime? trainingStart,
+    DateTime? trainingEnd,
+    String? courseGroup,
   }) async {
     final action = crewMemberId == null ? 'create' : 'update';
     return _manageCrew(
@@ -102,6 +114,9 @@ class SupabaseCrewRepository implements CrewRepository {
       assignmentType: assignmentType,
       qualifications: qualifications,
       squadronId: squadronId,
+      trainingStart: trainingStart,
+      trainingEnd: trainingEnd,
+      courseGroup: courseGroup,
     );
   }
 
@@ -135,6 +150,9 @@ class SupabaseCrewRepository implements CrewRepository {
     String? assignmentType,
     List<String>? qualifications,
     String? squadronId,
+    DateTime? trainingStart,
+    DateTime? trainingEnd,
+    String? courseGroup,
   }) async {
     try {
       final response = await _client.functions.invoke(
@@ -154,6 +172,9 @@ class SupabaseCrewRepository implements CrewRepository {
           'assignment_type': assignmentType,
           'qualifications': qualifications,
           'squadron_id': squadronId,
+          'training_start': trainingStart?.toIso8601String().split('T').first,
+          'training_end': trainingEnd?.toIso8601String().split('T').first,
+          'course_group': courseGroup,
         },
       );
       final body = response.data;
