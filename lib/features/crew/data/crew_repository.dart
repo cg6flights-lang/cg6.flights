@@ -49,7 +49,7 @@ class SupabaseCrewRepository implements CrewRepository {
       var query = _client
           .from('crew_members')
           .select(
-            'id,unit_id,grade,first_name,last_name,nsa,crew_category,assignment_type,appointment_date,active,qualifications,squadron_id,flight_squadrons(name)',
+            'id,unit_id,grade,first_name,last_name,nsa,crew_category,assignment_type,appointment_date,active,qualifications,squadron_id,flight_squadrons(name),training_start,training_end,course_group',
           )
           .eq('active', true);
       if (unitId != null) query = query.eq('unit_id', unitId);

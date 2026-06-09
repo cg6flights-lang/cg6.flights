@@ -1406,7 +1406,6 @@ class _DailyUnitPager extends StatelessWidget {
         padding: const EdgeInsets.all(10),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final compact = constraints.maxWidth < 680;
             final controls = Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -1436,46 +1435,7 @@ class _DailyUnitPager extends StatelessWidget {
                 ),
               ],
             );
-            final chips = SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  for (int i = 0; i < units.length; i++)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: ChoiceChip(
-                        label: Text(
-                          units[i].code,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        selected: i == currentIndex,
-                        visualDensity: VisualDensity.compact,
-                        onSelected: (_) => onSelect(i),
-                      ),
-                    ),
-                ],
-              ),
-            );
-            if (compact) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Align(alignment: Alignment.centerLeft, child: controls),
-                  const SizedBox(height: 8),
-                  chips,
-                ],
-              );
-            }
-            return Row(
-              children: [
-                controls,
-                const SizedBox(width: 12),
-                Expanded(child: chips),
-              ],
-            );
+            return Center(child: controls);
           },
         ),
       ),
@@ -1500,38 +1460,43 @@ class _DailyStatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
         color: color.withValues(alpha: 0.07),
         border: Border.all(color: color.withValues(alpha: 0.22)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             label,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w600,
+              fontSize: 10,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(width: 6),
           Text(
             value,
-            style: theme.textTheme.titleLarge?.copyWith(
+            style: theme.textTheme.titleSmall?.copyWith(
               color: color,
               fontWeight: FontWeight.w900,
+              fontSize: 13,
             ),
           ),
-          if (footer != null)
+          if (footer != null) ...[
+            const SizedBox(width: 6),
             Text(
               footer!,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: color.withValues(alpha: 0.85),
                 fontWeight: FontWeight.w600,
+                fontSize: 9,
               ),
             ),
+          ],
         ],
       ),
     );
@@ -1613,21 +1578,116 @@ class _DailyUnitSection extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            for (final item in aircraft)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: _DailyAircraftRow(
-                  unit: unit,
-                  aircraft: item,
-                  hours: hoursByAircraft[item.id],
-                ),
-              ),
+            const SizedBox(height: 6),
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.55,
+              child: _buildModelGroupedTable(theme, aircraft, hoursByAircraft, l10n),
+            ),
           ],
         ),
       ),
     );
   }
+
+  Widget _buildModelGroupedTable(
+    ThemeData theme,
+    List<Aircraft> aircraft,
+    Map<String, AircraftFlightHours> hoursByAircraft,
+    AppLocalizations l10n,
+  ) {
+    final byModel = <String, List<Aircraft>>{};
+    for (final a in aircraft) {
+      byModel.putIfAbsent(a.model, () => []).add(a);
+    }
+    final models = byModel.keys.toList()..sort();
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final model in models) ...[
+            // Model divider header
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.07),
+                border: Border(bottom: BorderSide(color: theme.dividerColor)),
+              ),
+              child: Row(children: [
+                Icon(Icons.flight, size: 14, color: theme.colorScheme.primary),
+                const SizedBox(width: 6),
+                Text(model, style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700, fontSize: 12)),
+                const SizedBox(width: 8),
+                Text('${byModel[model]!.length}', style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
+              ]),
+            ),
+            // Aircraft rows for this model
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 600),
+                child: DataTable(
+                  headingRowHeight: 28,
+                  dataRowMinHeight: 30,
+                  dataRowMaxHeight: 36,
+                  columnSpacing: 12,
+                  columns: [
+                    DataColumn(label: Text(l10n.t('aircraft.tailNumber'), style: _hdrStyle(theme))),
+                    DataColumn(label: Text(l10n.t('aircraft.status'), style: _hdrStyle(theme))),
+                    DataColumn(label: Text('Esc', style: _hdrStyle(theme))),
+                    DataColumn(label: Text(l10n.t('aircraft.lastFlight'), style: _hdrStyle(theme))),
+                    DataColumn(label: Text(l10n.t('aircraft.daysWithoutFlyingLabel'), style: _hdrStyle(theme))),
+                    DataColumn(label: Text('Prog.', style: _hdrStyle(theme))),
+                    DataColumn(label: Text('Horas', style: _hdrStyle(theme))),
+                    DataColumn(label: Text('Situación', style: _hdrStyle(theme))),
+                  ],
+                  rows: byModel[model]!.map((a) {
+                    final sqName = a.squadronName ?? '';
+                    final lastFlight = a.lastFlightAt != null
+                        ? '${a.lastFlightAt!.day.toString().padLeft(2, '0')}/${a.lastFlightAt!.month.toString().padLeft(2, '0')}'
+                        : '--';
+                    final days = a.daysWithoutFlying?.toString() ?? '--';
+                    final hours = hoursByAircraft[a.id];
+                    final flightCount = hours != null ? '${hours.flightCount}' : '--';
+                    final totalHours = hours != null ? '${hours.realHours.toStringAsFixed(1)}h' : '--';
+                    final reason = a.inoperativeReason ?? '';
+                    final statusColor = a.status == 'operational'
+                        ? Colors.green
+                        : a.status == 'maintenance'
+                            ? Colors.orange
+                            : Colors.red;
+                    final statusLabel = a.status == 'operational'
+                        ? l10n.t('aircraft.operational')
+                        : a.status == 'maintenance'
+                            ? l10n.t('aircraft.maintenance')
+                            : l10n.t('aircraft.inoperative');
+                    return DataRow(cells: [
+                      DataCell(Text(a.displayTailNumber, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
+                      DataCell(Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(4)),
+                        child: Text(statusLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: statusColor)),
+                      )),
+                      DataCell(Text(sqName, style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant))),
+                      DataCell(Text(lastFlight, style: const TextStyle(fontSize: 11))),
+                      DataCell(Text(days, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500,
+                          color: days != '--' && int.tryParse(days) != null && int.parse(days) > 7 ? Colors.red : null))),
+                      DataCell(Text(flightCount, style: const TextStyle(fontSize: 11))),
+                      DataCell(Text(totalHours, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600))),
+                      DataCell(Text(reason, style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant), maxLines: 2, overflow: TextOverflow.ellipsis)),
+                    ]);
+                  }).toList(),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  TextStyle? _hdrStyle(ThemeData theme) =>
+      theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700, fontSize: 11);
 }
 
 class _DailyAircraftRow extends StatelessWidget {

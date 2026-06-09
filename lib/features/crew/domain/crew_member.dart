@@ -14,6 +14,9 @@ class CrewMember {
     this.qualifications = const [],
     this.squadronId,
     this.squadronName,
+    this.trainingStart,
+    this.trainingEnd,
+    this.courseGroup,
   });
 
   final String id;
@@ -30,6 +33,9 @@ class CrewMember {
   final List<String> qualifications;
   final String? squadronId;
   final String? squadronName;
+  final DateTime? trainingStart;
+  final DateTime? trainingEnd;
+  final String? courseGroup;
 
   static const validQualifications = ['IP', 'PS', 'CO', 'PM', 'CP', 'OB'];
 
@@ -67,6 +73,13 @@ class CrewMember {
       squadronName: json['flight_squadrons'] is Map
           ? (json['flight_squadrons'] as Map)['name']?.toString()
           : json['squadron_name']?.toString(),
+      trainingStart: json['training_start'] != null
+          ? DateTime.tryParse(json['training_start'].toString())
+          : null,
+      trainingEnd: json['training_end'] != null
+          ? DateTime.tryParse(json['training_end'].toString())
+          : null,
+      courseGroup: json['course_group']?.toString(),
     );
   }
 

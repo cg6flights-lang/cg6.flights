@@ -42,6 +42,8 @@ class CrewFormDialog extends StatefulWidget {
     required this.grades,
     this.defaultUnitId,
     this.squadrons = const [],
+    this.userRole,
+    this.userSquadronId,
   });
 
   final CrewMember? member;
@@ -49,6 +51,8 @@ class CrewFormDialog extends StatefulWidget {
   final List<GradeOption> grades;
   final String? defaultUnitId;
   final List<FlightSquadron> squadrons;
+  final String? userRole;
+  final String? userSquadronId;
 
   @override
   State<CrewFormDialog> createState() => _CrewFormDialogState();
@@ -72,7 +76,8 @@ class _CrewFormDialogState extends State<CrewFormDialog> {
       widget.grades.where((g) => g.category == _crewCategory).toList();
 
   bool get _isGru51 => _unitId == '4317c6f3-e530-4b9c-a898-1f765ceaafb2';
-  bool get _showSquadron => _isGru51 && widget.squadrons.isNotEmpty;
+  bool get _isSquadronChief => widget.userRole == 'squadron_chief';
+  bool get _showSquadron => _isGru51 && widget.squadrons.isNotEmpty && !_isSquadronChief;
 
   bool get _isEditing => widget.member != null;
 
@@ -93,7 +98,7 @@ class _CrewFormDialogState extends State<CrewFormDialog> {
     _appointmentDate = m?.appointmentDate ?? DateTime.now();
     _assignmentType = m?.assignmentType ?? 'nato';
     _qualifications = List<String>.from(m?.qualifications ?? []);
-    _squadronId = m?.squadronId;
+    _squadronId = m?.squadronId ?? (_isSquadronChief ? widget.userSquadronId : null);
   }
 
   @override

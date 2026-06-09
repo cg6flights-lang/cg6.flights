@@ -378,6 +378,8 @@ class _CrewPageState extends ConsumerState<CrewPage> {
         grades: grades,
         defaultUnitId: defaultUnitId,
         squadrons: squadrons,
+        userRole: ref.read(sessionControllerProvider).user?.role?.key,
+        userSquadronId: ref.read(sessionControllerProvider).user?.squadronId,
       ),
     );
 

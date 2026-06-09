@@ -113,6 +113,13 @@ class FlightOrderItem {
     this.profiles = const [],
     this.profileIds = const [],
     this.stateEvents = const [],
+    this.flightType = 'normal',
+    this.shift,
+    this.instructorId,
+    this.instructorName,
+    this.rating,
+    this.cadetTurn,
+    this.checkRide,
   });
 
   final String id;
@@ -145,6 +152,13 @@ class FlightOrderItem {
   final List<FlightOrderProfile> profiles;
   final List<String> profileIds;
   final List<FlightOrderStateEvent> stateEvents;
+  final String flightType; // 'normal', 'prdi', 'alerta'
+  final String? shift; // 'I', 'II', 'III', 'IV'
+  final String? instructorId;
+  final String? instructorName;
+  final String? rating; // 'good', 'bad'
+  final int? cadetTurn; // 1-12
+  final String? checkRide; // 'CF-1', 'CH-OP', 'CH-COM'
 
   String get flightLevelDisplay {
     if (flightLevelMin == null) return '--';
@@ -189,6 +203,13 @@ class FlightOrderItem {
     List<FlightOrderProfile>? profiles,
     List<String>? profileIds,
     List<FlightOrderStateEvent>? stateEvents,
+    String? flightType,
+    String? shift,
+    String? instructorId,
+    String? instructorName,
+    String? rating,
+    int? cadetTurn,
+    String? checkRide,
   }) {
     return FlightOrderItem(
       id: id ?? this.id,
@@ -220,6 +241,13 @@ class FlightOrderItem {
       profiles: profiles ?? this.profiles,
       profileIds: profileIds ?? this.profileIds,
       stateEvents: stateEvents ?? this.stateEvents,
+      flightType: flightType ?? this.flightType,
+      shift: shift ?? this.shift,
+      instructorId: instructorId ?? this.instructorId,
+      instructorName: instructorName ?? this.instructorName,
+      rating: rating ?? this.rating,
+      cadetTurn: cadetTurn ?? this.cadetTurn,
+      checkRide: checkRide ?? this.checkRide,
     );
   }
 
@@ -272,6 +300,15 @@ class FlightOrderItem {
       unitName: json['unit_name']?.toString(),
       unitId: json['unit_id']?.toString(),
       orderStatus: json['order_status']?.toString(),
+      flightType: json['flight_type']?.toString() ?? 'normal',
+      shift: json['shift']?.toString(),
+      instructorId: json['instructor_id']?.toString(),
+      instructorName: json['instructor_name']?.toString(),
+      rating: json['rating']?.toString(),
+      cadetTurn: json['cadet_turn'] != null
+          ? int.tryParse(json['cadet_turn'].toString())
+          : null,
+      checkRide: json['check_ride']?.toString(),
     );
   }
 
