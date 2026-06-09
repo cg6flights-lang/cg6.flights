@@ -17,6 +17,7 @@ class CrewMember {
     this.trainingStart,
     this.trainingEnd,
     this.courseGroup,
+    this.photoPath,
   });
 
   final String id;
@@ -36,6 +37,7 @@ class CrewMember {
   final DateTime? trainingStart;
   final DateTime? trainingEnd;
   final String? courseGroup;
+  final String? photoPath;
 
   static const validQualifications = ['IP', 'PS', 'CO', 'PM', 'CP', 'OB'];
 
@@ -80,6 +82,7 @@ class CrewMember {
           ? DateTime.tryParse(json['training_end'].toString())
           : null,
       courseGroup: json['course_group']?.toString(),
+      photoPath: json['photo_path']?.toString(),
     );
   }
 
