@@ -154,6 +154,7 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
   final _flMaxCtrl = TextEditingController();
 
   String? _shift;
+  String _flightType = 'normal';
   int _eteMinutes = 0;
 
   String _fuelType = 'Jet A1';
@@ -207,6 +208,7 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
       _flMinCtrl.text = item.flightLevelMin?.toString() ?? '';
       _flMaxCtrl.text = item.flightLevelMax?.toString() ?? '';
       _shift = item.shift;
+      _flightType = item.flightType;
       _eteMinutes = item.eteMinutes ?? 0;
       _fuelType = item.fuelType ?? 'Jet A1';
       _fuelLbsCtrl.text = item.fuelAmount?.toString() ?? '';
@@ -542,6 +544,8 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
         _buildAircraftSection(l10n),
         const SizedBox(height: 12),
         _buildShiftDropdown(l10n),
+        const SizedBox(height: 12),
+        _buildFlightTypeDropdown(l10n),
         const SizedBox(height: 16),
         _buildMissionSection(l10n),
         const SizedBox(height: 16),
@@ -568,6 +572,20 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
   }
 
   // Step 3: Crew + Profiles
+  Widget _buildFlightTypeDropdown(AppLocalizations l10n) {
+    return DropdownButtonFormField<String>(
+      initialValue: _flightType,
+      decoration: const InputDecoration(labelText: 'Tipo de Vuelo', border: OutlineInputBorder()),
+      isExpanded: true,
+      items: const [
+        DropdownMenuItem(value: 'normal', child: Text('Normal')),
+        DropdownMenuItem(value: 'prdi', child: Text('PRDI (Instrucción)')),
+        DropdownMenuItem(value: 'alerta', child: Text('Alerta')),
+      ],
+      onChanged: (v) => setState(() => _flightType = v ?? 'normal'),
+    );
+  }
+
   Widget _buildShiftDropdown(AppLocalizations l10n) {
     return DropdownButtonFormField<String>(
       initialValue: _shift,
@@ -1500,6 +1518,7 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
           ? int.tryParse(_flMaxCtrl.text.trim())
           : null,
       'shift': _shift,
+      'flight_type': _flightType,
       'ete_minutes': _eteMinutes > 0 ? _eteMinutes : null,
       'fuel_type': _fuelType,
       'fuel_amount': double.tryParse(_fuelLbsCtrl.text.trim()),

@@ -416,6 +416,8 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
         if (_selectedUnitId != null) {
           filtered = flights.where((f) => f.unitId == _selectedUnitId).toList();
         }
+        // Hide alert flights (only show when activated)
+        filtered = filtered.where((f) => f.flightType != 'alerta').toList();
 
         // Split flights: Departures (before landing) / Arrivals (landing+)
         final departures = filtered

@@ -397,6 +397,10 @@ class _FlightItemCard extends StatelessWidget {
                               size: 14, color: StatusColors.delayed),
                           const SizedBox(width: 4),
                         ],
+                        if (item.flightType == 'prdi')
+                          Container(padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1), decoration: BoxDecoration(color: Colors.purple.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(4)), child: const Text('PRDI', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.purple))),
+                        if (item.flightType == 'alerta')
+                          Container(padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1), decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(4)), child: const Text('ALERTA', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.orange))),
                         StatusChip.fromStatus(
                             isCancelled ? 'cancelled' : item.status),
                         const SizedBox(width: 4),

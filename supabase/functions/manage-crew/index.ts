@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const actions = new Set(["create", "update", "deactivate", "move_squadron"]);
+const actions = new Set(["create", "update", "deactivate", "move_squadron", "photo"]);
 const globalRoles = new Set(["leader", "general_admin"]);
 const unitRoles = new Set(["unit_command", "unit_admin", "ttaa"]);
 const validCategories = ["pilot", "mechanic"];
@@ -164,6 +164,7 @@ Deno.serve(async (req) => {
   const assignmentType = String(payload.assignment_type ?? "nato").trim();
   const callsign = String(payload.callsign ?? "").trim().toUpperCase() || null;
   const squadronId = payload.squadron_id ? String(payload.squadron_id) : null;
+  const photoPath = payload.photo_path === null ? null : String(payload.photo_path ?? "").trim();
 
   if (!actions.has(action)) {
     return errorResponse(
@@ -175,7 +176,7 @@ Deno.serve(async (req) => {
     );
   }
 
-  if (!validCategories.includes(crewCategory)) {
+  if ((action === "create" || action === "update") && !validCategories.includes(crewCategory)) {
     return errorResponse(
       400,
       "VALIDATION_INVALID_INPUT",
@@ -185,7 +186,7 @@ Deno.serve(async (req) => {
     );
   }
 
-  if (!["nato", "foraneo"].includes(assignmentType)) {
+  if ((action === "create" || action === "update") && !["nato", "foraneo"].includes(assignmentType)) {
     return errorResponse(
       400,
       "VALIDATION_INVALID_INPUT",
@@ -195,7 +196,7 @@ Deno.serve(async (req) => {
     );
   }
 
-  if (action !== "deactivate" && (!grade || !firstName || !lastName || !nsa || !unitId || !appointmentDate)) {
+  if ((action === "create" || action === "update") && (!grade || !firstName || !lastName || !nsa || !unitId || !appointmentDate)) {
     return errorResponse(
       400,
       "VALIDATION_INVALID_INPUT",
@@ -205,7 +206,7 @@ Deno.serve(async (req) => {
     );
   }
 
-  if ((action === "update" || action === "deactivate" || action === "move_squadron") && !crewMemberId) {
+  if ((action === "update" || action === "deactivate" || action === "move_squadron" || action === "photo") && !crewMemberId) {
     return errorResponse(
       400,
       "VALIDATION_INVALID_INPUT",
@@ -225,6 +226,16 @@ Deno.serve(async (req) => {
     );
   }
 
+  if (action === "photo" && !photoPath) {
+    return errorResponse(
+      400,
+      "VALIDATION_INVALID_INPUT",
+      "La ruta de la foto es obligatoria.",
+      "VALIDATION",
+      "medium",
+    );
+  }
+
   if (nsa && nsa.length < 3) {
     return errorResponse(
       400,
@@ -235,7 +246,7 @@ Deno.serve(async (req) => {
     );
   }
 
-  if (appointmentDate && isNaN(Date.parse(appointmentDate))) {
+  if ((action === "create" || action === "update") && appointmentDate && isNaN(Date.parse(appointmentDate))) {
     return errorResponse(
       400,
       "VALIDATION_INVALID_INPUT",
@@ -245,7 +256,7 @@ Deno.serve(async (req) => {
     );
   }
 
-  if (action !== "deactivate" && grade) {
+  if ((action === "create" || action === "update") && grade) {
     const { data: gradeRecord } = await adminClient
       .from("grades")
       .select("code,category")
@@ -274,7 +285,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  if (crewCategory === "pilot") {
+  if ((action === "create" || action === "update") && crewCategory === "pilot") {
     const invalidQuals = qualifications.filter(
       (q) => !validQualifications.includes(q),
     );
@@ -289,7 +300,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  if (crewCategory === "mechanic" && qualifications.length > 0) {
+  if ((action === "create" || action === "update") && crewCategory === "mechanic" && qualifications.length > 0) {
     return errorResponse(
       400,
       "VALIDATION_INVALID_INPUT",
@@ -333,7 +344,7 @@ Deno.serve(async (req) => {
   }
 
   let existingMember: { id: string; unit_id: string; active: boolean } | null = null;
-  if (action === "update" || action === "deactivate") {
+  if (action === "update" || action === "deactivate" || action === "move_squadron" || action === "photo") {
     const { data } = await adminClient
       .from("crew_members")
       .select("id,unit_id,active")
@@ -437,6 +448,17 @@ Deno.serve(async (req) => {
     memberError = result.error;
   }
 
+  if (action === "photo") {
+    const result = await adminClient
+      .from("crew_members")
+      .update({ photo_path: photoPath, updated_at: new Date().toISOString() })
+      .eq("id", crewMemberId)
+      .select("id,unit_id,grade,first_name,last_name,nsa,crew_category,photo_path")
+      .single();
+    member = result.data;
+    memberError = result.error;
+  }
+
   if (action === "deactivate") {
     const result = await adminClient
       .from("crew_members")
@@ -488,6 +510,7 @@ Deno.serve(async (req) => {
       first_name: member.first_name,
       last_name: member.last_name,
       crew_category: member.crew_category,
+      photo_path: action === "photo" ? member.photo_path ?? null : undefined,
     },
   });
 

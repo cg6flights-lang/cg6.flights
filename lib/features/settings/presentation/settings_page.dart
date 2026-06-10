@@ -41,18 +41,24 @@ class SettingsPage extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.schedule, size: 20,
-                          color: theme.colorScheme.primary),
+                      Icon(
+                        Icons.schedule,
+                        size: 20,
+                        color: theme.colorScheme.primary,
+                      ),
                       const SizedBox(width: 8),
-                      Text(l10n.t('settings.timezone'),
-                          style: theme.textTheme.titleMedium),
+                      Text(
+                        l10n.t('settings.timezone'),
+                        style: theme.textTheme.titleMedium,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text(
                     l10n.t('settings.timezoneDesc'),
                     style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant),
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<int>(
@@ -64,13 +70,16 @@ class SettingsPage extends ConsumerWidget {
                     items: List.generate(availableTimezones.length, (i) {
                       return DropdownMenuItem<int>(
                         value: i,
-                        child: Text(availableTimezones[i].$1,
-                            style: const TextStyle(fontSize: 14)),
+                        child: Text(
+                          availableTimezones[i].$1,
+                          style: const TextStyle(fontSize: 14),
+                        ),
                       );
                     }),
                     onChanged: (v) {
                       if (v != null && v < availableTimezones.length) {
-                        ref.read(timezoneProvider.notifier)
+                        ref
+                            .read(timezoneProvider.notifier)
                             .setOffset(availableTimezones[v].$2);
                       }
                     },
@@ -91,29 +100,38 @@ class SettingsPage extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.brightness_6, size: 20,
-                          color: theme.colorScheme.primary),
+                      Icon(
+                        Icons.brightness_6,
+                        size: 20,
+                        color: theme.colorScheme.primary,
+                      ),
                       const SizedBox(width: 8),
-                      Text(l10n.t('settings.theme'), style: theme.textTheme.titleMedium),
+                      Text(
+                        l10n.t('settings.theme'),
+                        style: theme.textTheme.titleMedium,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text(
                     l10n.t('settings.themeDesc'),
                     style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant),
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   SegmentedButton<ThemeMode>(
                     segments: [
                       ButtonSegment(
-                          value: ThemeMode.light,
-                          icon: const Icon(Icons.light_mode),
-                          label: Text(l10n.t('settings.light'))),
+                        value: ThemeMode.light,
+                        icon: const Icon(Icons.light_mode),
+                        label: Text(l10n.t('settings.light')),
+                      ),
                       ButtonSegment(
-                          value: ThemeMode.dark,
-                          icon: const Icon(Icons.dark_mode),
-                          label: Text(l10n.t('settings.dark'))),
+                        value: ThemeMode.dark,
+                        icon: const Icon(Icons.dark_mode),
+                        label: Text(l10n.t('settings.dark')),
+                      ),
                     ],
                     selected: {themeMode},
                     onSelectionChanged: (v) {
@@ -134,18 +152,33 @@ class SettingsPage extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(children: [
-                    Icon(Icons.military_tech, size: 20, color: theme.colorScheme.primary),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text('Escuadrones', style: theme.textTheme.titleMedium)),
-                    if (ref.watch(sessionControllerProvider).can(AppPermission.aircraftManage))
-                      FilledButton.icon(
-                        onPressed: () => _showAddSquadronDialog(context, ref),
-                        icon: const Icon(Icons.add, size: 16),
-                        label: const Text('Agregar'),
-                        style: FilledButton.styleFrom(visualDensity: VisualDensity.compact),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.military_tech,
+                        size: 20,
+                        color: theme.colorScheme.primary,
                       ),
-                  ]),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Escuadrones',
+                          style: theme.textTheme.titleMedium,
+                        ),
+                      ),
+                      if (ref
+                          .watch(sessionControllerProvider)
+                          .can(AppPermission.aircraftManage))
+                        FilledButton.icon(
+                          onPressed: () => _showAddSquadronDialog(context, ref),
+                          icon: const Icon(Icons.add, size: 16),
+                          label: const Text('Agregar'),
+                          style: FilledButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ),
+                    ],
+                  ),
                   const SizedBox(height: 12),
                   const _SquadronList(),
                 ],
@@ -157,11 +190,15 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _showAddSquadronDialog(BuildContext context, WidgetRef ref) async {
+  Future<void> _showAddSquadronDialog(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final l10n = AppLocalizations.of(context);
     final unitsResult = await ref.read(unitsRepositoryProvider).listUnits();
     final units = switch (unitsResult) {
-      AppSuccess<List<UnitOption>>(data: final list) => list.where((u) => u.active).toList(),
+      AppSuccess<List<UnitOption>>(data: final list) =>
+        list.where((u) => u.active).toList(),
       _ => <UnitOption>[],
     };
 
@@ -179,26 +216,48 @@ class SettingsPage extends ConsumerWidget {
             children: [
               DropdownButtonFormField<String>(
                 initialValue: selectedUnitId,
-                decoration: const InputDecoration(labelText: 'Unidad', border: OutlineInputBorder()),
-                items: units.map((u) => DropdownMenuItem(value: u.id, child: Text('${u.code} — ${u.name}'))).toList(),
-                onChanged: (v) => setDialogState(() => selectedUnitId = v ?? ''),
+                decoration: const InputDecoration(
+                  labelText: 'Unidad',
+                  border: OutlineInputBorder(),
+                ),
+                items: units
+                    .map(
+                      (u) => DropdownMenuItem(
+                        value: u.id,
+                        child: Text('${u.code} — ${u.name}'),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) =>
+                    setDialogState(() => selectedUnitId = v ?? ''),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: nameCtrl,
-                decoration: const InputDecoration(labelText: 'Nombre del Escuadrón', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Nombre del Escuadrón',
+                  border: OutlineInputBorder(),
+                ),
               ),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.t('common.cancel'))),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.t('common.save'))),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(l10n.t('common.cancel')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(l10n.t('common.save')),
+            ),
           ],
         ),
       ),
     );
     if (result == true && context.mounted && nameCtrl.text.trim().isNotEmpty) {
-      await ref.read(squadronRepositoryProvider).createSquadron(unitId: selectedUnitId, name: nameCtrl.text.trim());
+      await ref
+          .read(squadronRepositoryProvider)
+          .createSquadron(unitId: selectedUnitId, name: nameCtrl.text.trim());
       ref.invalidate(_squadronListProvider);
     }
   }
@@ -218,7 +277,12 @@ class _SquadronList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final squadrons = ref.watch(_squadronListProvider).value ?? [];
-    if (squadrons.isEmpty) return const Text('Sin escuadrones', style: TextStyle(fontSize: 13, color: Colors.grey));
+    if (squadrons.isEmpty) {
+      return const Text(
+        'Sin escuadrones',
+        style: TextStyle(fontSize: 13, color: Colors.grey),
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -226,43 +290,78 @@ class _SquadronList extends ConsumerWidget {
         for (final s in squadrons)
           Padding(
             padding: const EdgeInsets.only(bottom: 6),
-            child: Row(children: [
-              Icon(s.active ? Icons.check_circle : Icons.cancel, size: 14, color: s.active ? Colors.green : Colors.grey),
-              const SizedBox(width: 8),
-              Expanded(child: Text(s.name, style: const TextStyle(fontSize: 13))),
-              TextButton.icon(
-                onPressed: () async {
-                  final ctrl = TextEditingController(text: s.name);
-                  final ok = await showDialog<bool>(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('Editar nombre'),
-                      content: TextFormField(controller: ctrl, decoration: const InputDecoration(border: OutlineInputBorder())),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-                        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Guardar')),
-                      ],
-                    ),
-                  );
-                  if (ok == true && context.mounted && ctrl.text.trim().isNotEmpty) {
-                    await ref.read(squadronRepositoryProvider).updateSquadronName(squadronId: s.id, name: ctrl.text.trim());
+            child: Row(
+              children: [
+                Icon(
+                  s.active ? Icons.check_circle : Icons.cancel,
+                  size: 14,
+                  color: s.active ? Colors.green : Colors.grey,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(s.name, style: const TextStyle(fontSize: 13)),
+                ),
+                TextButton.icon(
+                  onPressed: () async {
+                    final ctrl = TextEditingController(text: s.name);
+                    final ok = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Editar nombre'),
+                        content: TextFormField(
+                          controller: ctrl,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text('Cancelar'),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text('Guardar'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (ok == true &&
+                        context.mounted &&
+                        ctrl.text.trim().isNotEmpty) {
+                      await ref
+                          .read(squadronRepositoryProvider)
+                          .updateSquadronName(
+                            squadronId: s.id,
+                            name: ctrl.text.trim(),
+                          );
+                      ref.invalidate(_squadronListProvider);
+                    }
+                  },
+                  icon: const Icon(Icons.edit, size: 14),
+                  label: const Text('Editar', style: TextStyle(fontSize: 11)),
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                TextButton(
+                  onPressed: () async {
+                    await ref
+                        .read(squadronRepositoryProvider)
+                        .toggleSquadron(s.id);
                     ref.invalidate(_squadronListProvider);
-                  }
-                },
-                icon: const Icon(Icons.edit, size: 14),
-                label: const Text('Editar', style: TextStyle(fontSize: 11)),
-                style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-              ),
-              const SizedBox(width: 4),
-              TextButton(
-                onPressed: () async {
-                  await ref.read(squadronRepositoryProvider).toggleSquadron(s.id);
-                  ref.invalidate(_squadronListProvider);
-                },
-                child: Text(s.active ? 'Desactivar' : 'Activar', style: const TextStyle(fontSize: 11)),
-                style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-              ),
-            ]),
+                  },
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  child: Text(
+                    s.active ? 'Desactivar' : 'Activar',
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                ),
+              ],
+            ),
           ),
       ],
     );

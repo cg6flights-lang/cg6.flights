@@ -17,7 +17,10 @@ class CrewMember {
     this.trainingStart,
     this.trainingEnd,
     this.courseGroup,
+    this.cadetCourseId,
+    this.cadetCourseName,
     this.photoPath,
+    this.cadetTurn,
   });
 
   final String id;
@@ -37,7 +40,10 @@ class CrewMember {
   final DateTime? trainingStart;
   final DateTime? trainingEnd;
   final String? courseGroup;
+  final String? cadetCourseId;
+  final String? cadetCourseName;
   final String? photoPath;
+  final int? cadetTurn; // max cadet_turn completed from flights
 
   static const validQualifications = ['IP', 'PS', 'CO', 'PM', 'CP', 'OB'];
 
@@ -45,6 +51,20 @@ class CrewMember {
   bool get isPilot => crewCategory == 'pilot';
   bool get isMechanic => crewCategory == 'mechanic';
   bool get isNato => assignmentType == 'nato';
+  bool get isCadet {
+    return (cadetCourseId?.isNotEmpty ?? false) ||
+        (courseGroup?.trim().isNotEmpty ?? false) ||
+        trainingStart != null ||
+        trainingEnd != null;
+  }
+
+  String get cadetCourseLabel {
+    final course = cadetCourseName?.trim();
+    if (course != null && course.isNotEmpty) return course;
+    final group = courseGroup?.trim();
+    if (group != null && group.isNotEmpty) return group;
+    return '';
+  }
 
   factory CrewMember.fromJson(Map<String, dynamic> json) {
     final quals = json['qualifications'];
@@ -67,7 +87,7 @@ class CrewMember {
       callsign: json['callsign']?.toString(),
       appointmentDate: json['appointment_date'] != null
           ? DateTime.tryParse(json['appointment_date'].toString()) ??
-              DateTime.now()
+                DateTime.now()
           : DateTime.now(),
       active: json['active'] == true,
       qualifications: qualList,
@@ -82,7 +102,12 @@ class CrewMember {
           ? DateTime.tryParse(json['training_end'].toString())
           : null,
       courseGroup: json['course_group']?.toString(),
+      cadetCourseId: json['cadet_course_id']?.toString(),
+      cadetCourseName: json['cadet_courses'] is Map
+          ? (json['cadet_courses'] as Map)['name']?.toString()
+          : json['cadet_course_name']?.toString(),
       photoPath: json['photo_path']?.toString(),
+      cadetTurn: json['cadet_turn'] != null ? int.tryParse(json['cadet_turn'].toString()) : null,
     );
   }
 
