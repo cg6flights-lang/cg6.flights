@@ -93,6 +93,14 @@ Flight Status, Closures, History, Notifications, Reports, Calendar, Maps, Settin
 - Script `deploy_local.sh` con detección de compilación DDC vía response time de `main.dart.js`.
 - Vercel deploy con `outputDirectory: build/web` (sin buildCommand porque Flutter no está en las build machines).
 
+### Sesión 2026-06-22 (Realtime, METAR, fechas en Vuelos, estandarización de horas)
+- **Realtime ops** — Patrón "Realtime → invalidate": helper `lib/core/realtime/realtime_invalidator.dart` (canal Supabase por tabla, con debounce, que invalida providers Riverpod sin reescribir queries con joins). Aplicado a Crew (`crew_members`) y Dashboard (`flight_orders`, `flight_order_items`, `flight_order_state_events`, `aircraft`). Notifications ya era StreamProvider; se quitó el Timer de polling de 5s. Migración `20260621000000_realtime_ops_tables.sql` habilita esas tablas en la publicación `supabase_realtime` (replica identity full).
+- **Flight item dialog** — Rediseño a 3 pasos (Vuelo · Combustible y Ruta · Tripulación) reutilizando el selector de tripulación completo (`_buildCrewSection`: function codes + checkbox mecánico + i18n); se eliminó un Step 3 duplicado e inferior.
+- **METAR** — Visibilidad en km (statute miles × 1.609344) en `MetarData.visDisplay`; aplica a Vuelos y Dashboard (comparten `MetarWidget`).
+- **Vuelos: fecha** — Calendario `showDatePicker` en el header de Vuelos; la Pantalla LED hereda la fecha seleccionada vía `FlightLedBoard(initialDate:)`.
+- **Estandarización de horas a UTC** — Norma: almacenar SIEMPRE en UTC, mostrar SIEMPRE con `formatTimeWithOffset` usando el offset de `timezoneProvider` (default Perú UTC-5, configurable en Settings). Corregidos: guardado de `scheduled_departure` (local→UTC en `flight_item_form_dialog`), carga del modal (UTC→local), LED presenter (`toLocalTime` en vez de `dt.toLocal()`), Aircraft `_RelatedOrderCard` (→ `ConsumerWidget`) y PDF (offset inyectado por el provider). Migración `20260622000000_fix_scheduled_departure_utc.sql` corrige datos históricos (+5h).
+- **Entorno local** — SDK Flutter correcto: `/Users/franciscobances1997/flutter/flutter/bin/flutter` (el del PATH `/flutter/bin` es incorrecto y provoca timeouts de I/O). El device `web-server` en :8080 resultó más estable que `-d chrome` (que se cuelga en "Waiting for connection from debug service on Chrome").
+
 ## Principios
 
 - Seguridad alta.

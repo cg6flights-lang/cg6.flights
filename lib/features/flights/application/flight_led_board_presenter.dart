@@ -1,3 +1,4 @@
+import 'package:cg6_flights/core/state/timezone_provider.dart';
 import 'package:cg6_flights/features/flight_orders/domain/flight_order.dart';
 
 enum LedFlightTone { normal, success, warning, critical, muted }
@@ -92,8 +93,8 @@ class FlightLedBoardPresenter {
   }
 
   String _timeText(DateTime dt, int tzOffset) {
-    // Supabase returns UTC (+00). toLocal() converts to system local timezone.
-    final local = dt.toLocal();
+    // Supabase returns UTC; convert to the configured timezone offset.
+    final local = toLocalTime(dt, tzOffset);
     return '${local.hour.toString().padLeft(2, '0')}:'
         '${local.minute.toString().padLeft(2, '0')}';
   }

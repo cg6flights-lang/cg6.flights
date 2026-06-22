@@ -14,6 +14,7 @@ import 'package:cg6_flights/features/flight_orders/data/flight_orders_repository
 import 'package:cg6_flights/features/flight_orders/domain/flight_order.dart';
 import 'package:cg6_flights/features/units/data/units_repository.dart';
 import 'package:cg6_flights/features/units/domain/unit_option.dart';
+import 'package:cg6_flights/core/state/timezone_provider.dart';
 import 'package:cg6_flights/shared/widgets/data_state_view.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -2381,15 +2382,16 @@ class _RelatedOrdersState extends StatelessWidget {
   }
 }
 
-class _RelatedOrderCard extends StatelessWidget {
+class _RelatedOrderCard extends ConsumerWidget {
   const _RelatedOrderCard({required this.item});
 
   final FlightOrderItem item;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+    final tz = ref.watch(timezoneProvider);
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -2434,7 +2436,7 @@ class _RelatedOrderCard extends StatelessWidget {
               ),
               _SmallMetaChip(
                 label:
-                    '${l10n.t('aircraft.etd')}: ${_formatAircraftTime(item.scheduledDeparture)}',
+                    '${l10n.t('aircraft.etd')}: ${formatTimeWithOffset(item.scheduledDeparture, tz)}',
               ),
             ],
           ),
@@ -2485,11 +2487,6 @@ class _SmallMetaChip extends StatelessWidget {
 
 String _formatAircraftDate(DateTime date) {
   return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-}
-
-String _formatAircraftTime(DateTime? date) {
-  if (date == null) return '--';
-  return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
 }
 
 String _labelOrDash(String? value) {

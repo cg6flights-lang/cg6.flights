@@ -2,17 +2,21 @@ import 'dart:typed_data';
 
 import 'package:cg6_flights/core/errors/app_error.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
+import 'package:cg6_flights/core/state/timezone_provider.dart';
 import 'package:cg6_flights/features/flight_orders/domain/flight_order.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 final flightOrderPdfServiceProvider = Provider<FlightOrderPdfService>((ref) {
-  return const FlightOrderPdfService();
+  return FlightOrderPdfService(tzOffset: ref.watch(timezoneProvider));
 });
 
 class FlightOrderPdfService {
-  const FlightOrderPdfService();
+  const FlightOrderPdfService({this.tzOffset = -5});
+
+  /// Configured timezone offset used to render all times in the PDF.
+  final int tzOffset;
 
   Future<AppResult<Uint8List>> buildFlightOrderPdf({
     required FlightOrder order,
@@ -413,10 +417,8 @@ class FlightOrderPdfService {
         '${date.year}';
   }
 
-  String _formatTime(DateTime dateTime) {
-    return '${dateTime.hour.toString().padLeft(2, '0')}:'
-        '${dateTime.minute.toString().padLeft(2, '0')}';
-  }
+  String _formatTime(DateTime dateTime) =>
+      formatTimeWithOffset(dateTime, tzOffset);
 
   String _safeFilePart(String value) {
     return value.replaceAll(RegExp(r'[^a-zA-Z0-9_-]+'), '-');

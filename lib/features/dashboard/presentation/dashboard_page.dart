@@ -1,6 +1,8 @@
 import 'package:cg6_flights/app/i18n/app_localizations.dart';
+import 'package:cg6_flights/core/realtime/realtime_invalidator.dart';
 import 'package:cg6_flights/features/auth/application/session_controller.dart';
 import 'package:cg6_flights/features/dashboard/application/dashboard_preferences.dart';
+import 'package:cg6_flights/features/dashboard/application/dashboard_providers.dart';
 import 'package:cg6_flights/features/dashboard/domain/dashboard_widget_config.dart';
 import 'package:cg6_flights/features/dashboard/presentation/widgets/activity_widget.dart';
 import 'package:cg6_flights/features/dashboard/presentation/widgets/aviation_clock_widget.dart';
@@ -28,6 +30,33 @@ class DashboardPage extends ConsumerStatefulWidget {
 class _DashboardPageState extends ConsumerState<DashboardPage> {
   bool _editMode = false;
   static const _clockWidgetIds = {'zulu_clock', 'romeo_clock'};
+  RealtimeInvalidator? _realtime;
+
+  @override
+  void initState() {
+    super.initState();
+    _realtime = RealtimeInvalidator(
+      channelName: 'dashboard-page',
+      tables: const [
+        'flight_orders',
+        'flight_order_items',
+        'flight_order_state_events',
+        'aircraft',
+      ],
+      onChange: () {
+        if (!mounted) return;
+        ref.invalidate(todayFlightsProvider);
+        ref.invalidate(aircraftStatusProvider);
+        ref.invalidate(dashboardFleetProvider);
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _realtime?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -183,7 +212,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         Expanded(
           child: ReorderableListView.builder(
             itemCount: all.length,
-            onReorder: (oldIndex, newIndex) {
+            onReorderItem: (oldIndex, newIndex) {
               ref
                   .read(dashboardPreferencesProvider.notifier)
                   .move(oldIndex, newIndex);
@@ -534,7 +563,7 @@ class _CustomizeSheet extends ConsumerWidget {
           Expanded(
             child: ReorderableListView.builder(
               itemCount: prefs.length,
-              onReorder: (o, n) =>
+              onReorderItem: (o, n) =>
                   ref.read(dashboardPreferencesProvider.notifier).move(o, n),
               itemBuilder: (ctx, i) {
                 final p = prefs[i];

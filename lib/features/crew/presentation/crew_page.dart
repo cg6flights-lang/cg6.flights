@@ -1,5 +1,6 @@
 import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/core/errors/app_error.dart';
+import 'package:cg6_flights/core/realtime/realtime_invalidator.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
 import 'package:cg6_flights/core/security/app_permission.dart';
 import 'package:cg6_flights/features/auth/application/session_controller.dart';
@@ -82,6 +83,27 @@ class _CrewPageState extends ConsumerState<CrewPage> {
   List<FlightSquadron> _squadrons = [];
   bool _defaultUnitSet = false;
   bool _showCadets = false;
+  RealtimeInvalidator? _realtime;
+
+  @override
+  void initState() {
+    super.initState();
+    _realtime = RealtimeInvalidator(
+      channelName: 'crew-page',
+      tables: const ['crew_members'],
+      onChange: () {
+        if (!mounted) return;
+        ref.invalidate(_crewListProvider);
+        ref.invalidate(_cadetsByCourseProvider);
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _realtime?.dispose();
+    super.dispose();
+  }
 
   bool get _isGru51 => _selectedUnitId == _gru51Id;
   bool get _isEdaci => _selectedUnitId == _edaciId;

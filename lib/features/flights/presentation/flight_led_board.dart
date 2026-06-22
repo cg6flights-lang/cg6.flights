@@ -19,14 +19,16 @@ final _ledProvider =
 });
 
 class FlightLedBoard extends ConsumerStatefulWidget {
-  const FlightLedBoard({super.key});
+  const FlightLedBoard({super.key, required this.initialDate});
+
+  final DateTime initialDate;
 
   @override
   ConsumerState<FlightLedBoard> createState() => _FlightLedBoardState();
 }
 
 class _FlightLedBoardState extends ConsumerState<FlightLedBoard> {
-  DateTime _selectedDate = DateTime.now();
+  late DateTime _selectedDate;
 
   DateTime get _today {
     final now = DateTime.now();
@@ -87,6 +89,7 @@ class _FlightLedBoardState extends ConsumerState<FlightLedBoard> {
   @override
   void initState() {
     super.initState();
+    _selectedDate = widget.initialDate;
     _clock = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() => _now = DateTime.now());
     });

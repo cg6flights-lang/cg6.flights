@@ -51,9 +51,13 @@ class _CadetDetailDialogState extends ConsumerState<_CadetDetailDialog> {
   Map<String, int> _ratingSummary() {
     int good = 0, bad = 0, nc = 0;
     for (final f in _flights) {
-      if (f.rating == 'good') good++;
-      else if (f.rating == 'bad') bad++;
-      else nc++;
+      if (f.rating == 'good') {
+        good++;
+      } else if (f.rating == 'bad') {
+        bad++;
+      } else {
+        nc++;
+      }
     }
     return {'good': good, 'bad': bad, 'nc': nc};
   }

@@ -110,6 +110,22 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
     });
   }
 
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: _today,
+      helpText: AppLocalizations.of(context).t('common.selectDate'),
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        _selectedDate = DateTime(picked.year, picked.month, picked.day);
+        _selectedItem = null;
+      });
+    }
+  }
+
   bool get _isToday {
     final now = DateTime.now();
     return _selectedDate.year == now.year &&
@@ -338,19 +354,39 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
             visualDensity: VisualDensity.compact,
             onPressed: () => _changeDate(-1),
           ),
-          SizedBox(
-            width: 130,
-            child: Text(
-              _dateLabel(_selectedDate),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'monospace',
-                letterSpacing: 1,
-                color: _isToday
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.onSurface,
+          InkWell(
+            onTap: _pickDate,
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.calendar_month,
+                    size: 16,
+                    color: _isToday
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 6),
+                  SizedBox(
+                    width: 116,
+                    child: Text(
+                      _dateLabel(_selectedDate),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'monospace',
+                        letterSpacing: 1,
+                        color: _isToday
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -583,7 +619,7 @@ class _FlightsPageState extends ConsumerState<FlightsPage> {
     return OutlinedButton.icon(
       onPressed: () => Navigator.of(
         context,
-      ).push(MaterialPageRoute(builder: (_) => const FlightLedBoard())),
+      ).push(MaterialPageRoute(builder: (_) => FlightLedBoard(initialDate: _selectedDate))),
       icon: const Icon(Icons.monitor, size: 18),
       label: Text(l10n.t('flights.ledBoard')),
       style: OutlinedButton.styleFrom(

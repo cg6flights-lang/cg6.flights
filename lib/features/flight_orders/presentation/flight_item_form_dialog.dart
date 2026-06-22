@@ -1,5 +1,6 @@
 import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/core/results/app_result.dart';
+import 'package:cg6_flights/core/state/timezone_provider.dart';
 import 'package:cg6_flights/features/flight_orders/data/flight_orders_repository.dart';
 import 'package:cg6_flights/features/flight_orders/domain/flight_order.dart';
 import 'package:flutter/material.dart';
@@ -143,7 +144,7 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
   bool _saving = false;
   int _currentStep = 0;
 
-  static const _stepLabels = ['Vuelo', 'Combustible y Ruta'];
+  static const _stepLabels = ['Vuelo', 'Combustible y Ruta', 'Tripulación'];
 
   String? _aircraftId;
   String? _aircraftError;
@@ -200,10 +201,11 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
       _aircraftId = item.aircraftId;
       _missionCtrl.text = item.mission ?? '';
       if (item.scheduledDeparture != null) {
-        _departureTime = TimeOfDay(
-          hour: item.scheduledDeparture!.hour,
-          minute: item.scheduledDeparture!.minute,
+        final local = toLocalTime(
+          item.scheduledDeparture!,
+          ref.read(timezoneProvider),
         );
+        _departureTime = TimeOfDay(hour: local.hour, minute: local.minute);
       }
       _flMinCtrl.text = item.flightLevelMin?.toString() ?? '';
       _flMaxCtrl.text = item.flightLevelMax?.toString() ?? '';
@@ -433,7 +435,7 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
           onPressed: _saving ? null : () => Navigator.of(context).pop(false),
           child: Text(l10n.t('common.cancel')),
         ),
-        if (_currentStep < 1)
+        if (_currentStep < 2)
           FilledButton(
             onPressed: _canAdvance()
                 ? () => setState(() => _currentStep++)
@@ -529,7 +531,7 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
       case 1:
         return _buildStep2(l10n);
       case 2:
-        return _buildStep2(l10n);
+        return _buildStep3(l10n);
       default:
         return const SizedBox.shrink();
     }
@@ -556,7 +558,7 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
     );
   }
 
-  // Step 2: Fuel + Routes + Crew
+  // Step 2: Fuel + Routes
   Widget _buildStep2(AppLocalizations l10n) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -565,13 +567,21 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
         _buildFuelSection(l10n),
         const SizedBox(height: 20),
         _buildRoutesSection(l10n),
-        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  // Step 3: Crew
+  Widget _buildStep3(AppLocalizations l10n) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
         _buildCrewSection(l10n),
       ],
     );
   }
 
-  // Step 3: Crew + Profiles
   Widget _buildFlightTypeDropdown(AppLocalizations l10n) {
     return DropdownButtonFormField<String>(
       initialValue: _flightType,
@@ -1498,13 +1508,14 @@ class _FlightItemFormDialogState extends ConsumerState<FlightItemFormDialog> {
     }
 
     final opDate = widget.operationDate;
-    final departure = DateTime(
+    // Interpret the entered time in the configured timezone and store as UTC.
+    final departure = DateTime.utc(
       opDate.year,
       opDate.month,
       opDate.day,
       _departureTime!.hour,
       _departureTime!.minute,
-    );
+    ).subtract(Duration(hours: ref.read(timezoneProvider)));
 
     setState(() => _saving = true);
 

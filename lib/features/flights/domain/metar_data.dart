@@ -45,8 +45,9 @@ class MetarData {
     return '${windDir.toString().padLeft(3, "0")}/${windSpeed}KT';
   }
 
-  String get visDisplay =>
-      visibility != null ? '${visibility!.toStringAsFixed(0)}M' : '--';
+  String get visDisplay => visibility != null
+      ? '${(visibility! * 1.609344).toStringAsFixed(0)} Km'
+      : '--';
   String get qnhDisplay =>
       qnh != null ? 'QNH ${qnh!.toStringAsFixed(0)}' : '--';
 

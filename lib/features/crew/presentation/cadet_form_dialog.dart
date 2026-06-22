@@ -1,4 +1,3 @@
-import 'package:cg6_flights/app/i18n/app_localizations.dart';
 import 'package:cg6_flights/features/crew/domain/cadet_course.dart';
 import 'package:cg6_flights/features/crew/domain/crew_member.dart';
 import 'package:cg6_flights/features/crew/domain/grade_option.dart';
