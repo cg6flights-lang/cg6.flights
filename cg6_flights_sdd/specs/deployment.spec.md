@@ -4,7 +4,7 @@
 
 ## Estado
 
-Aprobado operativo para implementación v1.0.
+Aprobado operativo. **As-built (2026-06-23): primer despliegue en producción en Vercel realizado (v1.0).**
 
 ## 1. Propósito
 
@@ -22,11 +22,15 @@ Reglas:
 - Cada ambiente usa proyecto Supabase o configuración separada.
 - Variables de entorno por ambiente.
 
+> **Dev local as-built**: `scripts/deploy_local.sh` (detecta fin de compilación DDC vía response time de `main.dart.js`), puerto `8080`, SDK del proyecto (`.vscode/settings.json`). Modo seguro sin credenciales para validar UI/guards; con Supabase vía `--dart-define-from-file=.env.json`.
+
 ## 3. Vercel
 
 - Hosting para Flutter Web compilado.
-- Build command: `flutter build web --release`.
+- Build command (local): `flutter build web --release`.
 - Output directory: `build/web`.
+
+> **As-built**: `vercel.json` usa `outputDirectory: build/web` **sin** `buildCommand` (Flutter no está disponible en las build machines de Vercel): el build se hace localmente y se publica `build/web`.
 - Headers de seguridad definidos antes de producción.
 - Deploy de producción solo después de gates aprobados.
 

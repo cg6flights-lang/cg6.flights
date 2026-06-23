@@ -17,6 +17,8 @@ Stack preliminar:
 - Supabase Edge Functions.
 - Vercel.
 
+> **Estado as-built (2026-06-23)**: el stack preliminar quedó confirmado en producción. Frontend Flutter Web 3.44.1 con **Riverpod** (gestión de estado) + **GoRouter**. Realtime implementado vía el patrón "Realtime → invalidate" (`lib/core/realtime/realtime_invalidator.dart`): canales Supabase por tabla invalidan providers Riverpod, en lugar de streams con joins. Deploy en Vercel (`outputDirectory: build/web`).
+
 ## 2. Capas
 
 ```txt
@@ -31,29 +33,31 @@ Integration Layer
 
 ## 3. Módulos
 
+**Implementados (18 módulos en `lib/features/`):**
+
 - Auth
-- Users
-- Roles
-- Permissions
+- Users (incluye Roles y Permissions: `users/domain/user_permissions.dart` + `core/security/app_role.dart`)
 - Units
 - Aircraft
-- Crew
+- Crew (incluye Cadetes temporales)
+- Squadrons (Escuadrones — rol Jefe de Escuadrón)
 - Flight Orders
-- Flights
+- Flights (Pantalla LED + METAR)
 - Flight Status
-- Routes
+- Routes (incluye mapa embebido — flutter_map)
 - Closures
-- History
 - Audit
+- Trash (Papelera / soft-delete)
 - Notifications
 - Messages
-- Reports
 - Calendar
-- Maps
+- Dashboard (modular v2, adaptativo por rol)
 - Profile
-- I18n
-- Shared
-- Governance
+- Settings
+
+**Cross-cutting (`lib/core`, `lib/shared`):** Security/Permissions, Realtime, Results/Errors, State, Config, I18n, Shared widgets, Governance.
+
+**Planned (aún no como módulo autónomo):** Reports (PDF hoy acotado a Flight Orders), History (cubierto parcialmente por Audit + Trash), Maps standalone (vive embebido en Routes).
 
 ## 4. Boundaries principales
 
@@ -153,18 +157,16 @@ Stack preliminar permitido:
 - Supabase.
 - Vercel.
 
-Dependencias candidatas:
+Dependencias as-built (confirmadas):
 
 - supabase_flutter
 - go_router
-- flutter_riverpod o bloc
-- intl
-- flutter_localizations
-- pdf o alternativa
-- excel o alternativa
-- file_picker si aplica
-- flutter_svg si aplica
-- lottie si aplica
+- flutter_riverpod  ← elegido sobre bloc
+- intl + flutter_localizations
+- fl_chart  ← gráficas (Audit, Dashboard, Aircraft)
+- flutter_map + latlong2  ← mapas (Routes)
+- pdf  ← Orden de Vuelo
+- shared_preferences
 
 No se instala nada sin justificación y revisión.
 

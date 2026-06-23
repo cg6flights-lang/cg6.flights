@@ -35,13 +35,18 @@ El sistema incluirá:
 23. Internacionalización.
 24. Responsive UI.
 25. Diseño aeronáutico militar.
+26. Escuadrones de vuelo.
+27. Cadetes temporales (cursos, grados, turnos).
+28. Papelera (soft-delete con restauración).
+29. Realtime operacional.
 
-## 3. Roles
+## 3. Roles (6)
 
 - Líder.
 - Administrador General.
 - Comando de Unidad.
 - Administrador de Unidad.
+- Jefe de Escuadrón.  ← añadido en v1.2 (GRU51).
 - TTAA.
 
 ## 4. Workflows principales
@@ -102,6 +107,13 @@ El sistema incluirá:
 - RF-013: El sistema debe soportar permisos por acción.
 - RF-014: El sistema debe permitir activar/desactivar permisos.
 - RF-015: El sistema debe auditar cambios de permisos.
+- RF-016: El sistema debe soportar el rol Jefe de Escuadrón con scope acotado a su escuadrón (`squadronId`).
+
+### Escuadrones (implementado v1.2)
+
+- RF-017: El sistema debe gestionar escuadrones de vuelo dentro de una unidad (GRU51).
+- RF-018: El sistema debe asociar aeronaves a escuadrones mediante relación M:N (`aircraft_squadrons`).
+- RF-019: El sistema debe filtrar Tripulaciones y Aeronaves por escuadrón.
 
 ### Unidades
 
@@ -127,6 +139,12 @@ Nota de implementación v1.0: RF-033 pertenece al módulo Históricos y debe res
 - RF-042: El sistema debe registrar mecánicos o Ingenieros de Vuelo si aplica.
 - RF-043: El sistema debe asociar tripulación a unidad.
 - RF-044: El sistema debe filtrar histórico por tripulante.
+
+### Cadetes temporales (implementado v1.2)
+
+- RF-045: El sistema debe gestionar cadetes temporales con curso (`cadet_courses`) y grado.
+- RF-046: El sistema debe asignar turnos de cadetes a vuelos (PRDI / turnos).
+- RF-047: El sistema debe soportar foto de cadete/tripulante (`photo_path`, Storage).
 
 ### Orden de Vuelo
 
@@ -185,12 +203,19 @@ Nota de implementación v1.0: RF-033 pertenece al módulo Históricos y debe res
 - RF-107: El sistema debe mostrar un preview rápido de calendario desde el header con alertas próximas y acceso `Ampliar` a la sección completa.
 - RF-108: El sistema debe visualizar actividades del mes en formato Gantt y permitir control diario de estado: iniciar, reprogramar y confirmar realización.
 
+### Papelera y realtime (implementado v1.1–v1.3)
+
+- RF-114: El sistema debe aplicar borrado lógico (soft-delete) con Papelera y restauración desde Auditoría, en lugar de borrado físico ordinario.
+- RF-115: El sistema debe reflejar cambios operacionales en tiempo real (Crew, Dashboard, Notifications) sin polling, mediante invalidación de providers por canal Supabase.
+
 ### UI y plataforma
 
 - RF-110: El sistema debe ser responsive.
-- RF-111: El sistema debe ser bilingüe Español/Inglés.
+- RF-111: El sistema debe ser bilingüe Español/Inglés. **(Implementado: i18n completo ES/EN, ~38 archivos, toggle en login y header.)**
 - RF-112: El sistema debe tener diseño aeronáutico militar.
 - RF-113: El sistema debe permitir foto de perfil máximo 5 MB.
+
+> **Estado de implementación (2026-06-23)**: implementados los RF de autenticación, usuarios, roles (6), escuadrones, unidades, aeronaves, tripulación, cadetes, órdenes de vuelo (RF-050–059), vuelos/estados, auditoría, notificaciones, mensajería, calendario, papelera, realtime, i18n y perfil. **Pendientes**: exportación Excel (RF-095) y los módulos transversales History/Reports (RF-090–096) como sección autónoma.
 
 ## 7. Requisitos no funcionales
 

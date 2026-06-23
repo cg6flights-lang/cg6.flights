@@ -34,35 +34,37 @@ Flutter Web
 
 ## 5. Estructura modular
 
+As-built (2026-06-23) — 18 módulos en `/features`:
+
 ```txt
 /lib
   /app
   /core
+    /config /errors /realtime /results /security /state
   /shared
+    /widgets
   /features
     /auth
     /dashboard
-    /users
-    /roles
-    /permissions
+    /users          (roles y permisos: core/security + users/domain)
     /units
-    /aircraft
-    /crew
+    /aircraft       (presentation/widgets/ tras refactor v1.3)
+    /crew           (incluye cadetes temporales)
     /flight_orders
-    /flights
+    /flights        (Pantalla LED + METAR)
     /flight_status
-    /routes
+    /routes         (mapa embebido — flutter_map)
     /closures
-    /history
     /audit
+    /trash          (papelera / soft-delete)
     /notifications
     /messages
-    /reports
     /calendar
-    /maps
     /profile
     /settings
 ```
+
+Escuadrones se integran como scope/filtros en Crew y Aircraft (sin carpeta propia). `roles`, `permissions`, `history`, `reports` y `maps` **no** son módulos autónomos (ver architecture.spec §3).
 
 ## 6. Routing
 
@@ -72,29 +74,30 @@ Rutas públicas:
 - /register
 - /forgot-password
 
-Rutas protegidas:
+Rutas especiales (post-login sin acceso completo):
+
+- /pending-access
+- /permission-denied
+
+Rutas protegidas (as-built):
 
 - /dashboard
 - /users
-- /roles
-- /permissions
 - /units
 - /aircraft
 - /crew
 - /flight-orders
 - /flights
-- /flight-status
 - /routes
 - /closures
-- /history
 - /audit
 - /notifications
 - /messages
-- /reports
 - /calendar
-- /maps
 - /profile
 - /settings
+
+> Papelera se accede desde Auditoría; escuadrones se filtran dentro de Crew/Aircraft; `/flight-status` no es ruta autónoma (estado embebido en Vuelos). `roles`, `permissions`, `history`, `reports`, `maps` no tienen ruta propia.
 
 ## 7. Guards
 
@@ -405,7 +408,31 @@ Idiomas:
 
 ---
 
-## 7. Changelog 2026-06-05 a 2026-06-06
+## 16. Changelog
+
+> Registro cronológico inverso de cambios de frontend.
+
+### 2026-06-22 a 2026-06-23 (v1.3) — Realtime, UTC, fechas, refactor + tests
+
+- **Realtime ops**: providers de Crew/Dashboard/Notifications invalidados por canal Supabase (sin `Timer` de polling) vía `RealtimeInvalidator`.
+- **Flight item dialog**: rediseño a 3 pasos (Vuelo · Combustible y Ruta · Tripulación) con selector de tripulación completo.
+- **METAR**: visibilidad en km.
+- **Vuelos**: selector de fecha (calendario) heredado por la Pantalla LED (`FlightLedBoard(initialDate:)`).
+- **Horas en UTC**: guardado local→UTC, carga UTC→local, LED presenter, Aircraft `_RelatedOrderCard` (→ `ConsumerWidget`) y PDF con offset inyectado.
+- **Aeronaves**: `aircraft_page` modularizado en `presentation/widgets/` (6 widgets) + `aircraft_providers.dart`.
+- **Dashboard**: `onReorder → onReorderItem` (deprecación Flutter 3.44.1 + off-by-one al reordenar).
+- **Tests**: suite unitaria (dominios, presenters, servicios); `flutter analyze` limpio.
+
+### 2026-06-07 a 2026-06-10 (v1.1–v1.2) — i18n, Escuadrones, Cadetes, Papelera
+
+- **i18n completo ES/EN** (custom, ~38 archivos, toggle en login y header).
+- **Perfil** completo + bienvenida + cambio de contraseña + relojes en dashboard.
+- **Escuadrones** (GRU51) + rol Jefe de Escuadrón + scope `squadronId` + filtros en Tripulaciones/Aeronaves + junction M:N con aeronaves.
+- **Dashboard adaptativo por rol.**
+- **Cadetes temporales**: cursos, grados, PRDI, turnos, foto.
+- **Papelera** (soft-delete) integrada en Auditoría.
+
+### 2026-06-05 a 2026-06-06
 
 ### Aeronaves v2
 - 2 estados (Operativo/Inoperativo, mantenimiento unificado con inoperativo)
@@ -440,7 +467,7 @@ Idiomas:
 
 ---
 
-## 6. Changelog 2026-06-01 a 2026-06-04
+### 2026-06-01 a 2026-06-04
 
 ### Dashboard Modular v2
 

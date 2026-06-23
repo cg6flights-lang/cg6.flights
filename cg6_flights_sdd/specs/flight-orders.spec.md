@@ -459,7 +459,7 @@ Genera PDF A4 landscape con package `pdf`:
 
 ### Integración (repository)
 - [ ] `listFlightOrders()` retorna solo órdenes de la unidad del usuario (verificar RLS)
-- [ ] `listItems()` carga relaciones anidadas (routes, crew, profiles, state_events)
+- [x] `listItems()` carga relaciones anidadas (routes, crew, profiles, state_events) — vía batch loading + `inFilter`
 - [ ] `manageFlightOrder(action: 'create')` crea orden con número auto-generado
 - [ ] `manageFlightOrder(action: 'create')` rechaza duplicado unidad+fecha
 
@@ -493,3 +493,5 @@ Genera PDF A4 landscape con package `pdf`:
 | 2026-05-27 | Spec inicial redactada post-implementación v1.0 |
 | 2026-05-29 | Rediseño de cards: removido mini stepper, cancelar como icono sutil en header, oculto en orden cerrada. Agregado `aircraftModel` al modelo. `listItems` reescrito con 5 consultas batch + `inFilter`. Creado `FlightItemDetailDialog`. `OrderStepper` soporta sub-estado `observed`. |
 | 2026-05-30 | **Separación de responsabilidades**: removido mini stepper y botón de avance de estado del `FlightItemDetailDialog` (pasan a sección Vuelos). Cancelar vuelo permanece como exclusivo de Flight Orders. **Filtros**: reemplazados `FilterChip`s por dropdowns `PopupMenuButton` (Unidad, Fecha, Estado) con chips activos. **Carga**: dots pulsantes + fade en detalle de items (3s). **Colorización**: extraídos colores a `status_colors.dart`, unificados `StatusChip` y `OrderStepper`. Cards con barra de acento izquierda por estado. **Navegación global**: `AppShell` con overlay de dots pulsantes + fade entre secciones. **UI Modernization**: tema premium con toggle claro/oscuro, TextTheme completo, 12 widget themes, DataTable global, cards unificadas 10px. **Menú**: reducido a 11 items, calendario en AppBar, configuración en perfil. |
+| 2026-06-22 | **Estandarización a UTC**: `scheduled_departure` guardado local→UTC y mostrado UTC→local con offset de `timezoneProvider`; PDF con offset inyectado por el provider. **Diálogo de item a 3 pasos** (Vuelo · Combustible y Ruta · Tripulación) con selector de tripulación completo (function codes + checkbox mecánico + i18n). Migración `fix_scheduled_departure_utc` corrige datos históricos. |
+| 2026-06-23 | Tests de dominio (`test/features/flight_orders/domain/flight_order_test.dart`) y de PDF (`flight_order_pdf_service_test.dart`) implementados. `listItems` con batch loading confirmado: relaciones (routes, crew, state_events) cargan correctamente. |

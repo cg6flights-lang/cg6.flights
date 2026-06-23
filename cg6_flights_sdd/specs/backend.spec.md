@@ -45,6 +45,8 @@ No se agrega un servidor backend adicional en v1.0 salvo ADR aprobado.
 
 ## 5. Servicios por dominio
 
+> **Edge Functions as-built (16)**: `assign-user-access`, `aviation-weather`, `bootstrap-profile`, `change-password`, `claim-first-leader`, `list-aircraft`, `list-trash`, `manage-aircraft`, `manage-calendar-event`, `manage-closure`, `manage-crew`, `manage-flight-order`, `manage-message-post`, `manage-route`, `manage-unit`, `manage-user`.
+
 ### Auth
 
 - Registrar usuario con correo.
@@ -87,10 +89,19 @@ No se agrega un servidor backend adicional en v1.0 salvo ADR aprobado.
 
 ### Crew
 
-- Registrar tripulantes.
+- Registrar tripulantes (Edge Function `manage-crew`).
 - Asociar tripulantes a unidad.
 - Clasificar piloto, copiloto, mecanico o ingeniero de vuelo.
+- Clasificar `assignment_type` (Nato/Foráneo) y `function_code` (PS/IP/PM/CP/CO/PI/PR).
+- Gestionar cadetes temporales: cursos (`cadet_courses`), grados, PRDI, turnos.
+- Gestionar foto de tripulante (`crew_photo`, Storage privado).
 - Consultar histórico por tripulante.
+
+### Squadrons (Escuadrones)
+
+- Gestionar escuadrones de vuelo dentro de una unidad (GRU51).
+- Asociar aeronaves a escuadrones (relación M:N `aircraft_squadrons`).
+- Aplicar scope `squadronId` para el rol Jefe de Escuadrón.
 
 ### Flight Orders
 
@@ -128,6 +139,13 @@ No se agrega un servidor backend adicional en v1.0 salvo ADR aprobado.
 - Registrar acciones críticas.
 - Registrar actor, rol, unidad, recurso, acción, resultado, IP si disponible, user agent si disponible y metadata segura.
 - Permitir lectura solo a roles autorizados.
+- Limpieza automática vía pg_cron cada 2 meses.
+
+### Trash (Papelera)
+
+- Listar elementos con borrado lógico (Edge Function `list-trash`).
+- Restaurar registros desde la Papelera.
+- Soft-delete en lugar de borrado físico ordinario (`trash_soft_delete`).
 
 ### Notifications y Messages
 
@@ -270,6 +288,7 @@ Todo DTO debe incluir validaciones de tipo, longitud y obligatoriedad.
 - Realtime no reemplaza auditoría ni persistencia.
 - Mensajería permite streams sobre `messages`, `message_reads`, `message_posts`, `message_post_comments` y `message_post_reads` siempre que RLS filtre filas visibles.
 - Los streams de chat privado no pueden exponer conversaciones donde el usuario no participa.
+- **Patrón "Realtime → invalidate" (ops, v1.3)**: `lib/core/realtime/realtime_invalidator.dart` abre un canal Supabase por tabla (con debounce) e invalida los providers Riverpod afectados, en lugar de reescribir queries con joins. Aplicado a Crew (`crew_members`), Dashboard (`flight_orders`, `flight_order_items`, `flight_order_state_events`, `aircraft`) y Notifications. Las tablas están en la publicación `supabase_realtime` con replica identity full (migración `20260621000000_realtime_ops_tables.sql`). Eliminó el polling con `Timer`.
 
 ## 12. Criterios de aceptación
 

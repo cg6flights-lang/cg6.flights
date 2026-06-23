@@ -90,4 +90,4 @@ No se debe implementar código productivo si fallan gates de:
 - API contracts;
 - testing.
 
-Estado actual: gates críticos aprobados para iniciar implementación v1.0 controlada.
+Estado actual: gates críticos aprobados. **Implementación en producción (v1.0+ en Vercel; desarrollo en `cg6_flights_v1.3`).** Gates de ejecución continua antes de cada merge/deploy: `flutter analyze` (0 issues) + `flutter test` (suite verde, 100 tests) con el SDK del proyecto.

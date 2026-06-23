@@ -8,9 +8,9 @@ Este repositorio contiene la estructura base de Spec-Driven Development para gob
 
 - Proyecto: CG6 Flights
 - Visión: Centro de Gestión y Control de Vuelos Diarios
-- Fecha de generación: 2026-05-24
-- Estado SDD: Aprobado por el usuario para generación de carpetas
-- Implementación: No iniciada
+- Fecha de generación: 2026-05-24 · Última actualización: 2026-06-23
+- Estado SDD: as-built, sincronizado con la implementación (v1.3)
+- Implementación: en producción (v1.0 desplegada en Vercel; desarrollo en branch `cg6_flights_v1.3`)
 - Fuente de verdad: especificaciones en `/specs`, contratos en `/contracts`, reglas en `/governance`
 
 ## Regla principal

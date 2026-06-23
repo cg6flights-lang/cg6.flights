@@ -4,7 +4,20 @@
 
 ## Estado
 
-Aprobado operativo para implementación v1.0.
+Aprobado operativo. **As-built (2026-06-23): suite implementada — 100 tests pasando, `flutter analyze` limpio.**
+
+Estructura real en `test/`:
+
+- `test/core/app_result_test.dart` — Result types.
+- `test/core/app_role_test.dart` — roles y `isGlobal`.
+- `test/core/timezone_provider_test.dart` — conversión UTC↔local con offset.
+- `test/features/aircraft/domain/aircraft_test.dart`
+- `test/features/crew/domain/crew_member_test.dart`
+- `test/features/flight_orders/domain/flight_order_test.dart`
+- `test/flight_led_board_presenter_test.dart` — presenter de la Pantalla LED.
+- `test/flight_order_pdf_service_test.dart` — generación de PDF.
+- `test/metar_data_test.dart` — parseo METAR/TAF.
+- `test/widget_test.dart` — login inicial, sign-in→dashboard, registro pending.
 
 ## 1. Propósito
 
@@ -21,6 +34,8 @@ Antes de merge/deploy:
 - pruebas de RLS críticas.
 - inspección de dependencias.
 - revisión contra AI Rules.
+
+> Ejecutar `analyze` y `test` con el **SDK Flutter del proyecto** (configurado en `.vscode/settings.json`); no usar otro root de Flutter.
 
 ## 3. Pruebas frontend
 

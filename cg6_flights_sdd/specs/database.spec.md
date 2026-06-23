@@ -28,7 +28,7 @@ La base de datos debe preservar la verdad operacional de CG6 Flights con trazabi
 
 ## 4. Enumeraciones
 
-- `app_role`: leader, general_admin, unit_command, unit_admin, ttaa.
+- `app_role`: leader, general_admin, unit_command, unit_admin, squadron_chief, ttaa.
 - `profile_status`: pending, active, inactive, rejected.
 - `crew_type`: pilot, copilot, mechanic, flight_engineer.
 - `aircraft_status`: operational, inoperative, maintenance.
@@ -313,6 +313,44 @@ Reglas:
 - `filters` jsonb.
 - `storage_path` text nullable.
 - `created_at`.
+
+### Tablas y columnas añadidas (v1.1–v1.3, as-built)
+
+**flight_squadrons** (escuadrones de vuelo)
+
+- `id` UUID PK.
+- `unit_id` UUID FK units.
+- nombre/código + `active` + timestamps.
+
+**aircraft_squadrons** (junction M:N aeronave↔escuadrón)
+
+- `aircraft_id` UUID FK aircraft (on delete cascade).
+- `squadron_id` UUID FK flight_squadrons (on delete cascade).
+
+> `profiles`, `crew_members` y `flight_order_items` reciben `squadron_id` UUID FK `flight_squadrons` (scope por escuadrón para el rol Jefe de Escuadrón).
+
+**cadet_courses** (cursos de cadetes)
+
+- `id` UUID PK.
+- `unit_id` UUID FK units.
+- datos del curso (nombre, grupo, fechas).
+- referenciada por `crew_members.cadet_course_id`.
+
+Columnas de cadetes/instrucción en **crew_members**: `assignment_type` (Nato/Foráneo), `function_code` (PS/IP/PM/CP/CO/PI/PR), `training_start` date, `training_end` date, `course_group` text, `cadet_course_id` UUID FK, `photo_path` text (Storage privado).
+
+Columnas de turnos/instrucción en **flight_order_items**: `flight_type` text (default `normal`), `shift` text, `instructor_id` UUID FK crew_members, `rating` text, `cadet_turn` int, `check_ride` text.
+
+**aircraft_status_history** (tracking de operatividad)
+
+- `id` UUID PK.
+- `aircraft_id` UUID FK aircraft (on delete cascade).
+- `unit_id` UUID FK units.
+- `status` aircraft_status + timestamp del cambio.
+- Base de la curva de operatividad (RPC `get_operational_curve`).
+
+**Soft-delete (Papelera)**: columna `deleted_at timestamptz` en `flight_orders`, `flight_order_profiles` y demás tablas operativas; restauración desde Auditoría (Edge Function `list-trash`).
+
+**Realtime**: `flight_orders`, `flight_order_items`, `flight_order_state_events`, `aircraft`, `crew_members` en la publicación `supabase_realtime` con replica identity full (migración `20260621000000_realtime_ops_tables.sql`).
 
 ## 6. Storage
 

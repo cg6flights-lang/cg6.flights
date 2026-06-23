@@ -24,6 +24,7 @@ CG6 Flights maneja información confidencial operacional y personal. El modelo d
 - general_admin: máximo 5 activos.
 - unit_command: autoridad de unidad.
 - unit_admin: operación de unidad.
+- squadron_chief: autoridad acotada a su escuadrón (scope `squadronId`).
 - ttaa: acceso limitado.
 
 Los roles no sustituyen permisos. Toda acción crítica requiere permiso explícito.
@@ -55,7 +56,11 @@ Permisos mínimos:
 - `message_posts.read`, `message_posts.create`, `message_posts.comment`.
 - `calendar.manage`.
 - `reports.read`, `reports.export`.
+- `routes.read`, `routes.manage`.
+- `trash.read`.
 - `calendar.read`, `maps.read`, `profile.update`, `settings.manage`.
+
+> **As-built (2026-06-23)**: ~40 claves activas en `lib/features/users/domain/user_permissions.dart`. El rol `squadron_chief` **no** tiene permisos propios: opera mediante **scope por escuadrón** (`squadronId`).
 
 ## 5. Alcance
 
@@ -119,7 +124,10 @@ Obligatoria para:
 - eventos de estado de vuelo;
 - generación de PDF/Excel;
 - mensajería interna crítica;
-- denegaciones de autorización autenticadas.
+- denegaciones de autorización autenticadas;
+- borrado lógico (soft-delete) y restauración desde Papelera.
+
+> Retención: limpieza automática de `audit_logs` vía pg_cron cada 2 meses.
 
 ## 12. Realtime
 
@@ -127,6 +135,7 @@ Obligatoria para:
 - Prohibido realtime global de operaciones.
 - Mensajes privados y publicaciones usan RLS antes de entregar eventos realtime.
 - No enviar secretos ni datos fuera de alcance.
+- Ops realtime (Crew, Dashboard, Notifications) usa el patrón "Realtime → invalidate" (`RealtimeInvalidator`): el canal solo dispara la invalidación de providers; los datos se releen por las vías normales sujetas a RLS.
 
 ## 13. Headers y despliegue web
 
