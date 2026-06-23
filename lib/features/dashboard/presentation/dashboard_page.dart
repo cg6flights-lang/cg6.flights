@@ -212,7 +212,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         Expanded(
           child: ReorderableListView.builder(
             itemCount: all.length,
-            onReorderItem: (oldIndex, newIndex) {
+            onReorder: (oldIndex, newIndex) {
               ref
                   .read(dashboardPreferencesProvider.notifier)
                   .move(oldIndex, newIndex);
@@ -563,7 +563,7 @@ class _CustomizeSheet extends ConsumerWidget {
           Expanded(
             child: ReorderableListView.builder(
               itemCount: prefs.length,
-              onReorderItem: (o, n) =>
+              onReorder: (o, n) =>
                   ref.read(dashboardPreferencesProvider.notifier).move(o, n),
               itemBuilder: (ctx, i) {
                 final p = prefs[i];
